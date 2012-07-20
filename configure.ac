@@ -30,12 +30,18 @@ AC_SYS_LARGEFILE
 
 AM_SILENT_RULES([yes])
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Werror silent-rules subdir-objects tar-pax no-dist-gzip dist-xz])
+AM_PROG_CC_C_O
 
 LT_PREREQ(2.2)
 LT_INIT
 
+AC_SEARCH_LIBS([dlsym], [dl], [], [AC_MSG_ERROR([Dynamic linking loader library not found])])
+PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0 gobject-2.0 >= 2.24.0])
+PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
+
 AC_CONFIG_FILES([
 	Makefile
+	src/umockdev-1.0.pc
 ])
 
 AC_OUTPUT
