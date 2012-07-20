@@ -1,0 +1,23 @@
+<SECTION>
+<FILE>umockdev</FILE>
+<TITLE>UMockdev</TITLE>
+umockdev_testbed_new
+umockdev_testbed_add_device
+umockdev_testbed_add_devicev
+umockdev_testbed_get_root_dir
+umockdev_testbed_get_sys_dir
+umockdev_testbed_set_attribute
+umockdev_testbed_set_property
+UMockdevTestbed
+UMockdevTestbedClass
+<SUBSECTION Standard>
+UMOCKDEV_IS_TESTBED
+UMOCKDEV_IS_TESTBED_CLASS
+UMOCKDEV_TESTBED
+UMOCKDEV_TESTBED_CLASS
+UMOCKDEV_TESTBED_GET_CLASS
+UMOCKDEV_TYPE_TESTBED
+UMockdevTestbedPrivate
+umockdev_testbed_get_type
+</SECTION>
+

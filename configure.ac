@@ -35,6 +35,14 @@ AM_PROG_CC_C_O
 LT_PREREQ(2.2)
 LT_INIT
 
+# check for gtk-doc
+m4_ifdef([GTK_DOC_CHECK], [
+GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
+],[
+AM_CONDITIONAL([ENABLE_GTK_DOC], false)
+])
+
+# check for gobject-introspection
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK],
 	 [GOBJECT_INTROSPECTION_CHECK([1.32])],
 	 [AM_CONDITIONAL([HAVE_INTROSPECTION], [false])])
@@ -47,6 +55,8 @@ PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
 AC_CONFIG_FILES([
 	Makefile
 	src/umockdev-1.0.pc
+	docs/reference/Makefile
+	docs/reference/version.xml
 ])
 
 AC_OUTPUT

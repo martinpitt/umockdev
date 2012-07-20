@@ -18,14 +18,17 @@ ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
 pkgconfiglibdir=$(libdir)/pkgconfig
 
+SUBDIRS = .
 bin_SCRIPTS =
 lib_LTLIBRARIES =
 pkgconfiglib_DATA =
 noinst_PROGRAMS =
 INSTALL_EXEC_HOOKS =
-EXTRA_DIST = COPYING
 CLEANFILES =
 TESTS =
+
+EXTRA_DIST = COPYING
+DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH src/umockdev-wrapper
 
 AM_CFLAGS = -Werror -Wall
@@ -151,4 +154,10 @@ test_umockdev_LDADD =		\
 TESTS += test-umockdev
 
 # -------------------------------------------------------------
+if ENABLE_GTK_DOC
+SUBDIRS += \
+        docs/reference
+endif
+
+
 install-exec-hook: $(INSTALL_EXEC_HOOKS)

@@ -31,7 +31,6 @@
 
 /**
  * UMockdevTestbed:
- * @parent: Parent object
  *
  * The #UMockdevTestbed struct is opaque and should not be accessed directly.
  */
@@ -45,7 +44,6 @@ struct _UMockdevTestbed
 
 /**
  * UMockdevTestbedClass:
- * @parent_class: Parent class.
  *
  * Class structure for #UMockdevTestbed.
  */
@@ -66,7 +64,7 @@ struct _UMockdevTestbedClass
 };
 
 /**
- * SECTION:umockdevtestbed
+ * SECTION:umockdev
  * @short_description: Build a test bed for testing software that handles Linux
  * hardware devices.
  *

@@ -6,6 +6,8 @@
 *.lo
 *.o
 *.pc
+*.gir
+*.typelib
 stamp-*
 Makefile.in
 Makefile
@@ -13,6 +15,8 @@ config.h
 config.h.in
 config.log
 config.status
+gtk-doc.make
+version.xml
 /m4
 /autom4te.cache
 /build-aux
@@ -20,3 +24,4 @@ config.status
 /configure
 /libtool
 /test-umockdev
+/docs/reference/

@@ -19,5 +19,6 @@
 set -e
 
 mkdir -p m4
+gtkdocize --docdir docs/
 autoreconf --install --symlink
-./configure
+./configure "$@"
