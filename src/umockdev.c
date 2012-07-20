@@ -67,12 +67,12 @@ struct _UMockdevTestbedClass
 
 /**
  * SECTION:umockdevtestbed
- * @short_description: Build a test bed for testing libudev based/hardware
- * handling programs
+ * @short_description: Build a test bed for testing software that handles Linux
+ * hardware devices.
  *
- * The #UMockdevTestbed class is used to build a temporary sandbox for mock
- * devices; for now, sysfs is covered, but other aspects (/dev, ioctl, etc.)
- * will be added in the future). You can add a number of devices including
+ * The #UMockdevTestbed class builds a temporary sandbox for mock devices.
+ * Right now this covers sysfs, but other aspects (uevents, /dev, ioctl, etc.)
+ * will be added in the future. You can add a number of devices including
  * arbitrary sysfs attributes and udev properties, and then run your software
  * in that test bed that is independent of the actual hardware it is running
  * on.  With this you can simulate particular hardware in virtual environments

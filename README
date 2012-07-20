@@ -1,4 +1,41 @@
 umockdev
 ========
 
-Mock hardware devices for creating unit tests
+umockdev mocks hardware devices for creating unit tests for libraries and
+programs that handle Linux hardware devices.
+
+The UMockdevTestbed class builds a temporary sandbox for mock devices.  Right
+now this covers sysfs, but other aspects (uevents, /dev, ioctl, etc.) will be
+added in the future. You can add a number of devices including arbitrary sysfs
+attributes and udev properties, and then run your software in that test bed
+that is independent of the actual hardware it is running on.  With this you can
+simulate particular hardware in virtual environments up to some degree, without
+needing any particular privileges or disturbing the whole system.
+
+The library supports gobject-introspection, so that you can also use it with
+Python, JavaScript, and other languages which support GI.
+
+Development
+===========
+Home page: https://github.com/martinpitt/umockdev
+GIT:       git://github.com/martinpitt/umockdev.git
+Bugs:      https://github.com/martinpitt/umockdev/issues
+
+Authors
+=======
+Martin Pitt <martin.pitt@ubuntu.com>
+
+License
+=======
+umockdev is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or
+(at your option) any later version.
+
+umockdev is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; If not, see <http://www.gnu.org/licenses/>.
