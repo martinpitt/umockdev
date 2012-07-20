@@ -24,12 +24,13 @@ lib_LTLIBRARIES =
 pkgconfiglib_DATA =
 noinst_PROGRAMS =
 INSTALL_EXEC_HOOKS =
+UNINSTALL_EXEC_HOOKS =
 CLEANFILES =
 TESTS =
 
 EXTRA_DIST = COPYING
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
-TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH src/umockdev-wrapper
+TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(top_srcdir)/src/umockdev-wrapper
 
 AM_CFLAGS = -Werror -Wall
 
@@ -57,12 +58,18 @@ libumockdev-preload-install-hook:
 	rm $(DESTDIR)$(libdir)/libumockdev-preload.so
 	rm $(DESTDIR)$(libdir)/libumockdev-preload.la
 
+libumockdev-preload-uninstall-hook:
+	rm $(DESTDIR)$(libdir)/libumockdev-preload.so.*
+
 INSTALL_EXEC_HOOKS += libumockdev-preload-install-hook
+UNINSTALL_EXEC_HOOKS += libumockdev-preload-uninstall-hook
 
 # -------------------------------------------------------------
 # preload wrapper
 
 bin_SCRIPTS += src/umockdev-wrapper
+
+EXTRA_DIST += src/umockdev-wrapper
 
 # -------------------------------------------------------------
 # main library
@@ -161,3 +168,4 @@ endif
 
 
 install-exec-hook: $(INSTALL_EXEC_HOOKS)
+uninstall-hook: $(UNINSTALL_EXEC_HOOKS)

@@ -19,6 +19,12 @@
 set -e
 
 mkdir -p m4
-gtkdocize --docdir docs/
+if type gtkdocize > /dev/null; then
+    gtkdocize --docdir docs/
+    args="--enable-gtk-doc"
+else
+    echo "gtk-doc not installed, you will not be able to generate documentation."
+    echo 'EXTRA_DIST =' > docs/gtk-doc.make
+fi
 autoreconf --install --symlink
-./configure "$@"
+./configure "$args" "$@"
