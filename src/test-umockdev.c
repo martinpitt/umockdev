@@ -204,6 +204,93 @@ t_testbed_set_property (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_free (syspath);
 }
 
+struct event_counter {
+    unsigned add;
+    unsigned remove;
+    unsigned change;
+    gchar last_device[1024];
+};
+
+static void
+on_uevent (GUdevClient  *client,
+           const gchar  *action,
+           GUdevDevice  *device,
+           gpointer      user_data)
+{
+  struct event_counter *counter = (struct event_counter *) user_data;
+
+  g_debug ("on_uevent action %s device %s", action, g_udev_device_get_sysfs_path (device));
+
+  if (strcmp (action, "add") == 0)
+    counter->add++;
+  else if (strcmp (action, "remove") == 0)
+    counter->remove++;
+  else if (strcmp (action, "change") == 0)
+    counter->change++;
+  else
+    g_assert_not_reached ();
+
+  strncpy (counter->last_device,
+           g_udev_device_get_sysfs_path (device),
+           sizeof (counter->last_device) - 1);
+}
+
+static gboolean
+on_timeout (gpointer user_data)
+{
+  GMainLoop *mainloop = (GMainLoop *) user_data;
+  g_main_loop_quit (mainloop);
+  return FALSE;
+}
+
+static void
+t_testbed_uevent (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GUdevClient *client;
+  gchar *syspath;
+  GMainLoop *mainloop;
+  struct event_counter counter = {0, 0, 0};
+  const gchar *subsystems[] = {"pci", NULL};
+
+  syspath = umockdev_testbed_add_device (fixture->testbed,
+                                         "pci",
+                                         "mydev",
+                                         /* attributes */
+                                         "idVendor", "0815", NULL,
+                                         /* properties */
+                                         "ID_INPUT", "1", NULL);
+  g_assert (syspath);
+
+  /* set up listener for uevent signal */
+  client = g_udev_client_new (subsystems);
+  g_signal_connect (client, "uevent", G_CALLBACK (on_uevent), &counter);
+
+  mainloop = g_main_loop_new (NULL, FALSE);
+
+  /* send a signal and run main loop for 0.5 seconds to catch it */
+  umockdev_testbed_uevent (fixture->testbed, syspath, "add");
+  g_timeout_add (500, on_timeout, mainloop);
+  g_main_loop_run (mainloop);
+  g_assert_cmpuint (counter.add, ==, 1);
+  g_assert_cmpuint (counter.remove, ==, 0);
+  g_assert_cmpuint (counter.change, ==, 0);
+  g_assert_cmpstr (counter.last_device, ==, "/sys/devices/mydev");
+
+  counter.add = 0;
+  umockdev_testbed_uevent (fixture->testbed, syspath, "change");
+  g_timeout_add (500, on_timeout, mainloop);
+  g_main_loop_run (mainloop);
+  g_assert_cmpuint (counter.add, ==, 0);
+  g_assert_cmpuint (counter.remove, ==, 0);
+  g_assert_cmpuint (counter.change, ==, 1);
+  g_assert_cmpstr (counter.last_device, ==, "/sys/devices/mydev");
+
+  g_main_loop_unref (mainloop);
+
+  g_object_unref (client);
+  g_free (syspath);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -220,6 +307,8 @@ main (int argc, char **argv)
               t_testbed_set_attribute, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/set_property", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_set_property, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/uevent", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_uevent, t_testbed_fixture_teardown);
 
   return g_test_run ();
 }

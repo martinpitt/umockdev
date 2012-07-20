@@ -82,15 +82,19 @@ libumockdev_include_HEADERS = src/umockdev.h
 
 libumockdev_la_SOURCES =	\
 	src/umockdev.c		\
+	src/uevent_sender.h	\
+	src/uevent_sender.c	\
 	$(NULL)
 
 libumockdev_la_CFLAGS =		\
 	$(AM_CFLAGS)		\
 	$(GLIB_CFLAGS)		\
+	$(LIBUDEV_CFLAGS)	\
 	$(NULL)
 
 libumockdev_la_LIBADD =		\
 	$(GLIB_LIBS)		\
+	$(LIBUDEV_LIBS)		\
 	$(NULL)
 
 # see http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
@@ -122,7 +126,7 @@ src_UMockdev_1_0_gir_LIBS = libumockdev.la
 
 src_UMockdev_1_0_gir_FILES =	\
 	$(libumockdev_include_HEADERS)	\
-	$(libumockdev_la_SOURCES)	\
+	src/umockdev.c			\
 	$(NULL)
 
 src_UMockdev_1_0_gir_SCANNERFLAGS =	\

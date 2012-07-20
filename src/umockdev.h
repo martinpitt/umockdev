@@ -48,14 +48,17 @@ gchar        *umockdev_testbed_add_device      (UMockdevTestbed *testbed,
                                                 const gchar     *subsystem,
                                                 const gchar     *name,
                                                 ...);
-void          umockdev_testbed_set_attribute    (UMockdevTestbed *testbed,
+void          umockdev_testbed_set_attribute   (UMockdevTestbed *testbed,
                                                 const gchar      *devpath,
                                                 const gchar      *name,
                                                 const gchar      *value);
-void          umockdev_testbed_set_property     (UMockdevTestbed *testbed,
+void          umockdev_testbed_set_property    (UMockdevTestbed *testbed,
                                                 const gchar      *devpath,
                                                 const gchar      *name,
                                                 const gchar      *value);
+void          umockdev_testbed_uevent          (UMockdevTestbed *testbed,
+                                                const gchar      *devpath,
+                                                const gchar      *action);
 
 G_END_DECLS
 

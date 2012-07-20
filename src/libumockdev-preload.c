@@ -184,3 +184,135 @@ int open(const char *path, int flags, ...)
 
 	return _open(p, flags);
 }
+
+/********************************
+ *
+ * Wrappers for accessing netlink socket
+ *
+ ********************************/
+
+/* keep track of the last socket fds wrapped by socket(), so that we can
+ * identify them in the other functions */
+static int wrapped_sockets[] = {-1, -1, -1, -1, -1, -1, -1};
+
+/* mark fd as wrapped */
+static void mark_wrapped_socket (int fd)
+{
+	unsigned i;
+	for (i = 0; i < sizeof(wrapped_sockets); ++i) {
+		if (wrapped_sockets[i] < 0) {
+			wrapped_sockets[i] = fd;
+			return;
+		}
+	}
+
+	printf("testbed mark_wrapped_socket overflow");
+	abort();
+}
+
+static void unmark_wrapped_socket (int fd)
+{
+	unsigned i;
+	for (i = 0; i < sizeof(wrapped_sockets); ++i) {
+		if (wrapped_sockets[i] == fd) {
+			wrapped_sockets[i] = -1;
+			return;
+		}
+	}
+
+	printf("testbed unmark_wrapped_socket %i not found", fd);
+	abort();
+}
+
+static int is_wrapped_socket (int fd)
+{
+	unsigned i;
+	if (fd < 0)
+		return 0;
+
+	for (i = 0; i < sizeof(wrapped_sockets); ++i)
+		if (wrapped_sockets[i] == fd)
+			return 1;
+	return 0;
+}
+
+int socket(int domain, int type, int protocol)
+{
+	static int (*_socket)(int, int, int);
+	int fd;
+	_socket = get_libc_func("socket");
+
+	if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT) {
+		fd = _socket(AF_UNIX, type, 0);
+		mark_wrapped_socket(fd);
+		/* printf("testbed wrapped socket: intercepting netlink, fd %i\n", fd); */
+		return fd;
+	}
+
+	return _socket(domain, type, protocol);
+}
+
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
+	static int (*_bind)(int, const struct sockaddr*, socklen_t);
+	struct sockaddr_un sa;
+	const char *path = getenv("UMOCKDEV_DIR");
+	size_t path_len;
+
+	_bind = get_libc_func("bind");
+	if (is_wrapped_socket(sockfd) && path != NULL) {
+		/* printf("testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd); */
+		sa.sun_family = AF_UNIX;
+
+		path_len = strlen(path);
+		assert (path_len < UNIX_PATH_MAX - 7);
+		strcpy(sa.sun_path, path);
+		strcat(sa.sun_path, "/event");
+
+		return _bind(sockfd, (struct sockaddr*) &sa, sizeof(sa));
+	}
+
+	return _bind(sockfd, addr, addrlen);
+}
+
+int close(int fd)
+{
+	static int (*_close)(int);
+	_close = get_libc_func("close");
+	if (is_wrapped_socket(fd)) {
+		/* printf("testbed wrapped close: closing netlink socket fd %i\n", fd); */
+		unmark_wrapped_socket(fd);
+	}
+
+	return _close(fd);
+}
+
+ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
+{
+	static int (*_recvmsg)(int, struct msghdr *, int);
+	ssize_t ret;
+	struct cmsghdr *cmsg;
+        struct sockaddr_nl *sender;
+
+	_recvmsg = get_libc_func("recvmsg");
+	ret = _recvmsg(sockfd, msg, flags);
+
+	if (is_wrapped_socket (sockfd) && ret > 0) {
+		/*printf("testbed wrapped recvmsg: netlink socket fd %i, got %zi bytes\n", sockfd, ret); */
+
+                /* fake sender to be netlink */
+                sender = (struct sockaddr_nl*) msg->msg_name;
+                sender->nl_family = AF_NETLINK;
+                sender->nl_pid = 0;
+                sender->nl_groups = 2; /* UDEV_MONITOR_UDEV */
+                msg->msg_namelen = sizeof(sender);
+
+		/* fake sender credentials to be uid 0 */
+		cmsg = CMSG_FIRSTHDR(msg);
+		if (cmsg != NULL) {
+                        struct ucred *cred = (struct ucred *) CMSG_DATA(cmsg);
+                        cred->uid = 0;
+                }
+	}
+	return ret;
+}

@@ -29,6 +29,8 @@
 
 #include "umockdev.h"
 
+#include "uevent_sender.h"
+
 /**
  * UMockdevTestbed:
  *
@@ -87,6 +89,7 @@ struct _UMockdevTestbedPrivate
 {
   gchar *root_dir;
   gchar *sys_dir;
+  uevent_sender *uevent_sender;
 };
 
 G_DEFINE_TYPE (UMockdevTestbed, umockdev_testbed, G_TYPE_OBJECT)
@@ -103,6 +106,8 @@ umockdev_testbed_finalize (GObject *object)
 
   g_free (testbed->priv->root_dir);
   g_free (testbed->priv->sys_dir);
+
+  uevent_sender_close (testbed->priv->uevent_sender);
 
   if (G_OBJECT_CLASS (umockdev_testbed_parent_class)->finalize != NULL)
     (* G_OBJECT_CLASS (umockdev_testbed_parent_class)->finalize) (object);
@@ -125,11 +130,14 @@ umockdev_testbed_init (UMockdevTestbed *testbed)
                                                UMOCKDEV_TYPE_TESTBED,
                                                UMockdevTestbedPrivate);
 
-  testbed->priv->root_dir = g_dir_make_tmp ("udevtestbed.XXXXXX", &error);
+  testbed->priv->root_dir = g_dir_make_tmp ("umockdev.XXXXXX", &error);
   g_assert_no_error (error);
 
   testbed->priv->sys_dir = g_build_filename (testbed->priv->root_dir, "sys", NULL);
   g_assert (g_mkdir (testbed->priv->sys_dir, 0755) == 0);
+
+  testbed->priv->uevent_sender = uevent_sender_open (testbed->priv->root_dir);
+  g_assert (testbed->priv->uevent_sender != NULL);
 
   g_assert (g_setenv ("UMOCKDEV_DIR", testbed->priv->root_dir, TRUE));
 
@@ -493,4 +501,24 @@ umockdev_testbed_set_property (UMockdevTestbed *testbed,
 
   g_string_free (props, TRUE);
   g_free (uevent_path);
+}
+
+/**
+ * umockdev_testbed_uevent:
+ * @testbed: A #UMockdevTestbed
+ * @devpath: The full device path, as returned by #umockdev_testbed_add_device
+ * @action: "add", "remove", or "change"
+ *
+ * Generate an uevent for a device.
+ */
+void
+umockdev_testbed_uevent (UMockdevTestbed  *testbed,
+                         const gchar      *devpath,
+                         const gchar      *action)
+{
+  g_return_if_fail (UMOCKDEV_IS_TESTBED (testbed));
+
+  g_debug ("umockdev_testbed_uevent: sending uevent %s for device %s", action, devpath);
+
+  uevent_sender_send (testbed->priv->uevent_sender, devpath, action);
 }
