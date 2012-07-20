@@ -1,13 +1,20 @@
-# http://www.gnu.org/software/automake
-
+.*.swp
+.deps
+.dirstamp
+.libs
+*.la
+*.lo
+*.o
+stamp-*
 Makefile.in
-
-# http://www.gnu.org/software/autoconf
-
+Makefile
+config.h
+config.h.in
+config.log
+config.status
+/m4
 /autom4te.cache
+/build-aux
 /aclocal.m4
-/compile
 /configure
-/depcomp
-/install-sh
-/missing
+/libtool
