@@ -35,6 +35,11 @@ AM_PROG_CC_C_O
 LT_PREREQ(2.2)
 LT_INIT
 
+m4_ifdef([GOBJECT_INTROSPECTION_CHECK],
+	 [GOBJECT_INTROSPECTION_CHECK([1.32])],
+	 [AM_CONDITIONAL([HAVE_INTROSPECTION], [false])])
+
+
 AC_SEARCH_LIBS([dlsym], [dl], [], [AC_MSG_ERROR([Dynamic linking loader library not found])])
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0 gobject-2.0 >= 2.24.0])
 PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
@@ -45,3 +50,13 @@ AC_CONFIG_FILES([
 ])
 
 AC_OUTPUT
+
+AC_MSG_RESULT([
+  $PACKAGE_NAME $VERSION
+  
+  gobject-introspection support:	${enable_introspection}
+  
+  CPPFLAGS:				${CPPFLAGS}
+  CFLAGS:				${CFLAGS}
+  LDFLAGS:				${LDFLAGS}
+])

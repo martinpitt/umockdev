@@ -96,6 +96,40 @@ EXTRA_DIST += src/umockdev-1.0.pc.in
 CLEANFILES += src/umockdev-1.0.pc
 
 # -------------------------------------------------------------
+# introspection for main library
+
+if HAVE_INTROSPECTION
+include $(INTROSPECTION_MAKEFILE)
+
+INTROSPECTION_GIRS = src/UMockdev-1.0.gir
+INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir)/src
+INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)/src
+
+src/UMockdev-1.0.gir: libumockdev.la
+src_UMockdev_1_0_gir_INCLUDES = GObject-2.0
+src_UMockdev_1_0_gir_CFLAGS = 
+src_UMockdev_1_0_gir_LIBS = libumockdev.la
+
+src_UMockdev_1_0_gir_FILES =	\
+	$(libumockdev_include_HEADERS)	\
+	$(libumockdev_la_SOURCES)	\
+	$(NULL)
+
+src_UMockdev_1_0_gir_SCANNERFLAGS =	\
+	--pkg-export=umockdev-1.0	\
+	--symbol-prefix=umockdev	\
+	--warn-all			\
+	$(NULL)
+
+girdir = $(datadir)/gir-1.0
+gir_DATA = $(INTROSPECTION_GIRS)
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
+CLEANFILES += $(gir_DATA) $(typelib_DATA)
+
+endif
+
+# -------------------------------------------------------------
 # tests
 
 noinst_PROGRAMS += test-umockdev
