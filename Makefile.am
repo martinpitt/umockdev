@@ -164,6 +164,16 @@ test_umockdev_LDADD =		\
 
 TESTS += test-umockdev
 
+EXTRA_DIST += src/test-umockdev.py
+
+if HAVE_INTROSPECTION
+if HAVE_PYTHON
+check-local: $(INTROSPECTION_GIRS)
+	@echo "  Running gobject-introspection test with $(PYTHON)"
+	LD_LIBRARY_PATH=$(top_builddir)/.libs GI_TYPELIB_PATH=$(top_builddir)/src/ $(top_srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning $(srcdir)/src/test-umockdev.py
+endif
+endif
+
 # -------------------------------------------------------------
 if ENABLE_GTK_DOC
 SUBDIRS += \

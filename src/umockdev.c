@@ -231,11 +231,12 @@ uevent_from_property_list (const gchar** properties)
  * @testbed: A #UMockdevTestbed.
  * @subsystem: The subsystem name, e. g. "usb"
  * @name: The device name; arbitrary, but needs to be unique within the testbed
- * @attributes: (transfer none): A list of device sysfs attributes, alternating
- *              names and values, terminated with NULL:
+ * @attributes: (array zero-terminated=1) (transfer none): 
+ *              A list of device sysfs attributes, alternating names and
+ *              values, terminated with NULL:
  *              { "key1", "value1", "key2", "value2", ..., NULL }
- * @properties: (transfer none): A list of device udev properties; same format
- *              as @attributes
+ * @properties: (array zero-terminated=1) (transfer none): 
+ *              A list of device udev properties; same format as @attributes
  *
  * This method is mostly meant for language bindings (where it is named
  * #umockdev_testbed_add_device). For C programs it is usually more convenient to

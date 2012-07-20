@@ -53,6 +53,11 @@ PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0 gobject-2.0 >= 2.24.0])
 PKG_CHECK_MODULES([LIBUDEV], [libudev])
 PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
 
+# if we have Python 2 or 3, run the GI test (they will skip if gi.repository is
+# not available)
+AC_CHECK_PROGS(PYTHON, [python3 python])
+AM_CONDITIONAL(HAVE_PYTHON, [test x$PYTHON != x])
+
 AC_CONFIG_FILES([
 	Makefile
 	src/umockdev-1.0.pc
@@ -70,4 +75,5 @@ AC_MSG_RESULT([
   CPPFLAGS:				${CPPFLAGS}
   CFLAGS:				${CFLAGS}
   LDFLAGS:				${LDFLAGS}
+
 ])
