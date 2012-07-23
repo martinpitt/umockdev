@@ -39,7 +39,14 @@ t_testbed_fixture_setup (UMockdevTestbedFixture *fixture, gconstpointer data)
 static void
 t_testbed_fixture_teardown (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
+  gchar *rootdir;
+  rootdir = g_strdup (umockdev_testbed_get_root_dir (fixture->testbed));
   g_object_unref (fixture->testbed);
+
+  /* verify that temp dir gets cleaned up properly */
+  g_assert (!g_file_test (rootdir, G_FILE_TEST_EXISTS));
+
+  g_free (rootdir);
 }
 
 /* Empty UMockdevTestbed without any devices */

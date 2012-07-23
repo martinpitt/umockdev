@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 
@@ -94,12 +95,47 @@ struct _UMockdevTestbedPrivate
 
 G_DEFINE_TYPE (UMockdevTestbed, umockdev_testbed, G_TYPE_OBJECT)
 
+/**
+ * remove_dir:
+ *
+ * Recursively remove a directory and all its contents.
+ */
+static void
+remove_dir (const gchar* path)
+{
+  if (g_file_test (path, G_FILE_TEST_IS_DIR) && !g_file_test (path, G_FILE_TEST_IS_SYMLINK))
+    {
+      GError *error = NULL;
+      GDir *d;
+      const gchar *name;
+
+      d = g_dir_open (path, 0, &error);
+      if (d == NULL)
+        {
+          g_warning ("cannot open %s: %s", path, error->message);
+          return;
+        }
+      while ((name = g_dir_read_name (d)) != NULL)
+        {
+          gchar *name_path;
+          name_path = g_build_filename (path, name, NULL);
+          remove_dir (name_path);
+          g_free (name_path);
+        }
+      g_dir_close (d);
+
+    }
+
+  if (g_remove (path) < 0)
+    g_warning ("cannot remove %s: %s", path, strerror (errno));
+}
+
 static void
 umockdev_testbed_finalize (GObject *object)
 {
   UMockdevTestbed *testbed = UMOCKDEV_TESTBED (object);
 
-  /* TODO: rm -r root_dir */
+  remove_dir (testbed->priv->root_dir);
 
   g_debug ("Removing test bed %s", testbed->priv->root_dir);
   g_unsetenv ("UMOCKDEV_DIR");
