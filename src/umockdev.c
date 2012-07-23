@@ -262,6 +262,33 @@ uevent_from_property_list (const gchar** properties)
   return g_string_free (result, FALSE);
 }
 
+static const gchar*
+make_dotdots (const gchar* devpath)
+{
+  static gchar dots[PATH_MAX];
+  unsigned len = 0;
+  unsigned count = 0;
+  const gchar *offset;
+
+  /* count slashes in devpath */
+  for (offset = devpath; offset != NULL && offset[0]; offset = index (offset, '/'))
+    {
+      count++;
+      offset++; /* advance beyond / */
+    }
+
+  /* we need one .. less than count */
+  --count;
+
+  for (dots[0] = '\0'; count > 0 && len < sizeof(dots); --count)
+    {
+      strcat (dots, "../");
+      len += 3;
+    }
+
+  return dots;
+}
+
 /**
  * umockdev_testbed_add_devicev:
  * @testbed: A #UMockdevTestbed.
@@ -334,14 +361,14 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
   g_assert (g_mkdir_with_parents (class_dir, 0755) == 0);
 
   /* subsystem symlink */
-  target = g_build_filename ("..", "..", "class", subsystem, NULL);
+  target = g_build_filename (make_dotdots(dev_path), "class", subsystem, NULL);
   link = g_build_filename (dev_dir, "subsystem", NULL);
   g_assert (symlink (target, link) == 0);
   g_free (target);
   g_free (link);
 
   /* device symlink from class/ */
-  target = g_build_filename ("..", "..", "devices", name, NULL);
+  target = g_build_filename ("..", "..", strstr (dev_path, "/devices/"), NULL);
   link = g_build_filename (class_dir, name, NULL);
   g_assert (symlink (target, link) == 0);
   g_free (target);

@@ -152,48 +152,100 @@ t_testbed_add_device (UMockdevTestbedFixture *fixture, gconstpointer data)
 static void
 t_testbed_child_device (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
-  gchar *parent, *child;
+  gchar *dev, *iface, *input;
   GUdevClient *client;
   GUdevDevice *device, *device2;
+  gchar *path;
 
-  parent = umockdev_testbed_add_device (fixture->testbed,
-                                       "usb",
-                                       "usb1",
-                                       NULL,
-                                       /* attributes */
-                                       "idVendor", "0815", "idProduct", "AFFE", NULL,
-                                       /* properties */
-                                       "INTERFACE", "3/1/1", NULL);
-  g_assert (parent);
-  g_assert_cmpstr (parent, ==, "/sys/devices/usb1");
+  dev = umockdev_testbed_add_device (fixture->testbed,
+                                     "usb",
+                                     "usb1",
+                                     NULL,
+                                     /* attributes */
+                                     "idVendor", "0815", "idProduct", "AFFE", NULL,
+                                     /* properties */
+                                     "INTERFACES", ":3/1/1:", NULL);
+  g_assert (dev);
+  g_assert_cmpstr (dev, ==, "/sys/devices/usb1");
 
-  child = umockdev_testbed_add_device (fixture->testbed,
+  iface = umockdev_testbed_add_device (fixture->testbed,
+                                      "usb",
+                                      "1-1",
+                                      dev,
+                                      /* attributes */
+                                      "iClass", "2", NULL,
+                                      /* properties */
+                                      "INTERFACE", "3/1/1", NULL);
+  g_assert (iface);
+  g_assert_cmpstr (iface, ==, "/sys/devices/usb1/1-1");
+
+  input = umockdev_testbed_add_device (fixture->testbed,
                                        "input",
                                        "kb1",
-                                       parent,
+                                       iface,
                                        /* attributes */
                                        "name", "HID 123", NULL,
                                        /* properties */
                                        "ID_INPUT", "1", NULL);
-  g_assert (child);
-  g_assert_cmpstr (child, ==, "/sys/devices/usb1/kb1");
+  g_assert (input);
+  g_assert_cmpstr (input, ==, "/sys/devices/usb1/1-1/kb1");
 
   client = g_udev_client_new (NULL);
 
-  /* check parent device */
-  device = g_udev_client_query_by_sysfs_path (client, parent);
+  /* check dev device */
+  device = g_udev_client_query_by_sysfs_path (client, dev);
   g_assert (device);
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, "0815");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "iClass"), ==, NULL);
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "name"), ==, NULL);
-  g_assert_cmpstr (g_udev_device_get_property (device, "INTERFACE"), ==, "3/1/1");
+  g_assert_cmpstr (g_udev_device_get_property (device, "INTERFACES"), ==, ":3/1/1:");
+  g_assert_cmpstr (g_udev_device_get_property (device, "INTERFACE"), ==, NULL);
   g_assert_cmpstr (g_udev_device_get_property (device, "ID_INPUT"), ==, NULL);
   g_assert (g_udev_device_get_parent (device) == NULL);
   g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "usb");
   g_assert_cmpstr (g_udev_device_get_name (device), ==, "usb1");
   g_object_unref (device);
 
-  /* check child device */
-  device = g_udev_client_query_by_sysfs_path (client, child);
+  /* dev's class symlinks */
+  path = g_build_filename (dev, "subsystem", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (dev, "subsystem", "usb1", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (dev, "subsystem", "usb1", "idVendor", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
+  g_free (path);
+
+  /* check iface device */
+  device = g_udev_client_query_by_sysfs_path (client, iface);
+  g_assert (device);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, NULL);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "name"), ==, NULL);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "iClass"), ==, "2");
+  g_assert_cmpstr (g_udev_device_get_property (device, "INTERFACE"), ==, "3/1/1");
+  g_assert_cmpstr (g_udev_device_get_property (device, "ID_INPUT"), ==, NULL);
+  g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "usb");
+  g_assert_cmpstr (g_udev_device_get_name (device), ==, "1-1");
+  device2 = g_udev_device_get_parent (device);
+  g_assert (device2 != NULL);
+  g_assert_cmpstr (g_udev_device_get_sysfs_path (device2), ==, dev);
+  g_object_unref (device);
+  g_object_unref (device2);
+
+  /* iface's class symlinks */
+  path = g_build_filename (iface, "subsystem", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (iface, "subsystem", "1-1", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (iface, "subsystem", "1-1", "iClass", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
+  g_free (path);
+
+  /* check input's device */
+  device = g_udev_client_query_by_sysfs_path (client, input);
   g_assert (device);
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, NULL);
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "name"), ==, "HID 123");
@@ -203,12 +255,25 @@ t_testbed_child_device (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert_cmpstr (g_udev_device_get_name (device), ==, "kb1");
   device2 = g_udev_device_get_parent (device);
   g_assert (device2 != NULL);
-  g_assert_cmpstr (g_udev_device_get_sysfs_path (device2), ==, parent);
+  g_assert_cmpstr (g_udev_device_get_sysfs_path (device2), ==, iface);
   g_object_unref (device);
+  g_object_unref (device2);
+
+  /* inputs's class symlinks */
+  path = g_build_filename (input, "subsystem", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (input, "subsystem", "kb1", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (input, "subsystem", "kb1", "name", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
+  g_free (path);
 
   g_object_unref (client);
-  g_free (parent);
-  g_free (child);
+  g_free (dev);
+  g_free (iface);
+  g_free (input);
 }
 
 struct TestbedErrorCatcherData {
