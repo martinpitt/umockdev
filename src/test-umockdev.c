@@ -274,6 +274,9 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   GUdevClient *client;
   GUdevDevice *device;
   gchar *syspath;
+  gchar *attrpath;
+  gchar *contents = NULL;
+  gsize length;
 
   client = g_udev_client_new (NULL);
 
@@ -290,6 +293,8 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   umockdev_testbed_set_attribute (fixture->testbed, syspath, "idProduct", "BEEF");
   /* add a new one */
   umockdev_testbed_set_attribute (fixture->testbed, syspath, "color", "yellow");
+  /* add a binary attribute */
+  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptor", "\x01\x00\xFF\x00\x05", 5);
 
   device = g_udev_client_query_by_sysfs_path (client, syspath);
   g_assert (device);
@@ -299,6 +304,13 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_object_unref (device);
 
   g_object_unref (client);
+
+  /* validate binary attribute */
+  attrpath = g_build_filename (syspath, "descriptor", NULL);
+  g_assert (g_file_get_contents (attrpath, &contents, &length, NULL));
+  g_assert_cmpint (length, ==, 5);
+  g_assert_cmpint (memcmp (contents, "\x01\x00\xFF\x00\x05", 5), ==, 0);
+  
   g_free (syspath);
 }
 

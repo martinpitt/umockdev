@@ -87,12 +87,19 @@ class Testbed(unittest.TestCase):
         # add a new one
         self.testbed.set_attribute(syspath, 'color', 'yellow')
 
+        # add a binary attribute
+        self.testbed.set_attribute_binary(syspath, 'descriptor', b'\x01\x00\xFF\x00\x05')
+
         client = GUdev.Client.new(None)
         dev = client.query_by_sysfs_path(syspath)
         self.assertNotEqual(dev, None)
         self.assertEqual(dev.get_sysfs_attr('idVendor'), '0815')
         self.assertEqual(dev.get_sysfs_attr('idProduct'), 'BEEF')
         self.assertEqual(dev.get_sysfs_attr('color'), 'yellow')
+
+        # validate binary attribute
+        with open(os.path.join(self.testbed.get_root_dir() + syspath, 'descriptor'), 'rb') as f:
+            self.assertEqual(f.read(), b'\x01\x00\xFF\x00\x05')
 
     def test_set_property(self):
         '''testbed set_property()'''

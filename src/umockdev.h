@@ -54,6 +54,11 @@ void          umockdev_testbed_set_attribute   (UMockdevTestbed *testbed,
                                                 const gchar      *devpath,
                                                 const gchar      *name,
                                                 const gchar      *value);
+void          umockdev_testbed_set_attribute_binary (UMockdevTestbed *testbed,
+                                                     const gchar      *devpath,
+                                                     const gchar      *name,
+                                                     const gchar      *value,
+                                                     gssize            value_len);
 void          umockdev_testbed_set_property    (UMockdevTestbed *testbed,
                                                 const gchar      *devpath,
                                                 const gchar      *name,

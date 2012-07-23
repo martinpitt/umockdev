@@ -476,13 +476,33 @@ umockdev_testbed_set_attribute (UMockdevTestbed *testbed,
                                 const gchar     *name,
                                 const gchar     *value)
 {
+  umockdev_testbed_set_attribute_binary (testbed, devpath, name, value, -1);
+}
+
+/**
+ * umockdev_testbed_set_attribute_binary:
+ * @testbed: A #UMockdevTestbed.
+ * @devpath: The full device path, as returned by #umockdev_testbed_add_device
+ * @name: The attribute name
+ * @value: (array length=value_len) (element-type guint8): The attribute value
+ * @value_len: Length of @value in bytes
+ *
+ * Set a binary sysfs attribute of a device which can include null bytes.
+ */
+void
+umockdev_testbed_set_attribute_binary (UMockdevTestbed *testbed,
+                                       const gchar     *devpath,
+                                       const gchar     *name,
+                                       const gchar     *value,
+                                       gssize           value_len)
+{
   gchar *attr_path;
   GError *error = NULL;
 
   g_return_if_fail (UMOCKDEV_IS_TESTBED (testbed));
 
   attr_path = g_build_filename (testbed->priv->root_dir, devpath, name, NULL);
-  g_file_set_contents (attr_path, value, -1, &error);
+  g_file_set_contents (attr_path, value, value_len, &error);
   g_assert_no_error (error);
   g_free (attr_path);
 }
