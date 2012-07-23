@@ -247,6 +247,7 @@ static void
 t_testbed_uevent (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
   GUdevClient *client;
+  GUdevDevice *device;
   gchar *syspath;
   GMainLoop *mainloop;
   struct event_counter counter = {0, 0, 0};
@@ -286,6 +287,12 @@ t_testbed_uevent (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert_cmpstr (counter.last_device, ==, "/sys/devices/mydev");
 
   g_main_loop_unref (mainloop);
+
+  /* ensure that properties and attributes are still intact */
+  device = g_udev_client_query_by_sysfs_path (client, syspath);
+  g_assert (device);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, "0815");
+  g_assert_cmpstr (g_udev_device_get_property (device, "ID_INPUT"), ==, "1");
 
   g_object_unref (client);
   g_free (syspath);
