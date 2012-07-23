@@ -211,6 +211,63 @@ t_testbed_child_device (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_free (child);
 }
 
+struct TestbedErrorCatcherData {
+    unsigned counter;
+    GLogLevelFlags last_level;
+    gchar *last_message;
+};
+
+static gboolean
+t_testbed_error_catcher (const gchar *log_domain,
+                         GLogLevelFlags log_level,
+                         const gchar *message,
+                         gpointer user_data)
+{
+  struct TestbedErrorCatcherData *data = (struct TestbedErrorCatcherData *) user_data;
+
+  data->counter++;
+  data->last_level = log_level;
+  if (data->last_message)
+    g_free (data->last_message);
+  data->last_message = g_strdup (message);
+  return FALSE;
+}
+
+/* UMockdevTestbed add_device() error conditions */
+static void
+t_testbed_add_device_errors (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  gchar *syspath;
+  struct TestbedErrorCatcherData errors = {0, 0, NULL};
+
+  g_test_log_set_fatal_handler (t_testbed_error_catcher, &errors);
+
+  /* invalid parent */
+  syspath = umockdev_testbed_add_device (fixture->testbed,
+                                         "usb",
+                                         "usb1",
+                                         "/sys/nosuchdevice",
+                                         NULL,
+                                         NULL);
+  g_assert (syspath == NULL);
+  g_assert_cmpint (errors.counter, ==, 1);
+  g_assert_cmpint (errors.last_level, ==, G_LOG_LEVEL_CRITICAL|G_LOG_FLAG_FATAL);
+  g_assert (strstr (errors.last_message, "/sys/nosuchdevice") != NULL);
+
+  /* key/values do not pair up */
+  syspath = umockdev_testbed_add_device (fixture->testbed,
+                                         "usb",
+                                         "usb1",
+                                         NULL,
+                                         /* attributes */
+                                         "idVendor", "0815", "idProduct", NULL,
+                                         NULL);
+  g_assert (syspath);
+  g_assert_cmpint (errors.counter, ==, 2);
+  g_assert_cmpint (errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
+  g_assert (strstr (errors.last_message, "idProduct") != NULL);
+}
+
 static void
 t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
@@ -385,6 +442,8 @@ main (int argc, char **argv)
               t_testbed_add_devicev, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/add_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_add_device, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/add_device_errors", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_add_device_errors, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/child_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_child_device, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/set_attribute", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

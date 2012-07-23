@@ -313,7 +313,14 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
   g_return_val_if_fail (UMOCKDEV_IS_TESTBED (testbed), NULL);
 
   if (parent != NULL)
-    dev_path = g_build_filename (parent, name, NULL);
+    {
+      if (!g_file_test (parent, G_FILE_TEST_IS_DIR))
+        {
+          g_critical ("umockdev_testbed_add_devicev(): parent device %s does not exist", parent);
+          return NULL;
+        }
+      dev_path = g_build_filename (parent, name, NULL);
+    }
   else
     dev_path = g_build_filename ("/sys/devices", name, NULL);
   dev_dir = g_build_filename (testbed->priv->root_dir, dev_path, NULL);
