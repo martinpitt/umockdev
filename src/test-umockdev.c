@@ -217,6 +217,16 @@ t_testbed_child_device (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
   g_free (path);
 
+  /* dev's bus symlinks */
+  path = g_build_filename (umockdev_testbed_get_sys_dir (fixture->testbed),
+          "bus", "usb", "devices", "usb1", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (umockdev_testbed_get_sys_dir (fixture->testbed),
+          "bus", "usb", "devices", "usb1", "idVendor", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
+  g_free (path);
+
   /* check iface device */
   device = g_udev_client_query_by_sysfs_path (client, iface);
   g_assert (device);
@@ -241,6 +251,16 @@ t_testbed_child_device (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
   g_free (path);
   path = g_build_filename (iface, "subsystem", "1-1", "iClass", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
+  g_free (path);
+
+  /* iface's bus symlinks */
+  path = g_build_filename (umockdev_testbed_get_sys_dir (fixture->testbed),
+          "bus", "usb", "devices", "1-1", NULL);
+  g_assert (g_file_test (path, G_FILE_TEST_IS_SYMLINK));
+  g_free (path);
+  path = g_build_filename (umockdev_testbed_get_sys_dir (fixture->testbed),
+          "bus", "usb", "devices", "1-1", "iClass", NULL);
   g_assert (g_file_test (path, G_FILE_TEST_IS_REGULAR));
   g_free (path);
 

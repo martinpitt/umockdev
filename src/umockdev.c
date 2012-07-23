@@ -377,6 +377,20 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
   g_free (class_dir);
   g_free (dev_dir);
 
+  /* bus symlink */
+  if (strcmp (subsystem, "usb") == 0 || strcmp (subsystem, "pci") == 0)
+    {
+      class_dir = g_build_filename (testbed->priv->sys_dir, "bus", subsystem, "devices", NULL);
+      g_assert (g_mkdir_with_parents (class_dir, 0755) == 0);
+
+      target = g_build_filename ("..", "..", "..", strstr (dev_path, "/devices/"), NULL);
+      link = g_build_filename (class_dir, name, NULL);
+      g_assert (symlink (target, link) == 0);
+      g_free (link);
+      g_free (class_dir);
+      g_free (target);
+    }
+
   /* attributes */
   while (*attributes != NULL)
     {
