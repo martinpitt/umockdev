@@ -48,7 +48,7 @@ class Testbed(unittest.TestCase):
         '''testbed with adding one device'''
 
         syspath = self.testbed.add_device(
-            'usb', 'extkeyboard1',
+            'usb', 'extkeyboard1', None,
             ['idVendor', '0815', 'idProduct', 'AFFE'],
             ['ID_INPUT', '1',  'ID_INPUT_KEYBOARD', '1'])
         self.assertEqual(syspath, '/sys/devices/extkeyboard1')
@@ -79,7 +79,7 @@ class Testbed(unittest.TestCase):
         '''testbed set_attribute()'''
 
         syspath = self.testbed.add_device(
-            'usb', 'extkeyboard1', ['idVendor', '0815', 'idProduct', 'AFFE'], [])
+            'usb', 'extkeyboard1', None, ['idVendor', '0815', 'idProduct', 'AFFE'], [])
 
         # change an existing attribute
         self.testbed.set_attribute(syspath, 'idProduct', 'BEEF')
@@ -98,7 +98,7 @@ class Testbed(unittest.TestCase):
         '''testbed set_property()'''
 
         syspath = self.testbed.add_device(
-            'usb', 'extkeyboard1', [], ["ID_INPUT", "1"])
+            'usb', 'extkeyboard1', None, [], ["ID_INPUT", "1"])
 
         # change an existing property
         self.testbed.set_property(syspath, 'ID_INPUT', '0')
@@ -128,7 +128,7 @@ class Testbed(unittest.TestCase):
 
             counters[3] = device.get_sysfs_path()
 
-        syspath = self.testbed.add_device('pci', 'mydev', ['idVendor', '0815'], ['ID_INPUT', '1'])
+        syspath = self.testbed.add_device('pci', 'mydev', None, ['idVendor', '0815'], ['ID_INPUT', '1'])
         self.assertNotEqual(syspath, None)
 
         # set up listener for uevent signal

@@ -110,6 +110,7 @@ t_testbed_add_devicev (UMockdevTestbedFixture *fixture, gconstpointer data)
   syspath = umockdev_testbed_add_devicev (fixture->testbed,
                                         "usb",
                                         "extkeyboard1",
+                                        NULL,
                                         attributes,
                                         properties);
   g_assert (syspath);
@@ -128,6 +129,7 @@ t_testbed_add_device (UMockdevTestbedFixture *fixture, gconstpointer data)
   syspath = umockdev_testbed_add_device (fixture->testbed,
                                        "usb",
                                        "extkeyboard1",
+                                       NULL,
                                        /* attributes */
                                        "idVendor", "0815", "idProduct", "AFFE", NULL,
                                        /* properties */
@@ -137,6 +139,69 @@ t_testbed_add_device (UMockdevTestbedFixture *fixture, gconstpointer data)
 
   _t_testbed_check_extkeyboard1(syspath);
   g_free (syspath);
+}
+
+/* UMockdevTestbed add_device() with adding a child device */
+static void
+t_testbed_child_device (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  gchar *parent, *child;
+  GUdevClient *client;
+  GUdevDevice *device, *device2;
+
+  parent = umockdev_testbed_add_device (fixture->testbed,
+                                       "usb",
+                                       "usb1",
+                                       NULL,
+                                       /* attributes */
+                                       "idVendor", "0815", "idProduct", "AFFE", NULL,
+                                       /* properties */
+                                       "INTERFACE", "3/1/1", NULL);
+  g_assert (parent);
+  g_assert_cmpstr (parent, ==, "/sys/devices/usb1");
+
+  child = umockdev_testbed_add_device (fixture->testbed,
+                                       "input",
+                                       "kb1",
+                                       parent,
+                                       /* attributes */
+                                       "name", "HID 123", NULL,
+                                       /* properties */
+                                       "ID_INPUT", "1", NULL);
+  g_assert (child);
+  g_assert_cmpstr (child, ==, "/sys/devices/usb1/kb1");
+
+  client = g_udev_client_new (NULL);
+
+  /* check parent device */
+  device = g_udev_client_query_by_sysfs_path (client, parent);
+  g_assert (device);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, "0815");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "name"), ==, NULL);
+  g_assert_cmpstr (g_udev_device_get_property (device, "INTERFACE"), ==, "3/1/1");
+  g_assert_cmpstr (g_udev_device_get_property (device, "ID_INPUT"), ==, NULL);
+  g_assert (g_udev_device_get_parent (device) == NULL);
+  g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "usb");
+  g_assert_cmpstr (g_udev_device_get_name (device), ==, "usb1");
+  g_object_unref (device);
+
+  /* check child device */
+  device = g_udev_client_query_by_sysfs_path (client, child);
+  g_assert (device);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, NULL);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "name"), ==, "HID 123");
+  g_assert_cmpstr (g_udev_device_get_property (device, "INTERFACE"), ==, NULL);
+  g_assert_cmpstr (g_udev_device_get_property (device, "ID_INPUT"), ==, "1");
+  g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "input");
+  g_assert_cmpstr (g_udev_device_get_name (device), ==, "kb1");
+  device2 = g_udev_device_get_parent (device);
+  g_assert (device2 != NULL);
+  g_assert_cmpstr (g_udev_device_get_sysfs_path (device2), ==, parent);
+  g_object_unref (device);
+
+  g_object_unref (client);
+  g_free (parent);
+  g_free (child);
 }
 
 static void
@@ -151,6 +216,7 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   syspath = umockdev_testbed_add_device (fixture->testbed,
                                        "usb",
                                        "extkeyboard1",
+                                       NULL,
                                        /* attributes */
                                        "idVendor", "0815", "idProduct", "AFFE", NULL,
                                        /* properties */
@@ -184,6 +250,7 @@ t_testbed_set_property (UMockdevTestbedFixture *fixture, gconstpointer data)
   syspath = umockdev_testbed_add_device (fixture->testbed,
                                        "usb",
                                        "extkeyboard1",
+                                       NULL,
                                        /* attributes */
                                        NULL,
                                        /* properties */
@@ -256,6 +323,7 @@ t_testbed_uevent (UMockdevTestbedFixture *fixture, gconstpointer data)
   syspath = umockdev_testbed_add_device (fixture->testbed,
                                          "pci",
                                          "mydev",
+                                         NULL,
                                          /* attributes */
                                          "idVendor", "0815", NULL,
                                          /* properties */
@@ -310,6 +378,8 @@ main (int argc, char **argv)
               t_testbed_add_devicev, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/add_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_add_device, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/child_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_child_device, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/set_attribute", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_set_attribute, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/set_property", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

@@ -231,6 +231,8 @@ uevent_from_property_list (const gchar** properties)
  * @testbed: A #UMockdevTestbed.
  * @subsystem: The subsystem name, e. g. "usb"
  * @name: The device name; arbitrary, but needs to be unique within the testbed
+ * @parent: (allow-none): device path of the parent device. Use %NULL for a
+ *          top-level device.
  * @attributes: (array zero-terminated=1) (transfer none): 
  *              A list of device sysfs attributes, alternating names and
  *              values, terminated with NULL:
@@ -261,6 +263,7 @@ gchar*
 umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
                               const gchar      *subsystem,
                               const gchar      *name,
+                              const gchar      *parent,
                               const gchar     **attributes,
                               const gchar     **properties)
 {
@@ -273,7 +276,10 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
 
   g_return_val_if_fail (UMOCKDEV_IS_TESTBED (testbed), NULL);
 
-  dev_path = g_build_filename ("/sys/devices", name, NULL);
+  if (parent != NULL)
+    dev_path = g_build_filename (parent, name, NULL);
+  else
+    dev_path = g_build_filename ("/sys/devices", name, NULL);
   dev_dir = g_build_filename (testbed->priv->root_dir, dev_path, NULL);
 
   /* must not exist yet */
@@ -331,6 +337,8 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
  * @testbed: A #UMockdevTestbed.
  * @subsystem: The subsystem name, e. g. "usb"
  * @name: The device name; arbitrary, but needs to be unique within the testbed
+ * @parent: (allow-none): device path of the parent device. Use %NULL for a
+ *          top-level device.
  * @...: Arbitrarily many pairs of sysfs attributes (alternating names and
  *       values), terminated by NULL, followed by arbitrarily many pairs of udev
  *       properties, terminated by another NULL.
@@ -347,7 +355,7 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
  *
  * Example:
  *   |[
- *   umockdev_testbed_add_device (testbed, "usb", "dev1",
+ *   umockdev_testbed_add_device (testbed, "usb", "dev1", NULL,
  *                              "idVendor", "0815", "idProduct", "AFFE", NULL,
  *                              "ID_MODEL", "KoolGadget", NULL);
  *   ]|
@@ -359,6 +367,7 @@ gchar*
 umockdev_testbed_add_device (UMockdevTestbed *testbed,
                              const gchar     *subsystem,
                              const gchar     *name,
+                             const gchar     *parent,
                              ...)
 {
   va_list args;
@@ -373,7 +382,7 @@ umockdev_testbed_add_device (UMockdevTestbed *testbed,
   attributes = g_array_new (TRUE, FALSE, sizeof (gchar*));
   properties = g_array_new (TRUE, FALSE, sizeof (gchar*));
 
-  va_start (args, name);
+  va_start (args, parent);
 
   for (;;) {
     arg = va_arg (args, const gchar*);
@@ -396,6 +405,7 @@ umockdev_testbed_add_device (UMockdevTestbed *testbed,
   syspath = umockdev_testbed_add_devicev (testbed,
                                         subsystem,
                                         name,
+                                        parent,
                                         (const gchar**) attributes->data,
                                         (const gchar**) properties->data);
 

@@ -42,11 +42,13 @@ const gchar  *umockdev_testbed_get_sys_dir     (UMockdevTestbed *testbed);
 gchar        *umockdev_testbed_add_devicev     (UMockdevTestbed *testbed,
                                                 const gchar     *subsystem,
                                                 const gchar     *name,
+                                                const gchar     *parent,
                                                 const gchar    **attributes,
                                                 const gchar    **properties);
 gchar        *umockdev_testbed_add_device      (UMockdevTestbed *testbed,
                                                 const gchar     *subsystem,
                                                 const gchar     *name,
+                                                const gchar     *parent,
                                                 ...);
 void          umockdev_testbed_set_attribute   (UMockdevTestbed *testbed,
                                                 const gchar      *devpath,
