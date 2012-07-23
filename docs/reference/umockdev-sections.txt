@@ -8,6 +8,7 @@ umockdev_testbed_get_root_dir
 umockdev_testbed_get_sys_dir
 umockdev_testbed_set_attribute
 umockdev_testbed_set_property
+umockdev_testbed_uevent
 UMockdevTestbed
 UMockdevTestbedClass
 <SUBSECTION Standard>
