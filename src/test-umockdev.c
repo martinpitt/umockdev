@@ -19,6 +19,7 @@
  */
 
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <string.h>
 
 #include <gudev/gudev.h>
@@ -537,6 +538,50 @@ t_testbed_uevent (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_free (syspath);
 }
 
+static void
+t_testbed_usb_lsusb (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  gchar  *syspath;
+  gchar  *out, *err;
+  int     exit_status;
+  GError *error = NULL;
+  gchar  *argv[] = {"lsusb", "-v", NULL};
+
+  if (g_find_program_in_path ("lsusb") == NULL)
+    {
+      g_printf ("SKIP: lsusb not installed. ");
+      return;
+    }
+
+  syspath = umockdev_testbed_add_device (fixture->testbed,
+                                       "usb",
+                                       "usb1",
+                                       NULL,
+                                       /* attributes */
+                                       "busnum", "1", "devnum", "1", "speed", "480", 
+                                       "bConfigurationValue", "1", NULL,
+                                       /* properties */
+                                       "ID_GPHOTO2", "1", NULL);
+  g_assert (syspath);
+  /* descriptor from a Canon PowerShot SX200 */
+  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptors",
+          "\x12\x01\x00\x02\x00\x00\x00\x40\xa9\x04\xc0\x31\x02\x00\x01\x02"
+          "\x03\x01\x09\x02\x27\x00\x01\x01\x00\xc0\x01\x09\x04\x00\x00\x03"
+          "\x06\x01\x01\x00\x07\x05\x81\x02\x00\x02\x00\x07\x05\x02\x02\x00"
+          "\x02\x00\x07\x05\x83\x03\x08\x00\x09", 57);
+
+  g_assert (g_spawn_sync (NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+                          &out, &err, &exit_status, &error));
+  g_assert_no_error (error);
+  g_assert_cmpint (exit_status, ==, 0);
+  
+  /* g_printf("------ out: -------\n%s\n------ err: ------\n%s\n-----\n", out, err); */
+  g_assert (g_str_has_prefix (out, "\nBus 001 Device 001: ID 04a9:31c0 Canon, Inc. PowerShot SX200 IS\n"));
+  g_assert (strstr (out, "idVendor           0x04a9 Canon, Inc."));
+  g_assert (strstr (out, "Interface Descriptor:"));
+}
+
+
 int
 main (int argc, char **argv)
 {
@@ -559,6 +604,10 @@ main (int argc, char **argv)
               t_testbed_set_property, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/uevent", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_uevent, t_testbed_fixture_teardown);
+
+  /* tests for mocking USB devices */
+  g_test_add ("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_usb_lsusb, t_testbed_fixture_teardown);
 
   return g_test_run ();
 }
