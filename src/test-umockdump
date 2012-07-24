@@ -1,0 +1,127 @@
+#!/usr/bin/python3
+
+'''umockdump tests'''
+
+__copyright__ = 'Copyright (C) 2012 Canonical Ltd.'
+__author__ = 'Martin Pitt <martin.pitt@ubuntu.com>'
+
+# umockdev is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# umockdev is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; If not, see <http://www.gnu.org/licenses/>.
+
+import os.path
+import sys
+import subprocess
+import unittest
+
+from gi.repository import UMockdev
+
+umockdump_path = os.path.join(os.path.dirname(__file__), 'umockdump')
+
+def call(args):
+    '''Call umockdump with given arguments.
+
+    Return (code, stdout, stderr) tuple.
+    '''
+    umockdump = subprocess.Popen([umockdump_path] + args,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 universal_newlines=True)
+    (out, err) = umockdump.communicate()
+    out = out.strip()
+    err = err.strip()
+    return (umockdump.returncode, out, err)
+
+class Testbed(unittest.TestCase):
+    def setUp(self):
+        self.testbed = UMockdev.Testbed()
+
+    def test_all_empty(self):
+        '''--all on empty testbed'''
+
+        (code, out, err) = call(['--all'])
+        self.assertEqual(err, '')
+        self.assertEqual(out, '')
+        self.assertEqual(code, 0)
+
+    def test_one(self):
+        '''one device'''
+
+        syspath = self.testbed.add_device(
+            'pci', 'dev1', None,
+            ['simple_attr', '1', 'multiline_attr', 'a\\b\nc\\d\nlast'],
+            ['SIMPLE_PROP', '1'])
+        self.testbed.set_attribute_binary(syspath, 'binary_attr', b'\x41\xFF\x00\x05\xFF\x00')
+
+        (code, out, err) = call([syspath])
+        self.assertEqual(err, '')
+        self.assertEqual(code, 0)
+        self.assertEqual(out, '''P: /devices/dev1
+E: SIMPLE_PROP=1
+E: SUBSYSTEM=pci
+H: binary_attr=41FF0005FF00
+A: multiline_attr=a\\\\b\\nc\\\\d\\nlast
+A: simple_attr=1''')
+
+    def test_multiple(self):
+        '''multiple devices'''
+
+        dev1 = self.testbed.add_device(
+            'pci', 'dev1', None, ['dev1color', 'green'], ['DEV1COLOR', 'GREEN'])
+        subdev1 = self.testbed.add_device(
+            'pci', 'subdev1', dev1, ['subdev1color', 'yellow'],
+            ['SUBDEV1COLOR', 'YELLOW'])
+        dev2 = self.testbed.add_device(
+            'usb', 'dev2', None, ['dev2color', 'brown'], ['DEV2COLOR', 'BROWN'])
+
+        # should grab device and all parents
+        (code, out, err) = call([subdev1])
+        self.assertEqual(err, '')
+        self.assertEqual(code, 0)
+        self.assertEqual(out, '''P: /devices/dev1/subdev1
+E: SUBDEV1COLOR=YELLOW
+E: SUBSYSTEM=pci
+A: subdev1color=yellow
+
+P: /devices/dev1
+E: DEV1COLOR=GREEN
+E: SUBSYSTEM=pci
+A: dev1color=green''')
+
+        (code, out, err) = call([dev1])
+        self.assertEqual(err, '')
+        self.assertEqual(code, 0)
+        self.assertEqual(out, '''P: /devices/dev1
+E: DEV1COLOR=GREEN
+E: SUBSYSTEM=pci
+A: dev1color=green''')
+
+        # with --all it should have all three
+        (code, out, err) = call(['--all'])
+        self.assertEqual(err, '')
+        self.assertEqual(code, 0)
+        self.assertTrue('P: /devices/dev1/subdev1\n' in out, out)
+        self.assertTrue('P: /devices/dev1\n' in out, out)
+        self.assertTrue('P: /devices/dev2\n' in out, out)
+
+
+class System(unittest.TestCase):
+    def test_all(self):
+        '''umockdump --all has no errors and some output on system /sys'''
+
+        (code, out, err) = call(['--all'])
+        self.assertEqual(err, '')
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith('P:'), out[:100] + '[..]')
+        self.assertGreater(len(out), 100, out[:100] + '[..]')
+
+unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))

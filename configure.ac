@@ -75,5 +75,12 @@ AC_MSG_RESULT([
   CPPFLAGS:				${CPPFLAGS}
   CFLAGS:				${CFLAGS}
   LDFLAGS:				${LDFLAGS}
-
 ])
+
+if test x$PYTHON != x; then
+  AC_MSG_RESULT([  Python:				${PYTHON}
+	        ])
+else
+  AC_MSG_RESULT([  WARNING! No Python interpreter found. Some tools and tests are not available.
+		])
+fi

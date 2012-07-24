@@ -32,6 +32,9 @@ EXTRA_DIST = COPYING
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(top_srcdir)/src/umockdev-wrapper
 
+# use this for running Python tests
+PYTEST = env LD_LIBRARY_PATH=$(top_builddir)/.libs GI_TYPELIB_PATH=$(top_builddir)/src/ $(top_srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
+
 AM_CFLAGS = -Werror -Wall
 
 # -------------------------------------------------------------
@@ -144,6 +147,20 @@ CLEANFILES += $(gir_DATA) $(typelib_DATA)
 endif
 
 # -------------------------------------------------------------
+# tools
+if HAVE_PYTHON
+
+bin_SCRIPTS += src/umockdump
+EXTRA_DIST += src/umockdump
+
+# adjust shebang line to detected PYTHON
+umockdump-install-hook:
+	sed -i '1 s_[^/]\+$$_$(PYTHON)_' $(DESTDIR)$(bindir)/umockdump
+
+INSTALL_EXEC_HOOKS += umockdump-install-hook
+endif
+
+# -------------------------------------------------------------
 # tests
 
 noinst_PROGRAMS += test-umockdev
@@ -170,7 +187,8 @@ if HAVE_INTROSPECTION
 if HAVE_PYTHON
 check-local: $(INTROSPECTION_GIRS)
 	@echo "  Running gobject-introspection test with $(PYTHON)"
-	LD_LIBRARY_PATH=$(top_builddir)/.libs GI_TYPELIB_PATH=$(top_builddir)/src/ $(top_srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning $(srcdir)/src/test-umockdev.py
+	$(PYTEST) $(srcdir)/src/test-umockdev.py
+	$(PYTEST) $(srcdir)/src/test-umockdump
 endif
 endif
 
