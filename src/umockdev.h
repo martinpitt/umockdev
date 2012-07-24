@@ -35,38 +35,53 @@ typedef struct _UMockdevTestbed        UMockdevTestbed;
 typedef struct _UMockdevTestbedClass   UMockdevTestbedClass;
 typedef struct _UMockdevTestbedPrivate UMockdevTestbedPrivate;
 
-GType         umockdev_testbed_get_type        (void) G_GNUC_CONST;
-UMockdevTestbed *umockdev_testbed_new          (void);
-const gchar  *umockdev_testbed_get_root_dir    (UMockdevTestbed *testbed);
-const gchar  *umockdev_testbed_get_sys_dir     (UMockdevTestbed *testbed);
-gchar        *umockdev_testbed_add_devicev     (UMockdevTestbed *testbed,
-                                                const gchar     *subsystem,
-                                                const gchar     *name,
-                                                const gchar     *parent,
-                                                const gchar    **attributes,
-                                                const gchar    **properties);
-gchar        *umockdev_testbed_add_device      (UMockdevTestbed *testbed,
-                                                const gchar     *subsystem,
-                                                const gchar     *name,
-                                                const gchar     *parent,
-                                                ...);
-void          umockdev_testbed_set_attribute   (UMockdevTestbed *testbed,
-                                                const gchar      *devpath,
-                                                const gchar      *name,
-                                                const gchar      *value);
+GType         umockdev_testbed_get_type             (void) G_GNUC_CONST;
+UMockdevTestbed *umockdev_testbed_new               (void);
+const gchar  *umockdev_testbed_get_root_dir         (UMockdevTestbed *testbed);
+const gchar  *umockdev_testbed_get_sys_dir          (UMockdevTestbed *testbed);
+gchar        *umockdev_testbed_add_devicev          (UMockdevTestbed *testbed,
+                                                     const gchar     *subsystem,
+                                                     const gchar     *name,
+                                                     const gchar     *parent,
+                                                     const gchar    **attributes,
+                                                     const gchar    **properties);
+gchar        *umockdev_testbed_add_device           (UMockdevTestbed *testbed,
+                                                     const gchar     *subsystem,
+                                                     const gchar     *name,
+                                                     const gchar     *parent,
+                                                     ...);
+void          umockdev_testbed_set_attribute        (UMockdevTestbed *testbed,
+                                                     const gchar      *devpath,
+                                                     const gchar      *name,
+                                                     const gchar      *value);
+void          umockdev_testbed_set_attribute_int    (UMockdevTestbed *testbed,
+                                                     const gchar     *devpath,
+                                                     const gchar     *name,
+                                                     int              value);
+void          umockdev_testbed_set_attribute_hex    (UMockdevTestbed *testbed,
+                                                     const gchar     *devpath,
+                                                     const gchar     *name,
+                                                     unsigned         value);
 void          umockdev_testbed_set_attribute_binary (UMockdevTestbed *testbed,
                                                      const gchar      *devpath,
                                                      const gchar      *name,
                                                      const gchar      *value,
                                                      gssize            value_len);
-void          umockdev_testbed_set_property    (UMockdevTestbed *testbed,
-                                                const gchar      *devpath,
-                                                const gchar      *name,
-                                                const gchar      *value);
-void          umockdev_testbed_uevent          (UMockdevTestbed *testbed,
-                                                const gchar      *devpath,
-                                                const gchar      *action);
+void          umockdev_testbed_set_property         (UMockdevTestbed *testbed,
+                                                     const gchar      *devpath,
+                                                     const gchar      *name,
+                                                     const gchar      *value);
+void          umockdev_testbed_set_property_int     (UMockdevTestbed *testbed,
+                                                     const gchar     *devpath,
+                                                     const gchar     *name,
+                                                     int              value);
+void          umockdev_testbed_set_property_hex     (UMockdevTestbed *testbed,
+                                                     const gchar     *devpath,
+                                                     const gchar     *name,
+                                                     unsigned         value);
+void          umockdev_testbed_uevent               (UMockdevTestbed *testbed,
+                                                     const gchar      *devpath,
+                                                     const gchar      *action);
 
-G_END_DECLS
 
 #endif /* __UMOCKDEV_H__ */

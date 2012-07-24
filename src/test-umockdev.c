@@ -380,12 +380,17 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   umockdev_testbed_set_attribute (fixture->testbed, syspath, "color", "yellow");
   /* add a binary attribute */
   umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptor", "\x01\x00\xFF\x00\x05", 5);
+  /* int attributes */
+  umockdev_testbed_set_attribute_int (fixture->testbed, syspath, "count", 1000);
+  umockdev_testbed_set_attribute_hex (fixture->testbed, syspath, "addr", 0x1a01);
 
   device = g_udev_client_query_by_sysfs_path (client, syspath);
   g_assert (device);
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idVendor"), ==, "0815");
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "idProduct"), ==, "BEEF");
   g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "color"), ==, "yellow");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "count"), ==, "1000");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "addr"), ==, "1a01");
   g_object_unref (device);
 
   g_object_unref (client);
@@ -421,11 +426,16 @@ t_testbed_set_property (UMockdevTestbedFixture *fixture, gconstpointer data)
   umockdev_testbed_set_property (fixture->testbed, syspath, "ID_INPUT", "0");
   /* add a new one */
   umockdev_testbed_set_property (fixture->testbed, syspath, "ID_COLOR", "green");
+  /* int properties */
+  umockdev_testbed_set_property_int (fixture->testbed, syspath, "COUNT", 1000);
+  umockdev_testbed_set_property_hex (fixture->testbed, syspath, "ADDR", 0x1a01);
 
   device = g_udev_client_query_by_sysfs_path (client, syspath);
   g_assert (device);
   g_assert_cmpstr (g_udev_device_get_property (device, "ID_INPUT"), ==, "0");
   g_assert_cmpstr (g_udev_device_get_property (device, "ID_COLOR"), ==, "green");
+  g_assert_cmpstr (g_udev_device_get_property (device, "COUNT"), ==, "1000");
+  g_assert_cmpstr (g_udev_device_get_property (device, "ADDR"), ==, "1a01");
   g_object_unref (device);
 
   g_object_unref (client);

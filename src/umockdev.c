@@ -520,6 +520,31 @@ umockdev_testbed_set_attribute (UMockdevTestbed *testbed,
   umockdev_testbed_set_attribute_binary (testbed, devpath, name, value, -1);
 }
 
+void
+umockdev_testbed_set_attribute_int (UMockdevTestbed *testbed,
+                                    const gchar      *devpath,
+                                    const gchar      *name,
+                                    int               value)
+{
+  static gchar str[40];
+
+  snprintf (str, sizeof (str), "%i", value);
+  umockdev_testbed_set_attribute (testbed, devpath, name, str);
+}
+
+void
+umockdev_testbed_set_attribute_hex (UMockdevTestbed *testbed,
+                                    const gchar     *devpath,
+                                    const gchar     *name,
+                                    unsigned         value)
+{
+  static gchar str[40];
+
+  snprintf (str, sizeof (str), "%x", value);
+  umockdev_testbed_set_attribute (testbed, devpath, name, str);
+}
+
+
 /**
  * umockdev_testbed_set_attribute_binary:
  * @testbed: A #UMockdevTestbed.
@@ -616,6 +641,30 @@ umockdev_testbed_set_property (UMockdevTestbed *testbed,
 
   g_string_free (props, TRUE);
   g_free (uevent_path);
+}
+
+void
+umockdev_testbed_set_property_int (UMockdevTestbed *testbed,
+                                   const gchar      *devpath,
+                                   const gchar      *name,
+                                   int               value)
+{
+  static gchar str[40];
+
+  snprintf (str, sizeof (str), "%i", value);
+  umockdev_testbed_set_property (testbed, devpath, name, str);
+}
+
+void
+umockdev_testbed_set_property_hex (UMockdevTestbed *testbed,
+                                   const gchar     *devpath,
+                                   const gchar     *name,
+                                   unsigned         value)
+{
+  static gchar str[40];
+
+  snprintf (str, sizeof (str), "%x", value);
+  umockdev_testbed_set_property (testbed, devpath, name, str);
 }
 
 /**
