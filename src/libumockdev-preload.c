@@ -145,6 +145,27 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
 	return _fn(ver, p, st);							    \
 }
 
+/* wrapper template for open family */
+#define WRAP_OPEN(prefix, suffix) \
+int prefix ## open ## suffix (const char *path, int flags, ...)	    \
+{ \
+	const char *p;						    \
+	static int (*_fn)(const char *path, int flags, ...);	    \
+	_fn = get_libc_func(#prefix "open" #suffix);		    \
+	p = trap_path(path);					    \
+	if (p == NULL)						    \
+		return -1;					    \
+	if (flags & O_CREAT) {					    \
+		mode_t mode;					    \
+		va_list ap;					    \
+		va_start(ap, flags);				    \
+		mode = va_arg(ap, mode_t);			    \
+		va_end(ap);					    \
+		return _fn(p, flags, mode);			    \
+	}							    \
+	return _fn(p, flags);					    \
+}
+
 WRAP_1ARG(DIR*, NULL, opendir);
 
 WRAP_2ARGS(FILE*, NULL, fopen, const char*);
@@ -162,28 +183,8 @@ WRAP_VERSTAT(__x,64);
 WRAP_VERSTAT(__lx,);
 WRAP_VERSTAT(__lx,64);
 
-int open(const char *path, int flags, ...)
-{
-	const char *p;
-	static int (*_open)(const char *path, int flags, ...);
-
-	_open = get_libc_func("open");
-	p = trap_path(path);
-	if (p == NULL)
-		return -1;
-
-	if (flags & O_CREAT) {
-		mode_t mode;
-		va_list ap;
-
-		va_start(ap, flags);
-		mode = va_arg(ap, mode_t);
-		va_end(ap);
-		return _open(p, flags, mode);
-	}
-
-	return _open(p, flags);
-}
+WRAP_OPEN(,);
+WRAP_OPEN(,64);
 
 /********************************
  *
