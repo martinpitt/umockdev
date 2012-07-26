@@ -401,6 +401,7 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert (g_file_get_contents (attrpath, &contents, &length, NULL));
   g_assert_cmpint (length, ==, 5);
   g_assert_cmpint (memcmp (contents, "\x01\x00\xFF\x00\x05", 5), ==, 0);
+  g_free (contents);
   
   g_free (syspath);
 }
@@ -539,6 +540,156 @@ t_testbed_uevent (UMockdevTestbedFixture *fixture, gconstpointer data)
 }
 
 static void
+t_testbed_add_from_string (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GUdevClient     *client;
+  GUdevEnumerator *enumerator;
+  GList           *result;
+  GUdevDevice     *device, *subdev;
+  gchar           *contents;
+  gsize            length;
+  GError          *error = NULL;
+
+  /* start with adding one device */
+  g_assert (umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/dev1\n"
+        "E: SIMPLE_PROP=1\n"
+        "E: SUBSYSTEM=pci\n"
+        "H: binary_attr=41FF0005FF00\n"
+        "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
+        "A: simple_attr=1\n", &error));
+  g_assert_no_error (error);
+
+  client = g_udev_client_new (NULL);
+
+  /* should have exactly one device */
+  enumerator = g_udev_enumerator_new (client);
+  result = g_udev_enumerator_execute (enumerator);
+  g_assert_cmpuint (g_list_length (result), ==, 1);
+  g_list_free_full (result, g_object_unref);
+  g_object_unref (enumerator);
+
+  /* check properties and attributes */
+  device = g_udev_client_query_by_sysfs_path (client, "/sys/devices/dev1");
+  g_assert (device);
+  g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "pci");
+  g_assert (g_udev_device_get_parent (device) == NULL);
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "simple_attr"), ==, "1");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "multiline_attr"), ==, "a\\b\nc\\d\nlast");
+  g_assert_cmpstr (g_udev_device_get_property (device, "SIMPLE_PROP"), ==, "1");
+  g_object_unref (device);
+
+  g_assert (g_file_get_contents ("/sys/devices/dev1/binary_attr", &contents, &length, NULL));
+  g_assert_cmpint (length, ==, 6);
+  g_assert_cmpint (memcmp (contents, "\x41\xFF\x00\x05\xFF\x00", 6), ==, 0);
+  g_free (contents);
+
+  /* class symlink created */
+  g_assert (g_file_test ("/sys/devices/dev1/subsystem", G_FILE_TEST_IS_SYMLINK));
+  g_assert (g_file_test ("/sys/devices/dev1/subsystem/dev1", G_FILE_TEST_IS_SYMLINK));
+  g_assert (g_file_test ("/sys/devices/dev1/subsystem/dev1/simple_attr", G_FILE_TEST_IS_REGULAR));
+
+  /* now add two more */
+  umockdev_testbed_add_from_string (fixture->testbed,
+        "P: /devices/dev2/subdev1\n"
+        "E: SUBDEV1COLOR=YELLOW\n"
+        "E: SUBSYSTEM=input\n"
+        "A: subdev1color=yellow\n"
+        "\n"
+        "P: /devices/dev2\n"
+        "E: DEV2COLOR=GREEN\n"
+        "E: SUBSYSTEM=hid\n"
+        "A: dev2color=green\n", &error);
+  g_assert_no_error (error);
+
+  /* should have three devices now */
+  enumerator = g_udev_enumerator_new (client);
+  result = g_udev_enumerator_execute (enumerator);
+  g_assert_cmpuint (g_list_length (result), ==, 3);
+  g_list_free_full (result, g_object_unref);
+  g_object_unref (enumerator);
+
+  /* dev1 is still there */
+  device = g_udev_client_query_by_sysfs_path (client, "/sys/devices/dev1");
+  g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "pci");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "simple_attr"), ==, "1");
+  g_object_unref (device);
+
+  /* check dev2 */
+  device = g_udev_client_query_by_sysfs_path (client, "/sys/devices/dev2");
+  g_assert (device);
+  g_assert (g_udev_device_get_parent (device) == NULL);
+  g_assert_cmpstr (g_udev_device_get_subsystem (device), ==, "hid");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (device, "dev2color"), ==, "green");
+  g_assert_cmpstr (g_udev_device_get_property (device, "DEV2COLOR"), ==, "GREEN");
+  g_assert (g_file_test ("/sys/devices/dev2/subsystem", G_FILE_TEST_IS_SYMLINK));
+  g_assert (g_file_test ("/sys/devices/dev2/subsystem/dev2", G_FILE_TEST_IS_SYMLINK));
+  g_assert (g_file_test ("/sys/devices/dev2/subsystem/dev2/dev2color", G_FILE_TEST_IS_REGULAR));
+
+  /* check subdev1 */
+  subdev = g_udev_client_query_by_sysfs_path (client, "/sys/devices/dev2/subdev1");
+  g_assert (subdev);
+  g_assert_cmpstr (g_udev_device_get_sysfs_path (g_udev_device_get_parent (subdev)), ==, "/sys/devices/dev2");
+  g_assert_cmpstr (g_udev_device_get_subsystem (subdev), ==, "input");
+  g_assert_cmpstr (g_udev_device_get_sysfs_attr (subdev, "subdev1color"), ==, "yellow");
+  g_assert_cmpstr (g_udev_device_get_property (subdev, "SUBDEV1COLOR"), ==, "YELLOW");
+  g_object_unref (subdev);
+  g_assert (g_file_test ("/sys/devices/dev2/subdev1/subsystem", G_FILE_TEST_IS_SYMLINK));
+  g_assert (g_file_test ("/sys/devices/dev2/subdev1/subsystem/subdev1", G_FILE_TEST_IS_SYMLINK));
+  g_assert (g_file_test ("/sys/devices/dev2/subdev1/subsystem/subdev1/subdev1color", G_FILE_TEST_IS_REGULAR));
+
+  g_object_unref (device);
+  g_object_unref (client);
+}
+
+static void
+t_testbed_add_from_string_errors (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GError          *error = NULL;
+
+  /* does not start with P: */
+  g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
+        "E: SIMPLE_PROP=1\n", &error));
+  g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
+  g_clear_error (&error);
+  
+  /* no value */
+  g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/dev1\n"
+        "E: SIMPLE_PROP\n", &error));
+  g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
+  g_clear_error (&error);
+
+  /* unknown category */
+  g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/dev1\n"
+        "X: SIMPLE_PROP=1\n", &error));
+  g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
+  g_clear_error (&error);
+
+  /* uneven hex string */
+  g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/dev1\n"
+        "H: binary_attr=41F\n", &error));
+  g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
+  g_clear_error (&error);
+
+  /* invalid device path */
+  g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /dev1\n"
+        "E: SUBSYSTEM=usb\n", &error));
+  g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_VALUE);
+  g_clear_error (&error);
+
+  /* missing SUBSYSTEM */
+  g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/dev1\n"
+        "E: ID_FOO=bar\n", &error));
+  g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_VALUE);
+  g_clear_error (&error);
+}
+
+static void
 t_testbed_usb_lsusb (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
   gchar  *syspath;
@@ -604,6 +755,11 @@ main (int argc, char **argv)
               t_testbed_set_property, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/uevent", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_uevent, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/add_from_string", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_add_from_string, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/add_from_string_errors",
+              UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
 
   /* tests for mocking USB devices */
   g_test_add ("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

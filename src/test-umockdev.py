@@ -157,4 +157,38 @@ class Testbed(unittest.TestCase):
         mainloop.run()
         self.assertEqual(counter, [0, 0, 1, syspath])
 
+    def test_add_from_string(self):
+        self.assertTrue(self.testbed.add_from_string ('''P: /devices/dev1
+E: SIMPLE_PROP=1
+E: SUBSYSTEM=pci
+H: binary_attr=41FF0005FF00
+A: multiline_attr=a\\\\b\\nc\\\\d\\nlast
+A: simple_attr=1
+'''))
+
+        client = GUdev.Client.new(None)
+        enum = GUdev.Enumerator.new(client)
+        devices = enum.execute()
+        self.assertEqual([d.get_sysfs_path() for d in devices], ['/sys/devices/dev1'])
+
+        device = client.query_by_sysfs_path ('/sys/devices/dev1')
+        self.assertEqual (device.get_subsystem(), 'pci')
+        #self.assertEqual (device.get_parent(), None)
+        self.assertEqual (device.get_sysfs_attr('simple_attr'), '1')
+        self.assertEqual (device.get_sysfs_attr('multiline_attr'),
+                          'a\\b\nc\\d\nlast')
+        self.assertEqual (device.get_property('SIMPLE_PROP'), '1')
+        with open(os.path.join(self.testbed.get_root_dir(),
+                               '/sys/devices/dev1/binary_attr'), 'rb') as f:
+            self.assertEqual(f.read(), b'\x41\xFF\x00\x05\xFF\x00')
+
+    def test_add_from_string_errors(self):
+        # does not start with P:
+        with self.assertRaisesRegex(GLib.GError, 'must start with.*P:') as cm:
+            self.testbed.add_from_string ('E: SIMPLE_PROP=1\n')
+
+        # no value
+        with self.assertRaisesRegex(GLib.GError, 'malformed attribute') as cm:
+            self.testbed.add_from_string ('P: /devices/dev1\nE: SIMPLE_PROP\n')
+
 unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))

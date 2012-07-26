@@ -80,6 +80,11 @@ struct _UMockdevTestbedClass
  * up to some degree, without needing any particular privileges or disturbing
  * the whole system.
  *
+ * You can either add devices by specifying individual device paths,
+ * properties, and attributes, or use the umockdump tool to create a human
+ * readable/editable dump from a real device (and all its parents) and load
+ * that into the testbed with umockdev_testbed_add_from_string().
+ *
  * Instantiating a #UMockdevTestbed object creates a temporary directory with
  * an empty sysfs tree and sets the $UMOCKDEV_DIR environment variable so that
  * programs subsequently started under umockdev-wrapper will use the test bed
@@ -91,6 +96,8 @@ struct _UMockdevTestbedPrivate
   gchar *root_dir;
   gchar *sys_dir;
   uevent_sender *uevent_sender;
+  GRegex        *re_dump_val;
+  GRegex        *re_dump_keyval;
 };
 
 G_DEFINE_TYPE (UMockdevTestbed, umockdev_testbed, G_TYPE_OBJECT)
@@ -144,6 +151,11 @@ umockdev_testbed_finalize (GObject *object)
   g_free (testbed->priv->sys_dir);
 
   uevent_sender_close (testbed->priv->uevent_sender);
+
+  if (testbed->priv->re_dump_val != NULL)
+    g_regex_unref (testbed->priv->re_dump_val);
+  if (testbed->priv->re_dump_keyval != NULL)
+    g_regex_unref (testbed->priv->re_dump_keyval);
 
   if (G_OBJECT_CLASS (umockdev_testbed_parent_class)->finalize != NULL)
     (* G_OBJECT_CLASS (umockdev_testbed_parent_class)->finalize) (object);
@@ -352,8 +364,16 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
     dev_path = g_build_filename ("/sys/devices", name, NULL);
   dev_dir = g_build_filename (testbed->priv->root_dir, dev_path, NULL);
 
-  /* must not exist yet */
-  g_return_val_if_fail (!g_file_test (dev_dir, G_FILE_TEST_EXISTS), NULL);
+  /* must not exist yet; do allow existing children, though */
+  if (g_file_test (dev_dir, G_FILE_TEST_EXISTS))
+    {
+      gboolean uevent_exists;
+      prop_str = g_build_filename (dev_dir, "uevent", NULL);
+      uevent_exists = g_file_test (prop_str, G_FILE_TEST_EXISTS);
+      g_free (prop_str);
+      if (uevent_exists)
+        g_error ("device %s already exists", dev_dir);
+    }
 
   /* create device and corresponding subsystem dir */
   g_assert (g_mkdir_with_parents (dev_dir, 0755) == 0);
@@ -369,7 +389,9 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
 
   /* device symlink from class/ */
   target = g_build_filename ("..", "..", strstr (dev_path, "/devices/"), NULL);
-  link = g_build_filename (class_dir, name, NULL);
+  /* skip directories in name; this happens when being called from
+   * add_from_string() when the parent devices do not exist yet */
+  link = g_build_filename (class_dir, g_path_get_basename (name), NULL);
   g_assert (symlink (target, link) == 0);
   g_free (target);
   g_free (link);
@@ -685,4 +707,372 @@ umockdev_testbed_uevent (UMockdevTestbed  *testbed,
   g_debug ("umockdev_testbed_uevent: sending uevent %s for device %s", action, devpath);
 
   uevent_sender_send (testbed->priv->uevent_sender, devpath, action);
+}
+
+/**
+ * umockdev_testbed_dump_parse_line:
+ * @testbed: A #UMockdevTestbed
+ * @data: String to parse
+ * @type: (out): Pointer to a gchar which will get the line type (one of P, N,
+ *        S, E, or H)
+ * @key:  (out): Pointer to a string which will get the key name; this will be
+ *        set to NULL for line types which do not have a key (P, N, S). You
+ *        need to free this with g_free().
+ * @value: (out): Pointer to a string which will get the value. You need to
+ *         free this with g_free().
+ *
+ * Parse one line from a device dump.
+ *
+ * Returns: Pointer to the next line start in @data, or %NULL if the first line
+ * is not valid.
+ */
+static const gchar*
+umockdev_testbed_dump_parse_line (UMockdevTestbed *testbed,
+                                  const gchar     *data,
+                                  gchar           *type,
+                                  gchar          **key,
+                                  gchar          **value)
+{
+  GMatchInfo *match = NULL;
+  gboolean is_match;
+  gchar *type_str;
+  int end_pos;
+
+  g_assert (type != NULL);
+  g_assert (key != NULL);
+  g_assert (value != NULL);
+
+  is_match = g_regex_match (testbed->priv->re_dump_val, data, 0, &match);
+  if (is_match)
+    {
+      *key = NULL;
+      *value = g_match_info_fetch (match, 2);
+    }
+  else
+    {
+      g_match_info_free (match);
+      if (g_regex_match (testbed->priv->re_dump_keyval, data, 0, &match))
+        {
+          *key = g_match_info_fetch (match, 2);
+          *value = g_match_info_fetch (match, 3);
+        }
+      else
+        {
+          g_match_info_free (match);
+          *type = '\0';
+          *key = NULL;
+          *value = NULL;
+          return NULL;
+        }
+    }
+
+  g_assert (*value);
+
+  type_str = g_match_info_fetch (match, 1);
+  g_assert (type_str != NULL);
+  *type = type_str[0];
+  g_free (type_str);
+
+  g_assert (g_match_info_fetch_pos (match, 0, NULL, &end_pos));
+  g_match_info_free (match);
+
+  return data + end_pos;
+}
+
+static inline char
+hexdigit (char i)
+{
+  return (i > 'a') ? (i - 'a' + 10) :
+         (i > 'A') ? (i - 'A' + 10) :
+         (i - '0');
+}
+
+static gchar*
+decode_hex (const gchar* hex)
+{
+  gchar *bin;
+  size_t len, i;
+ 
+  len = strlen (hex);
+  /* hex digits must come in pairs */
+  if (len % 2 != 0)
+    return NULL;
+
+  bin = g_new0 (char, len+1);
+
+  for (i = 0; i < len/2; i++)
+    bin[i] = (hexdigit (hex[i*2]) << 4) | hexdigit (hex[i*2+1]);
+
+  return bin;
+}
+
+static const gchar*
+umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
+                                      const gchar      *data,
+                                      GError          **error)
+{
+  gchar *devpath;
+  gchar *syspath;
+  gchar *subsystem = NULL;
+  GPtrArray *attrs;
+  GPtrArray *binattrs;
+  GPtrArray *props;
+  gchar  type;
+  gchar *key;
+  gchar *value;
+  gchar *value_decoded;
+  guint  i;
+
+  /* the first line must be "P: devpath */
+  data = umockdev_testbed_dump_parse_line (testbed, data, &type, &key, &value);
+
+  if (data == NULL || type != 'P')
+    {
+      g_set_error_literal (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE,
+                           "device descriptions must start with a \"P: /devices/path/...\" line");
+      return NULL;
+    }
+  devpath = value;
+
+  if (!g_str_has_prefix (devpath, "/devices/"))
+    {
+      g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_VALUE,
+                   "invalid device path '%s': must start with /devices/",
+                   devpath);
+      return NULL;
+    }
+
+  attrs = g_ptr_array_new_full (10, g_free);
+  props = g_ptr_array_new_full (10, g_free);
+  binattrs = g_ptr_array_sized_new (10);
+
+  /* scan until we see an empty line */
+  while (strlen (data) > 0 && data[0] != '\n')
+    {
+      data = umockdev_testbed_dump_parse_line (testbed, data, &type, &key, &value);
+       
+      if (data == NULL)
+        {
+          g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE,
+                       "malformed attribute or property line in description of device %s",
+                       devpath);
+          data = NULL;
+          goto out;
+        }
+
+      //g_debug ("umockdev_testbed_add_dev_from_string: type %c key %s val %s", type, key, value);
+      switch (type)
+        {
+          case 'H':
+            value_decoded = decode_hex (value);
+            if (value_decoded == NULL)
+              {
+                g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE,
+                             "malformed hexadecimal value: %s",
+                             value);
+                data = NULL;
+                goto out;
+              }
+            g_ptr_array_add (binattrs, key);
+            g_ptr_array_add (binattrs, value_decoded);
+            /* append the length of the data, stored in a pointer */
+            value_decoded = GSIZE_TO_POINTER (strlen (value) / 2);
+            g_ptr_array_add (binattrs, value_decoded);
+
+            g_free (value);
+            break;
+
+          case 'A':
+            value_decoded = g_strcompress (value);
+            g_free (value);
+            g_ptr_array_add (attrs, key);
+            g_ptr_array_add (attrs, value_decoded);
+            break;
+
+          case 'E':
+            g_ptr_array_add (props, key);
+            g_ptr_array_add (props, value);
+            if (strcmp (key, "SUBSYSTEM") == 0)
+              {
+                if (subsystem != NULL)
+                  {
+                    g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_VALUE,
+                                 "duplicate SUBSYSTEM property in description of device %s",
+                                 devpath);
+                    data = NULL;
+                    goto out;
+                  }
+                subsystem = value;
+              }
+            break;
+
+          case 'P':
+            g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE,
+                         "invalid P: line in description of device %s",
+                         devpath);
+            data = NULL;
+            goto out;
+
+          default:
+            g_assert_not_reached ();
+        }
+    }
+
+  if (subsystem == NULL)
+    {
+      g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_VALUE,
+                   "missing SUBSYSTEM property in description of device %s",
+                   devpath);
+      data = NULL;
+      goto out;
+    }
+
+  /* NULL-terminate */
+  g_ptr_array_add (attrs, NULL);
+  g_ptr_array_add (props, NULL);
+
+  /* create device */
+  syspath = umockdev_testbed_add_devicev (testbed, subsystem,
+                                          devpath + strlen ("/devices/"),
+                                          NULL,
+                                          (const gchar **) attrs->pdata,
+                                          (const gchar **) props->pdata);
+  g_assert (syspath != NULL);
+
+  /* add binary attributes */
+  g_assert (binattrs->len % 3 == 0);
+  for (i = 0; i < binattrs->len; i += 3)
+    {
+      umockdev_testbed_set_attribute_binary (testbed,
+                                             syspath,
+                                             g_ptr_array_index (binattrs, i),
+                                             g_ptr_array_index (binattrs, i+1),
+                                             GPOINTER_TO_SIZE (g_ptr_array_index (binattrs, i+2)));
+      g_free (g_ptr_array_index (binattrs, i));
+      g_free (g_ptr_array_index (binattrs, i+1));
+    }
+
+  g_free (syspath);
+
+  /* skip over multiple blank lines */
+  while (data[0] != '\0' && data[0] == '\n')
+      ++data;
+
+out:
+  g_free (devpath);
+  g_ptr_array_free (props, TRUE);
+  g_ptr_array_free (attrs, TRUE);
+  g_ptr_array_free (binattrs, TRUE);
+
+  return data;
+}
+
+/**
+ * umockdev_testbed_add_from_string:
+ * @testbed: A #UMockdevTestbed.
+ * @data: Description of the device(s) as generated with umockdump
+ * @error: (allow-none): return location for a #GError, or %NULL.
+ *
+ * Add a set of devices to the @testbed from a textual description. This reads
+ * the format generated by the umockdump tool.
+ *
+ * Each paragraph defines one device. A line starts with a type tag (like 'E'),
+ * followed by a colon, followed by either a value or a "key=value" assignment,
+ * depending on the type tag. A device description must start with a 'P:' line.
+ * Available type tags are: 
+ * <itemizedlist>
+ *   <listitem><type>P:</type> <emphasis>path</emphasis>: device path in sysfs, starting with
+ *             <filename>/devices/</filename>; must occur exactly once at the
+ *             start of device definition</listitem>
+ *   <listitem><type>E:</type> <emphasis>key=value</emphasis>: udev property
+ *             </listitem>
+ *   <listitem><type>A:</type> <emphasis>key=value</emphasis>: ASCII sysfs
+ *             attribute, with backslash-style escaping of \ (\\) and newlines
+ *             (\n)</listitem>
+ *   <listitem><type>H:</type> <emphasis>key=value</emphasis>: binary sysfs
+ *             attribute, with the value being written as continuous hex string
+ *             (e. g. 0081FE0A..)</listitem>
+ * </itemizedlist>
+ *
+ * Returns: %TRUE on success, %FALSE if the data is invalid and an error
+ *          occurred.
+ *
+ * Rename to: umockdev_testbed_add_device
+ */
+gboolean
+umockdev_testbed_add_from_string (UMockdevTestbed *testbed,
+                                  const gchar      *data,
+                                  GError          **error)
+{
+  GError *error1 = NULL;
+
+  /* lazily initialize the parsing regexps */
+  if (testbed->priv->re_dump_val == NULL)
+    {
+      GError *e = NULL;
+      testbed->priv->re_dump_val = g_regex_new ("^([PNS]): (.*)(?>\\R|$)",
+                                                G_REGEX_OPTIMIZE,
+                                                0, &e);
+      g_assert_no_error (e);
+      g_assert (testbed->priv->re_dump_val);
+      testbed->priv->re_dump_keyval = g_regex_new ("^([EAH]): ([a-zA-Z0-9_:+-]+)=(.*)(?>\\R|$)",
+                                                   G_REGEX_OPTIMIZE,
+                                                   0, &e);
+      g_assert_no_error (e);
+      g_assert (testbed->priv->re_dump_keyval);
+    }
+
+  while (data[0] != '\0')
+    {
+      data = umockdev_testbed_add_dev_from_string (testbed, data, &error1);
+      if (error1 != NULL)
+        {
+          g_propagate_error (error, error1);
+          return FALSE;
+        }
+      g_assert (data != NULL);
+    }
+  
+  return TRUE;
+}
+
+/**
+ * SECTION:umockdeverror
+ * @title: UMockdevError
+ * @short_description: Possible errors that can be returned
+ *
+ * Error codes.
+ */
+
+GQuark
+umockdev_error_quark ()
+{
+  static GQuark ret = 0;
+
+  if (ret == 0)
+    ret = g_quark_from_static_string ("umockdev_error");
+
+  return ret;
+}
+
+#define ENUM_ENTRY(NAME, DESC) { NAME, "" #NAME "", DESC }
+/**
+ * umockdev_error_get_type:
+ */
+GType
+umockdev_error_get_type ()
+{
+  static GType etype = 0;
+  
+  if (etype == 0)
+    {
+      static const GEnumValue values[] = {
+              ENUM_ENTRY (UMOCKDEV_ERROR_PARSE, "UMockdevErrorParse"),
+              ENUM_ENTRY (UMOCKDEV_ERROR_VALUE, "UMockdevErrorValue"),
+              { 0, 0, 0 }
+      };
+      g_assert (UMOCKDEV_NUM_ERRORS == G_N_ELEMENTS (values) - 1);
+      etype = g_enum_register_static ("UMockdevError", values);
+    }
+  return etype;
 }

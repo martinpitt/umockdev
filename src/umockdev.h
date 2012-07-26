@@ -82,6 +82,37 @@ void          umockdev_testbed_set_property_hex     (UMockdevTestbed *testbed,
 void          umockdev_testbed_uevent               (UMockdevTestbed *testbed,
                                                      const gchar      *devpath,
                                                      const gchar      *action);
+gboolean      umockdev_testbed_add_from_string      (UMockdevTestbed *testbed,
+                                                     const gchar      *data,
+                                                     GError          **error);
+/**
+ * UMOCKDEV_ERROR:
+ *
+ * Error domain for umockdev. Errors in this domain will be from the
+ * #UMockdevError enumeration. See #GError for more information on error
+ * domains.
+ */
+#define UMOCKDEV_ERROR (umockdev_error_quark ())
+GQuark umockdev_error_quark ();
 
+/**
+ * UMockdevError:
+ * @UMOCKDEV_ERROR_PARSE: Syntax error in device description string or file 
+ * @UMOCKDEV_ERROR_VALUE: Missing or wrong data in device description string or file 
+ *
+ * Error codes for #UMOCKDEV_ERROR.
+ */
+typedef enum
+{
+   UMOCKDEV_ERROR_PARSE,
+   UMOCKDEV_ERROR_VALUE,
+   /*< private >*/
+   UMOCKDEV_NUM_ERRORS
+} UMockdevError;
+
+GType umockdev_error_get_type ();
+#define UMOCKDEV_TYPE_ERROR (umockdev_error_get_type ())
+
+G_END_DECLS
 
 #endif /* __UMOCKDEV_H__ */

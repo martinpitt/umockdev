@@ -14,6 +14,7 @@ umockdev_testbed_set_property
 umockdev_testbed_set_property_int
 umockdev_testbed_set_property_hex
 umockdev_testbed_uevent
+umockdev_testbed_add_from_string
 UMockdevTestbed
 UMockdevTestbedClass
 <SUBSECTION Standard>
@@ -27,3 +28,12 @@ UMockdevTestbedPrivate
 umockdev_testbed_get_type
 </SECTION>
 
+<SECTION>
+<FILE>umockdeverror</FILE>
+UMOCKDEV_ERROR
+UMockdevError
+<SUBSECTION Standard>
+UMOCKDEV_TYPE_ERROR
+umockdev_error_get_type
+umockdev_error_quark
+</SECTION>
