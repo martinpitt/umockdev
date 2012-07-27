@@ -40,7 +40,7 @@ def fatal(msg):
 def all_devices():
     devs = []
     for base, dirs, files in os.walk('/sys/devices'):
-        if 'uevent' in files:
+        if 'uevent' in files and 'subsystem' in dirs:
             devs.append(base)
     return devs
 
@@ -162,7 +162,7 @@ def parent(dev):
     if not dev.startswith('/sys'):
         return None
 
-    if os.path.exists(os.path.join(dev, 'uevent')):
+    if os.path.exists(os.path.join(dev, 'uevent')) and os.path.exists(os.path.join(dev, 'subsystem')):
         return dev
 
     # we might have intermediate directories without uevent, so try the next
@@ -175,8 +175,12 @@ def parent(dev):
 
 args = parse_args()
 
+seen = set()
+
 for device in args.devices:
     while device:
         device = resolve(device)
-        dump_device(device)
+        if device not in seen:
+            seen.add(device)
+            dump_device(device)
         device = parent(device)

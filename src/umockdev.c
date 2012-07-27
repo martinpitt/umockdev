@@ -406,7 +406,7 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
       g_assert (g_mkdir_with_parents (class_dir, 0755) == 0);
 
       target = g_build_filename ("..", "..", "..", strstr (dev_path, "/devices/"), NULL);
-      link = g_build_filename (class_dir, name, NULL);
+      link = g_build_filename (class_dir, g_path_get_basename (name), NULL);
       g_assert (symlink (target, link) == 0);
       g_free (link);
       g_free (class_dir);
@@ -842,6 +842,7 @@ umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
       return NULL;
     }
 
+  g_debug ("parsing device description for %s", devpath);
   attrs = g_ptr_array_new_full (10, g_free);
   props = g_ptr_array_new_full (10, g_free);
   binattrs = g_ptr_array_sized_new (10);
@@ -913,6 +914,11 @@ umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
             data = NULL;
             goto out;
 
+          case 'N':
+          case 'S':
+            /* TODO: ignored for now */
+            break;
+
           default:
             g_assert_not_reached ();
         }
@@ -932,6 +938,7 @@ umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
   g_ptr_array_add (props, NULL);
 
   /* create device */
+  g_debug ("creating device %s (subsystem %s)", devpath, subsystem);
   syspath = umockdev_testbed_add_devicev (testbed, subsystem,
                                           devpath + strlen ("/devices/"),
                                           NULL,
@@ -992,6 +999,12 @@ out:
  *   <listitem><type>H:</type> <emphasis>key=value</emphasis>: binary sysfs
  *             attribute, with the value being written as continuous hex string
  *             (e. g. 0081FE0A..)</listitem>
+ *   <listitem><type>N:</type> <emphasis>devname</emphasis>: device node name
+ *             (without the <filename>/dev/</filename> prefix); ignored right
+ *             now.</listitem>
+ *   <listitem><type>S:</type> <emphasis>linkname</emphasis>: device node
+ *             symlink (without the <filename>/dev/</filename> prefix); ignored right
+ *             now.</listitem>
  * </itemizedlist>
  *
  * Returns: %TRUE on success, %FALSE if the data is invalid and an error

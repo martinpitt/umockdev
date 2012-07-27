@@ -116,12 +116,15 @@ A: dev1color=green''')
 
 class System(unittest.TestCase):
     def test_all(self):
-        '''umockdump --all has no errors and some output on system /sys'''
+        '''system /sys: umockdump --all works and result loads back'''
 
         (code, out, err) = call(['--all'])
         self.assertEqual(err, '')
         self.assertEqual(code, 0)
         self.assertTrue(out.startswith('P:'), out[:100] + '[..]')
         self.assertGreater(len(out), 100, out[:100] + '[..]')
+
+        self.testbed = UMockdev.Testbed()
+        self.assertTrue(self.testbed.add_from_string(out))
 
 unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))
