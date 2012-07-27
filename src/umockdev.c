@@ -184,9 +184,9 @@ umockdev_testbed_init (UMockdevTestbed *testbed)
  * umockdev_testbed_new:
  *
  * Construct a #UMockdevTestbed object with no devices. Use
- * #umockdev_testbed_add_device to populate it. This automatically sets the
- * UMOCKDEV_DIR environment variable so that subsequently started gudev
- * clients will use the test bed.
+ * umockdev_testbed_add_device() or umockdev_testbed_add_from_string() to populate
+ * it. This automatically sets the UMOCKDEV_DIR environment variable so that
+ * subsequently started gudev clients will use the test bed.
  *
  * Returns: A new #UMockdevTestbed object. Free with g_object_unref().
  */
@@ -304,8 +304,8 @@ make_dotdots (const gchar* devpath)
  *              A list of device udev properties; same format as @attributes
  *
  * This method is mostly meant for language bindings (where it is named
- * #umockdev_testbed_add_device). For C programs it is usually more convenient to
- * use #umockdev_testbed_add_device.
+ * umockdev_testbed_add_device()). For C programs it is usually more convenient to
+ * use umockdev_testbed_add_device().
  *
  * Add a new device to the @testbed. A Linux kernel device always has a
  * subsystem (such as "usb" or "pci"), and a device name. The test bed only
@@ -314,8 +314,8 @@ make_dotdots (const gchar* devpath)
  * assumptions about the name (e. g. a SCSI disk block device should be called
  * sdaN). A device also has an arbitrary number of sysfs attributes and udev
  * properties; usually you should specify them upon creation, but it is also
- * possible to change them later on with #umockdev_testbed_set_attribute and
- * #umockdev_testbed_set_property.
+ * possible to change them later on with umockdev_testbed_set_attribute() and
+ * umockdev_testbed_set_property().
  *
  * Returns: (transfer full): The sysfs path for the newly created device. Free
  *          with g_free().
@@ -434,8 +434,8 @@ umockdev_testbed_add_devicev (UMockdevTestbed  *testbed,
  * assumptions about the name (e. g. a SCSI disk block device should be called
  * sdaN). A device also has an arbitrary number of sysfs attributes and udev
  * properties; usually you should specify them upon creation, but it is also
- * possible to change them later on with #umockdev_testbed_set_attribute and
- * #umockdev_testbed_set_property.
+ * possible to change them later on with umockdev_testbed_set_attribute() and
+ * umockdev_testbed_set_property().
  *
  * Example:
  *   |[
@@ -505,7 +505,7 @@ umockdev_testbed_add_device (UMockdevTestbed *testbed,
 /**
  * umockdev_testbed_set_attribute:
  * @testbed: A #UMockdevTestbed.
- * @devpath: The full device path, as returned by #umockdev_testbed_add_device
+ * @devpath: The full device path, as returned by umockdev_testbed_add_device()
  * @name: The attribute name
  * @value: The attribute value
  *
@@ -548,7 +548,7 @@ umockdev_testbed_set_attribute_hex (UMockdevTestbed *testbed,
 /**
  * umockdev_testbed_set_attribute_binary:
  * @testbed: A #UMockdevTestbed.
- * @devpath: The full device path, as returned by #umockdev_testbed_add_device
+ * @devpath: The full device path, as returned by umockdev_testbed_add_device()
  * @name: The attribute name
  * @value: (array length=value_len) (element-type guint8): The attribute value
  * @value_len: Length of @value in bytes
@@ -576,7 +576,7 @@ umockdev_testbed_set_attribute_binary (UMockdevTestbed *testbed,
 /**
  * umockdev_testbed_set_property:
  * @testbed: A #UMockdevTestbed.
- * @devpath: The full device path, as returned by #umockdev_testbed_add_device
+ * @devpath: The full device path, as returned by umockdev_testbed_add_device()
  * @name: The property name
  * @value: The property value
  *
@@ -670,7 +670,7 @@ umockdev_testbed_set_property_hex (UMockdevTestbed *testbed,
 /**
  * umockdev_testbed_uevent:
  * @testbed: A #UMockdevTestbed
- * @devpath: The full device path, as returned by #umockdev_testbed_add_device
+ * @devpath: The full device path, as returned by umockdev_testbed_add_device()
  * @action: "add", "remove", or "change"
  *
  * Generate an uevent for a device.
