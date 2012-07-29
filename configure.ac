@@ -58,6 +58,25 @@ PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
 AC_CHECK_PROGS(PYTHON, [python3 python])
 AM_CONDITIONAL(HAVE_PYTHON, [test x$PYTHON != x])
 
+# if we have vapigen, generate a .vapi
+AC_CHECK_PROGS(VAPIGEN, [vapigen])
+AM_CONDITIONAL(HAVE_VAPIGEN, [test x$VAPIGEN != x])
+if [test x$VAPIGEN != x]; then
+  enable_vapigen="yes"
+else
+  enable_vapigen="no"
+fi
+
+# if we have valac, we can test the .vapi
+#AC_CHECK_PROGS(VALAC, [valac])
+AM_PROG_VALAC(0.16)
+AM_CONDITIONAL(HAVE_VALAC, [test x$VALAC != x])
+if [test x$VALAC != x]; then
+  enable_valac="yes"
+else
+  enable_valac="no"
+fi
+
 AC_CONFIG_FILES([
 	Makefile
 	src/umockdev-1.0.pc
@@ -70,17 +89,17 @@ AC_OUTPUT
 AC_MSG_RESULT([
   $PACKAGE_NAME $VERSION
   
-  gobject-introspection support:	${enable_introspection}
-  
   CPPFLAGS:				${CPPFLAGS}
   CFLAGS:				${CFLAGS}
   LDFLAGS:				${LDFLAGS}
-])
+
+  gobject-introspection support:	${enable_introspection}
+  Vala .vapi generation support:	${enable_vapigen}
+  valac available for testing the vapi:	${enable_valac}])
 
 if test x$PYTHON != x; then
-  AC_MSG_RESULT([  Python:				${PYTHON}
-	        ])
+  AC_MSG_RESULT([  Python:				${PYTHON}])
 else
-  AC_MSG_RESULT([  WARNING! No Python interpreter found. Some tools and tests are not available.
-		])
+  AC_MSG_RESULT([
+  WARNING! No Python interpreter found. Some tools and tests are not available.])
 fi

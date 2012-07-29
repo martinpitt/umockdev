@@ -121,8 +121,7 @@ t_testbed_add_devicev (UMockdevTestbedFixture *fixture, gconstpointer data)
                                         NULL,
                                         attributes,
                                         properties);
-  g_assert (syspath);
-  g_assert (g_str_has_suffix (syspath, "/sys/devices/extkeyboard1"));
+  g_assert_cmpstr (syspath, ==, "/sys/devices/extkeyboard1");
 
   _t_testbed_check_extkeyboard1(syspath);
   g_free (syspath);

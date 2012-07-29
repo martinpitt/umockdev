@@ -147,6 +147,25 @@ CLEANFILES += $(gir_DATA) $(typelib_DATA)
 endif
 
 # -------------------------------------------------------------
+# .vapi build
+
+if HAVE_INTROSPECTION
+if HAVE_VAPIGEN
+-include Makefile.vapigen
+
+EXTRA_DIST += src/UMockdev-1.0.metadata
+
+src/umockdev-1.0.vapi: src/UMockdev-1.0.gir src/UMockdev-1.0.metadata
+VAPIGEN_VAPIS = src/umockdev-1.0.vapi
+
+src_umockdev_1_0_vapi_FILES = src/UMockdev-1.0.gir
+
+vapidir = $(datarootdir)/vala/vapi/
+vapi_DATA = $(VAPIGEN_VAPIS)
+endif
+endif
+
+# -------------------------------------------------------------
 # tools
 if HAVE_PYTHON
 
@@ -189,6 +208,32 @@ check-local: $(INTROSPECTION_GIRS)
 	@echo "  Running gobject-introspection test with $(PYTHON)"
 	$(PYTEST) $(srcdir)/src/test-umockdev.py
 	$(PYTEST) $(srcdir)/src/test-umockdump
+endif
+
+if HAVE_VALAC
+
+noinst_PROGRAMS += test-umockdev-vala
+
+test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
+
+test_umockdev_vala_SOURCES = src/test-umockdev-vala.vala
+test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src
+test_umockdev_vala_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
+test_umockdev_vala_VALAFLAGS =		\
+	--vapidir $(builddir)/src	\
+	--pkg umockdev-1.0		\
+	--pkg glib-2.0			\
+	--pkg gudev-1.0			\
+	--pkg assertions		\
+	$(NULL)
+
+CLEANFILES += \
+	$(test_umockdev_vala_SOURCES:.vala=.c)	\
+	*_vala.stamp				\
+	$(NULL)
+
+TESTS += test-umockdev-vala
+
 endif
 endif
 

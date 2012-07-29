@@ -8,6 +8,8 @@
 *.pc
 *.gir
 *.typelib
+*.stamp
+*.stamp-t
 stamp-*
 Makefile.in
 Makefile
@@ -24,4 +26,7 @@ version.xml
 /configure
 /libtool
 /test-umockdev
+/test-umockdev-vala
 /docs/reference/
+src/umockdev-1.0.vapi
+src/test-umockdev-vala.c
