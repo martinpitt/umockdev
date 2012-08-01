@@ -200,7 +200,7 @@ test_umockdev_LDADD =		\
 
 TESTS += test-umockdev
 
-EXTRA_DIST += src/test-umockdev.py
+EXTRA_DIST += src/test-umockdev.py src/test-umockdump
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
