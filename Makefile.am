@@ -28,12 +28,12 @@ UNINSTALL_EXEC_HOOKS =
 CLEANFILES =
 TESTS =
 
-EXTRA_DIST = COPYING
+EXTRA_DIST = COPYING Makefile.vapigen
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
-TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(top_srcdir)/src/umockdev-wrapper
+TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(srcdir)/src/umockdev-wrapper
 
 # use this for running Python tests
-PYTEST = env LD_LIBRARY_PATH=$(top_builddir)/.libs GI_TYPELIB_PATH=$(top_builddir)/src/ $(top_srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
+PYTEST = env LD_LIBRARY_PATH=.libs GI_TYPELIB_PATH=src/ $(srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
 
 AM_CFLAGS = -Werror -Wall
 
@@ -151,17 +151,18 @@ endif
 
 if HAVE_INTROSPECTION
 if HAVE_VAPIGEN
--include Makefile.vapigen
+-include $(srcdir)/Makefile.vapigen
 
 EXTRA_DIST += src/UMockdev-1.0.metadata
-
-src/umockdev-1.0.vapi: src/UMockdev-1.0.gir src/UMockdev-1.0.metadata
 VAPIGEN_VAPIS = src/umockdev-1.0.vapi
 
-src_umockdev_1_0_vapi_FILES = src/UMockdev-1.0.gir
+src_umockdev_1_0_vapi_GIR = $(INTROSPECTION_GIRS)
+src_umockdev_1_0_vapi_FILES = $(src_umockdev_1_0_vapi_GIR)
 
 vapidir = $(datarootdir)/vala/vapi/
 vapi_DATA = $(VAPIGEN_VAPIS)
+
+CLEANFILES += $(VAPIGEN_VAPIS)
 endif
 endif
 
@@ -217,15 +218,16 @@ noinst_PROGRAMS += test-umockdev-vala
 test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
 
 test_umockdev_vala_SOURCES = src/test-umockdev-vala.vala
-test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src
+test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src
 test_umockdev_vala_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
-test_umockdev_vala_VALAFLAGS =		\
-	--vapidir $(builddir)/src	\
-	--pkg umockdev-1.0		\
-	--pkg glib-2.0			\
-	--pkg gudev-1.0			\
-	--pkg assertions		\
+test_umockdev_vala_VALAFLAGS =	\
+	--vapidir src		\
+	--pkg umockdev-1.0	\
+	--pkg glib-2.0		\
+	--pkg gudev-1.0		\
+	--pkg assertions	\
 	$(NULL)
+
 
 CLEANFILES += \
 	$(test_umockdev_vala_SOURCES:.vala=.c)	\
@@ -233,6 +235,8 @@ CLEANFILES += \
 	$(NULL)
 
 TESTS += test-umockdev-vala
+
+EXTRA_DIST += src/assertions.vapi
 
 endif
 endif
