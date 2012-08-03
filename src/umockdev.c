@@ -780,10 +780,10 @@ umockdev_testbed_dump_parse_line (UMockdevTestbed *testbed,
 }
 
 static inline char
-hexdigit (char i)
+hexdigit (gchar i)
 {
-  return (i > 'a') ? (i - 'a' + 10) :
-         (i > 'A') ? (i - 'A' + 10) :
+  return (i >= 'a') ? (i - 'a' + 10) :
+         (i >= 'A') ? (i - 'A' + 10) :
          (i - '0');
 }
 

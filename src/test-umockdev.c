@@ -379,7 +379,7 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   /* add a new one */
   umockdev_testbed_set_attribute (fixture->testbed, syspath, "color", "yellow");
   /* add a binary attribute */
-  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptor", "\x01\x00\xFF\x00\x05", 5);
+  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptor", "\x01\x00\xFF\x00\x05\x40\xA0", 7);
   /* int attributes */
   umockdev_testbed_set_attribute_int (fixture->testbed, syspath, "count", 1000);
   umockdev_testbed_set_attribute_hex (fixture->testbed, syspath, "addr", 0x1a01);
@@ -398,8 +398,8 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   /* validate binary attribute */
   attrpath = g_build_filename (syspath, "descriptor", NULL);
   g_assert (g_file_get_contents (attrpath, &contents, &length, NULL));
-  g_assert_cmpint (length, ==, 5);
-  g_assert_cmpint (memcmp (contents, "\x01\x00\xFF\x00\x05", 5), ==, 0);
+  g_assert_cmpint (length, ==, 7);
+  g_assert_cmpint (memcmp (contents, "\x01\x00\xFF\x00\x05\x40\xA0", 7), ==, 0);
   g_free (contents);
   
   g_free (syspath);
@@ -554,7 +554,7 @@ t_testbed_add_from_string (UMockdevTestbedFixture *fixture, gconstpointer data)
         "P: /devices/dev1\n"
         "E: SIMPLE_PROP=1\n"
         "E: SUBSYSTEM=pci\n"
-        "H: binary_attr=41FF0005FF00\n"
+        "H: binary_attr=41A9FF0005FF00\n"
         "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
         "A: simple_attr=1\n", &error));
   g_assert_no_error (error);
@@ -579,8 +579,8 @@ t_testbed_add_from_string (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_object_unref (device);
 
   g_assert (g_file_get_contents ("/sys/devices/dev1/binary_attr", &contents, &length, NULL));
-  g_assert_cmpint (length, ==, 6);
-  g_assert_cmpint (memcmp (contents, "\x41\xFF\x00\x05\xFF\x00", 6), ==, 0);
+  g_assert_cmpint (length, ==, 7);
+  g_assert_cmpint (memcmp (contents, "\x41\xA9\xFF\x00\x05\xFF\x00", 7), ==, 0);
   g_free (contents);
 
   /* class symlink created */
