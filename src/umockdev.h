@@ -93,7 +93,7 @@ gboolean      umockdev_testbed_add_from_string      (UMockdevTestbed *testbed,
  * domains.
  */
 #define UMOCKDEV_ERROR (umockdev_error_quark ())
-GQuark umockdev_error_quark ();
+GQuark umockdev_error_quark (void);
 
 /**
  * UMockdevError:
@@ -110,7 +110,7 @@ typedef enum
    UMOCKDEV_NUM_ERRORS
 } UMockdevError;
 
-GType umockdev_error_get_type ();
+GType umockdev_error_get_type (void);
 #define UMOCKDEV_TYPE_ERROR (umockdev_error_get_type ())
 
 G_END_DECLS
