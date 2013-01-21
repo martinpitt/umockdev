@@ -735,7 +735,9 @@ t_testbed_usb_lsusb (UMockdevTestbedFixture *fixture, gconstpointer data)
 int
 main (int argc, char **argv)
 {
+#if !defined(GLIB_VERSION_2_36)
   g_type_init ();
+#endif
   g_test_init (&argc, &argv, NULL);
 
   g_test_add ("/umockdev-testbed/empty", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
