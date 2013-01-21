@@ -35,7 +35,19 @@ TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(srcdir)/src/umockd
 # use this for running Python tests
 PYTEST = env LD_LIBRARY_PATH=.libs GI_TYPELIB_PATH=src/ $(srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
 
-AM_CFLAGS = -Werror -Wall
+AM_CFLAGS = 	\
+	-Werror=missing-prototypes	\
+	-Werror=strict-prototypes	\
+	-Werror=nested-externs		\
+	-Werror=pointer-arith		\
+	-Werror=implicit-function-declaration \
+	-Werror=pointer-arith		\
+	-Werror=init-self		\
+	-Werror=format-security		\
+	-Werror=format=2		\
+	-Werror=missing-include-dirs	\
+	-Werror=unused-variable		\
+	-Wall
 
 # -------------------------------------------------------------
 # preload library
