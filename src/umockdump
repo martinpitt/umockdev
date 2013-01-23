@@ -6,7 +6,7 @@ All attributes and properties are included, non-ASCII ones get printed in hex.
 The dump is written to the standard output.
 '''
 
-__copyright__ = "Copyright (C) 2012 Canonical Ltd."
+__copyright__ = "Copyright (C) 2012 - 2013 Canonical Ltd."
 __author__ = "Martin Pitt <martin.pitt@ubuntu.com>"
 
 # umockdev is free software; you can redistribute it and/or
@@ -88,6 +88,19 @@ def resolve(dev):
 
     return dev
 
+def format_hex(value):
+    '''Return hexadecimal representation of value'''
+
+    text = ''
+    if _py2:
+        # Python 2 does not consider elements in byte strings as numbers
+        for byte in value:
+            text += '%02X' % ord(byte)
+    else:
+        for byte in value:
+            text += '%02X' % byte
+    return text
+
 def format_attr(value):
     # first, try text
     try:
@@ -102,15 +115,33 @@ def format_attr(value):
         pass
 
     # something binary, encode as hex
-    text = ''
-    if _py2:
-        # Python 2 does not consider elements in byte strings as numbers
-        for byte in value:
-            text += '%02X' % ord(byte)
-    else:
-        for byte in value:
-            text += '%02X' % byte
-    return ('H', text)
+    return ('H', format_hex(value))
+
+# majors of devices for whom it's safe to read from:
+# - USB (device descriptor)
+_safe_majors = [189]
+
+def dev_contents(dev):
+    '''Return contents of device node, if applicable.'''
+
+    try:
+        st = os.stat(dev)
+    except OSError:
+        return ''
+    # only attempt this for safe devices
+    if not stat.S_ISCHR(st.st_mode) or os.major(st.st_rdev) not in _safe_majors:
+        return ''
+    try:
+        # ignore if it is bigger than 1 KiB
+        fd = os.open(dev, os.O_RDONLY | os.O_NONBLOCK)
+        contents = os.read(fd, 1024)
+        if os.read(fd, 1):
+            return ''
+    except OSError as e:
+        #sys.stderr.write('%s: failed: %s\n' % (dev, str(e)))
+        return ''
+
+    return '=' + format_hex(contents)
 
 def dump_device(dev):
     '''Dump a single device'''
@@ -131,6 +162,8 @@ def dump_device(dev):
             if line.startswith('E: %s=' % bl):
                 break
         else:
+            if line.startswith ('N: '):
+                line += dev_contents('/dev/' + line[2:].strip())
             sys.stdout.write(line)
             sys.stdout.write('\n')
 
