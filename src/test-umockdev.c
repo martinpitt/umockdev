@@ -793,6 +793,57 @@ t_testbed_dev_access (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_free (devdir);
 }
 
+static void
+t_testbed_add_from_string_dev (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GError *error = NULL;
+  gchar  *contents;
+  gsize  length;
+
+  /* N: without value should create an empty dev */
+  g_assert (umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/empty\n"
+        "N: empty\n"
+        "E: SUBSYSTEM=foo\n"
+        "E: DEVNAME=/dev/empty\n", &error));
+  g_assert_no_error (error);
+
+  g_assert (g_file_get_contents ("/dev/empty", &contents, &length, &error));
+  g_assert_no_error (error);
+  g_assert_cmpint (length, ==, 0);
+  g_assert_cmpstr (contents, ==, "");
+  g_free (contents);
+
+  /* N: another N without value whose name looks like hex */
+  umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/001\n"
+        "N: bus/usb/001\n"
+        "E: BUSNUM=001\n"
+        "E: SUBSYSTEM=foo\n"
+        "E: DEVNAME=/dev/bus/usb/001\n", &error);
+  g_assert_no_error (error);
+
+  g_assert (g_file_get_contents ("/dev/bus/usb/001", &contents, &length, &error));
+  g_assert_no_error (error);
+  g_assert_cmpint (length, ==, 0);
+  g_assert_cmpstr (contents, ==, "");
+  g_free (contents);
+
+  /* N: with value should set that contents */
+  g_assert (umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/preset\n"
+        "N: bus/usb/preset=00FF614100\n"
+        "E: SUBSYSTEM=foo\n"
+        "E: DEVNAME=/dev/bus/usb/preset\n", &error));
+  g_assert_no_error (error);
+
+  g_assert (g_file_get_contents ("/dev/bus/usb/preset", &contents, &length, &error));
+  g_assert_no_error (error);
+  g_assert_cmpint (length, ==, 5);
+  g_assert_cmpint (memcmp (contents, "\x00\377aA\x00", 2), ==, 0);
+  g_free (contents);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -831,6 +882,8 @@ main (int argc, char **argv)
   /* tests for mocking /dev */
   g_test_add ("/umockdev-testbed/dev_access", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_dev_access, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/add_from_string_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_add_from_string_dev, t_testbed_fixture_teardown);
 
   return g_test_run ();
 }

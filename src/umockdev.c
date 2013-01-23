@@ -98,6 +98,7 @@ struct _UMockdevTestbedPrivate
   uevent_sender *uevent_sender;
   GRegex        *re_dump_val;
   GRegex        *re_dump_keyval;
+  GRegex        *re_dump_optval;
 };
 
 G_DEFINE_TYPE (UMockdevTestbed, umockdev_testbed, G_TYPE_OBJECT)
@@ -747,6 +748,7 @@ umockdev_testbed_dump_parse_line (UMockdevTestbed *testbed,
     {
       *key = NULL;
       *value = g_match_info_fetch (match, 2);
+      g_assert (*value);
     }
   else
     {
@@ -755,18 +757,25 @@ umockdev_testbed_dump_parse_line (UMockdevTestbed *testbed,
         {
           *key = g_match_info_fetch (match, 2);
           *value = g_match_info_fetch (match, 3);
+          g_assert (*value);
         }
       else
         {
           g_match_info_free (match);
-          *type = '\0';
-          *key = NULL;
-          *value = NULL;
-          return NULL;
+          if (g_regex_match (testbed->priv->re_dump_optval, data, 0, &match))
+            {
+              *key = g_match_info_fetch (match, 2);
+              *value = g_match_info_fetch (match, 3);
+            }
+          else
+            {
+              *type = '\0';
+              *key = NULL;
+              *value = NULL;
+              return NULL;
+            }
         }
     }
-
-  g_assert (*value);
 
   type_str = g_match_info_fetch (match, 1);
   g_assert (type_str != NULL);
@@ -797,10 +806,11 @@ decode_hex (const gchar* hex)
   /* hex digits must come in pairs */
   if (len % 2 != 0)
     return NULL;
+  len /= 2;
 
   bin = g_new0 (char, len+1);
 
-  for (i = 0; i < len/2; i++)
+  for (i = 0; i < len; i++)
     bin[i] = (hexdigit (hex[i*2]) << 4) | hexdigit (hex[i*2+1]);
 
   return bin;
@@ -821,7 +831,10 @@ umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
   gchar *key;
   gchar *value;
   gchar *value_decoded;
+  gchar *dirname;
+  gchar *path;
   guint  i;
+  gboolean success;
 
   /* the first line must be "P: devpath */
   data = umockdev_testbed_dump_parse_line (testbed, data, &type, &key, &value);
@@ -861,7 +874,7 @@ umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
           goto out;
         }
 
-      //g_debug ("umockdev_testbed_add_dev_from_string: type %c key %s val %s", type, key, value);
+      //g_debug ("umockdev_testbed_add_dev_from_string: type %c key >%s< val >%s<", type, key, value);
       switch (type)
         {
           case 'H':
@@ -915,6 +928,41 @@ umockdev_testbed_add_dev_from_string (UMockdevTestbed *testbed,
             goto out;
 
           case 'N':
+            /* create directory of file */
+            dirname = g_path_get_dirname (key);
+            path = g_build_filename (testbed->priv->root_dir, "dev", dirname, NULL);
+            g_assert (g_mkdir_with_parents (path, 0755) == 0);
+            g_free (dirname);
+            g_free (path);
+
+            if (value != NULL)
+              {
+                value_decoded = decode_hex (value);
+                if (value_decoded == NULL)
+                  {
+                    g_set_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE,
+                                 "malformed hexadecimal value: %s",
+                                 value);
+                    data = NULL;
+                    goto out;
+                  }
+                i = strlen (value) / 2;
+                g_free (value);
+              }
+            else
+              i = 0;
+
+            /* set contents of file */
+            path = g_build_filename (testbed->priv->root_dir, "dev", key, NULL);
+            success = g_file_set_contents (path, i > 0 ? value_decoded : "", i, error);
+            g_free (path);
+            if (!success)
+              {
+                data = NULL;
+                goto out;
+              }
+            break;
+
           case 'S':
             /* TODO: ignored for now */
             break;
@@ -999,9 +1047,13 @@ out:
  *   <listitem><type>H:</type> <emphasis>key=value</emphasis>: binary sysfs
  *             attribute, with the value being written as continuous hex string
  *             (e. g. 0081FE0A..)</listitem>
- *   <listitem><type>N:</type> <emphasis>devname</emphasis>: device node name
- *             (without the <filename>/dev/</filename> prefix); ignored right
- *             now.</listitem>
+ *   <listitem><type>N:</type> <emphasis>devname</emphasis>[=<emphasis>contents</emphasis>]:
+ *             device node name (without the <filename>/dev/</filename>
+ *             prefix); if <emphasis>contents</emphasis> is given (encoded in a
+ *             continuous hex string), it creates a
+ *             <filename>/dev/devname</filename> in the mock environment with
+ *             the given contents, otherwise the created dev file will be
+ *             empty.</listitem>
  *   <listitem><type>S:</type> <emphasis>linkname</emphasis>: device node
  *             symlink (without the <filename>/dev/</filename> prefix); ignored right
  *             now.</listitem>
@@ -1023,7 +1075,7 @@ umockdev_testbed_add_from_string (UMockdevTestbed *testbed,
   if (testbed->priv->re_dump_val == NULL)
     {
       GError *e = NULL;
-      testbed->priv->re_dump_val = g_regex_new ("^([PNS]): (.*)(?>\\R|$)",
+      testbed->priv->re_dump_val = g_regex_new ("^([PS]): (.*)(?>\\R|$)",
                                                 G_REGEX_OPTIMIZE,
                                                 0, &e);
       g_assert_no_error (e);
@@ -1033,6 +1085,11 @@ umockdev_testbed_add_from_string (UMockdevTestbed *testbed,
                                                    0, &e);
       g_assert_no_error (e);
       g_assert (testbed->priv->re_dump_keyval);
+      testbed->priv->re_dump_optval = g_regex_new ("^([N]): ([^=\n]+)(?>=([0-9A-F]+))?(?>\\R|$)",
+                                                   G_REGEX_OPTIMIZE,
+                                                   0, &e);
+      g_assert_no_error (e);
+      g_assert (testbed->priv->re_dump_optval);
     }
 
   while (data[0] != '\0')
