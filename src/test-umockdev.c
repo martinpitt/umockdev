@@ -21,6 +21,9 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include <gudev/gudev.h>
 
@@ -731,6 +734,64 @@ t_testbed_usb_lsusb (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert (strstr (out, "Interface Descriptor:"));
 }
 
+static void
+t_testbed_dev_access (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GStatBuf st;
+  gchar *devdir, *devpath;
+  int fd;
+  char buf[100];
+
+  /* no mocked devices */
+  g_assert_cmpint (g_open ("/dev/wishyouwerehere", O_RDONLY, 0), ==, -1);
+  g_assert_cmpint (errno, ==, ENOENT);
+  g_assert_cmpint (g_stat ("/dev/zero", &st), ==, 0);
+  g_assert (S_ISCHR (st.st_mode));
+  fd = g_open ("/dev/zero", O_RDONLY, 0);
+  g_assert_cmpint (fd, >, 0);
+  g_assert_cmpint (read (fd, buf, 20), ==, 20);
+  close (fd);
+  g_assert_cmpint (buf[0], ==, 0);
+  g_assert_cmpint (buf[1], ==, 0);
+  g_assert_cmpint (buf[9], ==, 0);
+
+  /* create a mock /dev/zero */
+  devdir = g_build_filename (umockdev_testbed_get_root_dir (fixture->testbed), "dev", NULL);
+  devpath = g_build_filename (devdir, "zero", NULL);
+  g_mkdir (devdir, 0755);
+  g_assert (g_file_set_contents (devpath, "zerozerozero", -1, NULL));
+  g_free (devpath);
+
+  /* now /dev/zero should be the mocked one */
+  g_assert_cmpint (g_open ("/dev/wishyouwerehere", O_RDONLY, 0), ==, -1);
+  g_assert_cmpint (errno, ==, ENOENT);
+  g_assert_cmpint (g_stat ("/dev/zero", &st), ==, 0);
+  g_assert (S_ISREG (st.st_mode));
+  fd = g_open ("/dev/zero", O_RDONLY, 0);
+  g_assert_cmpint (fd, >, 0);
+  g_assert_cmpint (read (fd, buf, 20), ==, 12);
+  close (fd);
+  g_assert_cmpint (buf[0], ==, 'z');
+  g_assert_cmpint (buf[1], ==, 'e');
+  g_assert_cmpint (buf[11], ==, 'o');
+  g_assert_cmpint (buf[12], ==, 0);
+  memset (buf, 0, sizeof (buf));
+
+  /* symlinks should also work */
+  devpath = g_build_filename (devdir, "wishyouwerehere", NULL);
+  g_assert_cmpint (symlink ("zero", devpath), ==, 0);
+  g_free (devpath);
+  g_assert_cmpint (g_lstat ("/dev/wishyouwerehere", &st), ==, 0);
+  g_assert (S_ISLNK (st.st_mode));
+  fd = g_open ("/dev/wishyouwerehere", O_RDONLY, 0);
+  g_assert_cmpint (fd, >, 0);
+  g_assert_cmpint (read (fd, buf, 20), ==, 12);
+  close (fd);
+  g_assert_cmpint (buf[0], ==, 'z');
+  memset (buf, 0, sizeof (buf));
+
+  g_free (devdir);
+}
 
 int
 main (int argc, char **argv)
@@ -740,6 +801,7 @@ main (int argc, char **argv)
 #endif
   g_test_init (&argc, &argv, NULL);
 
+  /* tests for mocking /sys */
   g_test_add ("/umockdev-testbed/empty", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_empty, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/add_devicev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
@@ -765,6 +827,10 @@ main (int argc, char **argv)
   /* tests for mocking USB devices */
   g_test_add ("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_usb_lsusb, t_testbed_fixture_teardown);
+
+  /* tests for mocking /dev */
+  g_test_add ("/umockdev-testbed/dev_access", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_dev_access, t_testbed_fixture_teardown);
 
   return g_test_run ();
 }

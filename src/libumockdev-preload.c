@@ -52,25 +52,33 @@ static const char *trap_path(const char *path)
 	static char buf[PATH_MAX * 2];
 	const char *prefix;
 	size_t path_len, prefix_len;
+	int check_exist = 0;
 
 	/* do we need to trap this path? */
-	if (path == NULL || strncmp(path, "/sys/", 5) != 0)
+	if (path == NULL)
 		return path;
 
 	prefix = getenv("UMOCKDEV_DIR");
 	if (prefix == NULL)
 		return path;
 
+	if (strncmp(path, "/dev/", 5) == 0)
+		check_exist = 1;
+	else if (strncmp(path, "/sys/", 5) != 0)
+		return path;
+
 	path_len = strlen(path);
 	prefix_len = strlen(prefix);
-
 	if (path_len + prefix_len >= sizeof(buf)) {
 		errno = ENAMETOOLONG;
 		return NULL;
 	}
-
 	strcpy(buf, prefix);
 	strcpy(buf + prefix_len, path);
+
+	if (check_exist && access(buf, F_OK) < 0)
+		return path;
+
 	return buf;
 }
 
