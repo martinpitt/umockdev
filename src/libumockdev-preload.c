@@ -1,9 +1,11 @@
 /*
- * Copyright (C) 2012  ProFUSION embedded systems
- * Copyright (C) 2012  Canonical Ltd.
- * Authors:
+ * Copyright (C) 2012-2013 Canonical Ltd.
+ * Author: Martin Pitt <martin.pitt@ubuntu.com>
+ *
+ * The initial code for intercepting function calls was inspired and partially
+ * copied from kmod's testsuite:
+ * Copyright (C) 2012 ProFUSION embedded systems
  * Lucas De Marchi <lucas.demarchi@profusion.mobi>
- * Martin Pitt <martin.pitt@ubuntu.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -37,7 +39,17 @@
 #include <sys/socket.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
+#include <linux/ioctl.h>
+#include <linux/usbdevice_fs.h>
 #include <unistd.h>
+
+
+/* global state for capturing ioctls */
+int ioctl_capture_fd = -1;
+FILE* ioctl_capture_log;
+
+static void ioctl_capture_open(int fd);
+
 
 /********************************
  *
@@ -159,6 +171,7 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 { \
 	const char *p;						    \
 	static int (*_fn)(const char *path, int flags, ...);	    \
+	int ret;						    \
 	_fn = get_libc_func(#prefix "open" #suffix);		    \
 	p = trap_path(path);					    \
 	if (p == NULL)						    \
@@ -169,9 +182,11 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 		va_start(ap, flags);				    \
 		mode = va_arg(ap, mode_t);			    \
 		va_end(ap);					    \
-		return _fn(p, flags, mode);			    \
-	}							    \
-	return _fn(p, flags);					    \
+		ret = _fn(p, flags, mode);			    \
+	} else							    \
+		ret = _fn(p, flags);				    \
+	ioctl_capture_open(ret);				    \
+	return ret;						    \
 }
 
 WRAP_1ARG(DIR*, NULL, opendir);
@@ -292,6 +307,8 @@ int close(int fd)
 		/* printf("testbed wrapped close: closing netlink socket fd %i\n", fd); */
 		unmark_wrapped_socket(fd);
 	}
+	if (fd == ioctl_capture_fd)
+		ioctl_capture_fd = -1;
 
 	return _close(fd);
 }
@@ -325,3 +342,124 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 	}
 	return ret;
 }
+
+
+/********************************
+ *
+ * Wrappers for USBFS ioctls
+ *
+ ********************************/
+
+
+static void
+ioctl_capture_open(int fd)
+{
+	static dev_t capture_rdev = (dev_t) -1;
+	struct stat st;
+
+	/* lazily initialize capture_rdev */
+	if (capture_rdev == (dev_t) -1) {
+		const char* dev = getenv("UMOCKDEV_IOCTL_CAPTURE_DEV");
+
+		if (dev != NULL) {
+			capture_rdev = (dev_t) atoi(dev);
+		} else {
+			/* not capturing */
+			capture_rdev = 0;
+		}
+	}
+
+	if (capture_rdev == 0)
+		return;
+
+	/* check if the opened device is the one we want to capture */
+	if (fstat (fd, &st) < 0)
+		return;
+	if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != capture_rdev)
+		return;
+	ioctl_capture_fd = fd;
+
+	/* lazily open the capture file */
+	if (ioctl_capture_log == NULL) {
+		const char *path = getenv("UMOCKDEV_IOCTL_CAPTURE_FILE");
+		if (path == NULL) {
+			fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_CAPTURE_FILE not set\n");
+			exit(1);
+		}
+		if (getenv("UMOCKDEV_DIR") != NULL) {
+			fprintf(stderr, "umockdev: $UMOCKDEV_DIR cannot be used while capturing\n");
+			exit(1);
+		}
+		ioctl_capture_log = fopen(path, "a");
+		if (ioctl_capture_log == NULL) {
+			perror("umockdev: failed to open ioctl capture file");
+			exit (1);
+		}
+	}
+
+	/* mark the opening of device, so that we can keep apart multiple
+	 * sessions/operations in the same dump */
+	fputs("OPEN\n", ioctl_capture_log);
+}
+
+static void
+print_buffer(FILE* file, const char* buf, int len)
+{
+	int i;
+	
+	if (len == 0)
+		return;
+
+	for (i = 0; i < len; ++i)
+		fprintf(file, "%02X", buf[i]);
+	fputc('\n', file);
+}
+
+static void
+capture_ioctl (unsigned long request, void *arg)
+{
+	struct usbdevfs_urb *urb;
+
+	assert(ioctl_capture_log != NULL);
+
+	if (request == USBDEVFS_CONNECTINFO) {
+		struct usbdevfs_connectinfo *i = arg;
+		fprintf(ioctl_capture_log, "USBDEVFS_CONNECT_INFO %u %i\n", i->devnum, (int) i->slow);
+	}
+	/* we assume that every SUBMITURB is followed by a REAPURB and that
+	 * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
+	else if (request == USBDEVFS_REAPURBNDELAY || request == USBDEVFS_REAPURB) {
+		urb = *((struct usbdevfs_urb **) arg);
+		fprintf(ioctl_capture_log, "USBDEVFS_REAPURB %u %u %i %u %i %i %i ",
+				(unsigned) urb->type, (unsigned) urb->endpoint,
+				urb->status, (unsigned) urb->flags,
+				urb->buffer_length, urb->actual_length,
+				urb->error_count);
+		print_buffer(ioctl_capture_log, urb->buffer,
+			urb->endpoint & 0x80 ? urb->actual_length : urb->buffer_length);
+	}
+}
+
+/* note, the actual definition of ioctl is a varargs function; one cannot
+ * reliably forward arbitrary varargs (http://c-faq.com/varargs/handoff.html),
+ * but we know that ioctl gets at most one extra argument, and almost all of
+ * them are pointers or ints, both of which fit into a void*.
+ */
+int ioctl(int d, unsigned long request, void *arg);
+int
+ioctl(int d, unsigned long request, void *arg)
+{
+	static int (*_fn)(int, unsigned long, void*);
+	int result;
+
+	/* call original ioctl */
+	_fn = get_libc_func("ioctl");
+	result = _fn(d, request, arg);
+
+	if (result != -1 && ioctl_capture_fd == d)
+		capture_ioctl (request, arg);
+
+	return result;
+}
+
+/* vim: set sw=8 noet: */

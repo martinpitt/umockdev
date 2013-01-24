@@ -2,7 +2,7 @@
 
 '''umockdump tests'''
 
-__copyright__ = 'Copyright (C) 2012 Canonical Ltd.'
+__copyright__ = 'Copyright (C) 2012-2013 Canonical Ltd.'
 __author__ = 'Martin Pitt <martin.pitt@ubuntu.com>'
 
 # umockdev is free software; you can redistribute it and/or
@@ -22,6 +22,7 @@ import os.path
 import sys
 import subprocess
 import unittest
+import tempfile
 
 from gi.repository import UMockdev
 
@@ -113,6 +114,17 @@ A: dev1color=green''')
         self.assertTrue('P: /devices/dev1\n' in out, out)
         self.assertTrue('P: /devices/dev2\n' in out, out)
 
+    def test_no_ioctl_in_testbed(self):
+        '''tracing ioctls does not work in testbed'''
+        
+        self.testbed.add_device('mem', 'zero', None, ['dev', '1:5'], [])
+
+        (code, out, err) = call(['--ioctl', '/dev/stdout', '/sys/devices/zero', '--',
+                                 'head', '-c1', '/dev/zero'])
+        self.assertNotEqual(code, 0)
+        self.assertEqual(out, '')
+        self.assertTrue('UMOCKDEV_DIR cannot be used' in err, err)
+
 
 class System(unittest.TestCase):
     def test_all(self):
@@ -124,7 +136,43 @@ class System(unittest.TestCase):
         self.assertTrue(out.startswith('P:'), out[:100] + '[..]')
         self.assertGreater(len(out), 100, out[:100] + '[..]')
 
-        self.testbed = UMockdev.Testbed()
-        self.assertTrue(self.testbed.add_from_string(out))
+        testbed = UMockdev.Testbed()
+        self.assertTrue(testbed.add_from_string(out))
+
+    def test_ioctl_log(self):
+        '''umockdump --ioctl logging to a file
+
+        Note that this cannot test actual ioctls, as we cannot rely on an USB
+        device which accepts the ioctls that we can handle; but we can at
+        least ensure that the preload lib gets loaded, the log gets created,
+        and capturing happens on the right device.
+        '''
+        with tempfile.TemporaryDirectory() as tdir:
+            log = os.path.join(tdir, 'log')
+            # should not log anything, as that device is not touched
+            (code, out, err) = call(['--ioctl', log, '/dev/null', '--',
+                                     'head', '-c1', '/dev/zero'])
+            self.assertEqual(code, 0)
+            self.assertEqual(out, '\x00')
+            self.assertEqual(err, '')
+            self.assertFalse(os.path.exists(log))
+
+            # this should log one OPEN call
+            (code, out, err) = call(['--ioctl', log, '/dev/zero', '--',
+                                     'head', '-c1', '/dev/zero'])
+            self.assertEqual(code, 0)
+            self.assertEqual(out, '\x00')
+            self.assertEqual(err, '')
+            with open(log) as f:
+                self.assertEqual(f.read(), 'OPEN\n')
+
+            # next call appends to the file
+            (code, out, err) = call(['--ioctl', log, '/dev/zero', '--',
+                                     'head', '-c1', '/dev/zero'])
+            self.assertEqual(code, 0)
+            self.assertEqual(out, '\x00')
+            self.assertEqual(err, '')
+            with open(log) as f:
+                self.assertEqual(f.read(), 'OPEN\nOPEN\n')
 
 unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))
