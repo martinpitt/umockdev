@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <linux/usbdevice_fs.h>
 
 #include <gudev/gudev.h>
 
@@ -844,6 +846,32 @@ t_testbed_add_from_string_dev (UMockdevTestbedFixture *fixture, gconstpointer da
   g_free (contents);
 }
 
+static void
+t_testbed_usbfs_ioctl_static (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GError *error = NULL;
+  int fd;
+  int i;
+
+  umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/mycam\n"
+        "N: 001\n"
+        "E: SUBSYSTEM=usb\n", &error);
+  g_assert_no_error (error);
+
+  fd = g_open ("/dev/001", O_RDWR, 0);
+  g_assert_cmpint (fd, >=, 0);
+
+  i = 1;
+  g_assert_cmpint (ioctl (fd, USBDEVFS_CLAIMINTERFACE, &i), ==, 0);
+  g_assert_cmpint (errno, ==, 0);
+  g_assert_cmpint (ioctl (fd, USBDEVFS_GETDRIVER), ==, -1);
+  g_assert_cmpint (errno, ==, ENODATA);
+  errno = 0;
+
+  close (fd);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -884,6 +912,10 @@ main (int argc, char **argv)
               t_testbed_dev_access, t_testbed_fixture_teardown);
   g_test_add ("/umockdev-testbed/add_from_string_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_add_from_string_dev, t_testbed_fixture_teardown);
+
+  /* tests for mocking ioctls */
+  g_test_add ("/umockdev-testbed/usbfs_ioctl_static", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_usbfs_ioctl_static, t_testbed_fixture_teardown);
 
   return g_test_run ();
 }

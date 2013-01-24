@@ -298,6 +298,41 @@ record_ioctl (unsigned long request, void *arg)
  *
  ********************************/
 
+static int ioctl_wrapped_fd = -1;
+
+static void
+ioctl_wrap_open(int fd, const char* dev_path)
+{
+	ioctl_wrapped_fd = fd;
+
+	/* TODO: Search for ioctl record file for dev_path and load it */
+}
+
+static int
+ioctl_emulate(unsigned long request, void *arg)
+{
+	switch (request) {
+	    /* hw/operation independent USBDEVFS management requests */
+	    case USBDEVFS_CLAIMINTERFACE:
+	    case USBDEVFS_RELEASEINTERFACE:
+	    case USBDEVFS_CLEAR_HALT:
+	    case USBDEVFS_RESET:
+	    case USBDEVFS_RESETEP:
+	        return 0;
+
+	    case USBDEVFS_GETDRIVER:
+		errno = ENODATA;
+		return -1;
+
+	    case USBDEVFS_IOCTL:
+		errno = ENOTTY;
+		return -1;
+	}
+
+	/* means "unhandled" */
+	return -2;
+}
+
 
 /* note, the actual definition of ioctl is a varargs function; one cannot
  * reliably forward arbitrary varargs (http://c-faq.com/varargs/handoff.html),
@@ -310,6 +345,12 @@ ioctl(int d, unsigned long request, void *arg)
 {
 	static int (*_fn)(int, unsigned long, void*);
 	int result;
+
+	if (d == ioctl_wrapped_fd) {
+		result = ioctl_emulate(request, arg);
+		if (result != -2)
+			return result;
+	}
 
 	/* call original ioctl */
 	_fn = get_libc_func("ioctl");
@@ -436,6 +477,8 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 		ret = _fn(p, flags, mode);			    \
 	} else							    \
 		ret = _fn(p, flags);				    \
+	if (path != p)						    \
+		ioctl_wrap_open(ret, path);			    \
 	ioctl_record_open(ret);					    \
 	return ret;						    \
 }
@@ -470,6 +513,8 @@ int close(int fd)
 	}
 	if (fd == ioctl_record_fd)
 		ioctl_record_fd = -1;
+	if (fd == ioctl_wrapped_fd)
+		ioctl_wrapped_fd = -1;
 
 	return _close(fd);
 }
