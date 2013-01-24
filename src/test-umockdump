@@ -140,12 +140,12 @@ class System(unittest.TestCase):
         self.assertTrue(testbed.add_from_string(out))
 
     def test_ioctl_log(self):
-        '''umockdump --ioctl logging to a file
+        '''umockdump --ioctl recording to a file
 
         Note that this cannot test actual ioctls, as we cannot rely on an USB
         device which accepts the ioctls that we can handle; but we can at
         least ensure that the preload lib gets loaded, the log gets created,
-        and capturing happens on the right device.
+        and recording happens on the right device.
         '''
         with tempfile.TemporaryDirectory() as tdir:
             log = os.path.join(tdir, 'log')

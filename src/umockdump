@@ -46,13 +46,13 @@ def all_devices():
 
 def parse_args():
     ap = argparse.ArgumentParser(
-        description=_('Dump Linux devices and their ancestors from sysfs/udev, or capture ioctls for a device.'))
+        description=_('Dump Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.'))
     ap.add_argument('devices', metavar='DEVICE', nargs="*",
                     help=_('Path of a device in /dev or /sys.'))
     ap.add_argument('--all', '-a', action='store_true',
                     help=_('Dump all devices'))
     ap.add_argument('--ioctl', metavar='FILE',
-                    help=_('Trace ioctls on the device, log into given file. In this case, the first argument specifies the device, and all remaining arguments are a command (and its arguments) to run that gets traced.'))
+                    help=_('Trace ioctls on the device, record into given file. In this case, the first argument specifies the device, and all remaining arguments are a command (and its arguments) to run that gets traced.'))
 
     args = ap.parse_args()
 
@@ -217,8 +217,8 @@ def dump_ioctl(dev, outfile, argv):
 
     env = os.environ.copy()
     env['LD_PRELOAD'] = 'libumockdev-preload.so.0:' + env.get('LD_PRELOAD', '')
-    env['UMOCKDEV_IOCTL_CAPTURE_FILE'] = outfile
-    env['UMOCKDEV_IOCTL_CAPTURE_DEV'] = dev
+    env['UMOCKDEV_IOCTL_RECORD_FILE'] = outfile
+    env['UMOCKDEV_IOCTL_RECORD_DEV'] = dev
     sys.exit(subprocess.call(argv, env=env))
 
 

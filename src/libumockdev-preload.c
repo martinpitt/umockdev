@@ -44,9 +44,9 @@
 #include <unistd.h>
 
 
-/* global state for capturing ioctls */
-int ioctl_capture_fd = -1;
-FILE* ioctl_capture_log;
+/* global state for recording ioctls */
+int ioctl_record_fd = -1;
+FILE* ioctl_record_log;
 
 
 /********************************
@@ -198,60 +198,59 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 
 /********************************
  *
- * Wrappers for USBFS ioctls
+ * ioctl recording
  *
  ********************************/
 
-
 static void
-ioctl_capture_open(int fd)
+ioctl_record_open(int fd)
 {
-	static dev_t capture_rdev = (dev_t) -1;
+	static dev_t record_rdev = (dev_t) -1;
 	struct stat st;
 
-	/* lazily initialize capture_rdev */
-	if (capture_rdev == (dev_t) -1) {
-		const char* dev = getenv("UMOCKDEV_IOCTL_CAPTURE_DEV");
+	/* lazily initialize record_rdev */
+	if (record_rdev == (dev_t) -1) {
+		const char* dev = getenv("UMOCKDEV_IOCTL_RECORD_DEV");
 
 		if (dev != NULL) {
-			capture_rdev = (dev_t) atoi(dev);
+			record_rdev = (dev_t) atoi(dev);
 		} else {
-			/* not capturing */
-			capture_rdev = 0;
+			/* not recording */
+			record_rdev = 0;
 		}
 	}
 
-	if (capture_rdev == 0)
+	if (record_rdev == 0)
 		return;
 
-	/* check if the opened device is the one we want to capture */
+	/* check if the opened device is the one we want to record */
 	if (fstat (fd, &st) < 0)
 		return;
-	if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != capture_rdev)
+	if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != record_rdev)
 		return;
-	ioctl_capture_fd = fd;
+	ioctl_record_fd = fd;
 
-	/* lazily open the capture file */
-	if (ioctl_capture_log == NULL) {
-		const char *path = getenv("UMOCKDEV_IOCTL_CAPTURE_FILE");
+	/* lazily open the record file */
+	if (ioctl_record_log == NULL) {
+		const char *path = getenv("UMOCKDEV_IOCTL_RECORD_FILE");
 		if (path == NULL) {
-			fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_CAPTURE_FILE not set\n");
+			fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_FILE not set\n");
 			exit(1);
 		}
 		if (getenv("UMOCKDEV_DIR") != NULL) {
-			fprintf(stderr, "umockdev: $UMOCKDEV_DIR cannot be used while capturing\n");
+			fprintf(stderr, "umockdev: $UMOCKDEV_DIR cannot be used while recording\n");
 			exit(1);
 		}
-		ioctl_capture_log = fopen(path, "a");
-		if (ioctl_capture_log == NULL) {
-			perror("umockdev: failed to open ioctl capture file");
+		ioctl_record_log = fopen(path, "a");
+		if (ioctl_record_log == NULL) {
+			perror("umockdev: failed to open ioctl record file");
 			exit (1);
 		}
 	}
 
 	/* mark the opening of device, so that we can keep apart multiple
 	 * sessions/operations in the same dump */
-	fputs("OPEN\n", ioctl_capture_log);
+	fputs("OPEN\n", ioctl_record_log);
 }
 
 static void
@@ -268,29 +267,37 @@ print_buffer(FILE* file, const char* buf, int len)
 }
 
 static void
-capture_ioctl (unsigned long request, void *arg)
+record_ioctl (unsigned long request, void *arg)
 {
 	struct usbdevfs_urb *urb;
 
-	assert(ioctl_capture_log != NULL);
+	assert(ioctl_record_log != NULL);
 
 	if (request == USBDEVFS_CONNECTINFO) {
 		struct usbdevfs_connectinfo *i = arg;
-		fprintf(ioctl_capture_log, "USBDEVFS_CONNECT_INFO %u %i\n", i->devnum, (int) i->slow);
+		fprintf(ioctl_record_log, "USBDEVFS_CONNECT_INFO %u %i\n", i->devnum, (int) i->slow);
 	}
 	/* we assume that every SUBMITURB is followed by a REAPURB and that
 	 * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
 	else if (request == USBDEVFS_REAPURBNDELAY || request == USBDEVFS_REAPURB) {
 		urb = *((struct usbdevfs_urb **) arg);
-		fprintf(ioctl_capture_log, "USBDEVFS_REAPURB %u %u %i %u %i %i %i ",
+		fprintf(ioctl_record_log, "USBDEVFS_REAPURB %u %u %i %u %i %i %i ",
 				(unsigned) urb->type, (unsigned) urb->endpoint,
 				urb->status, (unsigned) urb->flags,
 				urb->buffer_length, urb->actual_length,
 				urb->error_count);
-		print_buffer(ioctl_capture_log, urb->buffer,
+		print_buffer(ioctl_record_log, urb->buffer,
 			urb->endpoint & 0x80 ? urb->actual_length : urb->buffer_length);
 	}
 }
+
+
+/********************************
+ *
+ * ioctl emulation
+ *
+ ********************************/
+
 
 /* note, the actual definition of ioctl is a varargs function; one cannot
  * reliably forward arbitrary varargs (http://c-faq.com/varargs/handoff.html),
@@ -308,8 +315,8 @@ ioctl(int d, unsigned long request, void *arg)
 	_fn = get_libc_func("ioctl");
 	result = _fn(d, request, arg);
 
-	if (result != -1 && ioctl_capture_fd == d)
-		capture_ioctl (request, arg);
+	if (result != -1 && ioctl_record_fd == d)
+		record_ioctl (request, arg);
 
 	return result;
 }
@@ -429,7 +436,7 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 		ret = _fn(p, flags, mode);			    \
 	} else							    \
 		ret = _fn(p, flags);				    \
-	ioctl_capture_open(ret);				    \
+	ioctl_record_open(ret);					    \
 	return ret;						    \
 }
 
