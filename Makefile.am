@@ -195,49 +195,51 @@ endif
 # -------------------------------------------------------------
 # tests
 
-noinst_PROGRAMS += test-umockdev
+noinst_PROGRAMS += tests/test-umockdev
 
-test_umockdev_SOURCES = src/test-umockdev.c
+tests_test_umockdev_SOURCES = tests/test-umockdev.c
 
-test_umockdev_CFLAGS =		\
+tests_test_umockdev_CFLAGS =		\
 	$(AM_CFLAGS)		\
 	$(GLIB_CFLAGS)		\
 	$(GUDEV_CFLAGS)		\
+	-I $(top_srcdir)/src	\
 	$(NULL)
 
-test_umockdev_LDADD =		\
+tests_test_umockdev_LDADD =		\
 	libumockdev.la		\
 	$(GLIB_LIBS)		\
 	$(GUDEV_LIBS)		\
 	$(NULL)
 
-TESTS += test-umockdev
+TESTS += tests/test-umockdev
 
-EXTRA_DIST += src/test-umockdev.py src/test-umockdump
+EXTRA_DIST += tests/test-umockdev.py tests/test-umockdump
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
 check-local: $(INTROSPECTION_GIRS)
 	@echo "  Running gobject-introspection test with $(PYTHON)"
-	$(PYTEST) $(srcdir)/src/test-umockdev.py
-	$(PYTEST) $(srcdir)/src/test-umockdump
+	$(PYTEST) $(srcdir)/tests/test-umockdev.py
+	$(PYTEST) $(srcdir)/tests/test-umockdump
 endif
 
 if HAVE_VALAC
 
-noinst_PROGRAMS += test-umockdev-vala
+noinst_PROGRAMS += tests/test-umockdev-vala
 
-test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
+tests_test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
 
-test_umockdev_vala_SOURCES = src/test-umockdev-vala.vala
-test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src
-test_umockdev_vala_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
-test_umockdev_vala_VALAFLAGS =	\
-	--vapidir src		\
-	--pkg umockdev-1.0	\
-	--pkg glib-2.0		\
-	--pkg gudev-1.0		\
-	--pkg assertions	\
+tests_test_umockdev_vala_SOURCES = tests/test-umockdev-vala.vala
+tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src
+tests_test_umockdev_vala_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
+tests_test_umockdev_vala_VALAFLAGS =		\
+	--vapidir tests			\
+	--vapidir $(top_builddir)/src	\
+	--pkg umockdev-1.0		\
+	--pkg glib-2.0			\
+	--pkg gudev-1.0			\
+	--pkg assertions		\
 	$(NULL)
 
 
@@ -246,9 +248,9 @@ CLEANFILES += \
 	*_vala.stamp				\
 	$(NULL)
 
-TESTS += test-umockdev-vala
+TESTS += tests/test-umockdev-vala
 
-EXTRA_DIST += src/assertions.vapi
+EXTRA_DIST += tests/assertions.vapi
 
 endif
 endif

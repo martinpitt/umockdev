@@ -25,8 +25,8 @@ version.xml
 /aclocal.m4
 /configure
 /libtool
-/test-umockdev
-/test-umockdev-vala
 /docs/reference/
 src/umockdev-1.0.vapi
-src/test-umockdev-vala.c
+tests/test-umockdev-vala.c
+tests/test-umockdev
+tests/test-umockdev-vala

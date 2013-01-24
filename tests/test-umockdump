@@ -26,7 +26,8 @@ import tempfile
 
 from gi.repository import UMockdev
 
-umockdump_path = os.path.join(os.path.dirname(__file__), 'umockdump')
+rootdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+umockdump_path = os.path.join(rootdir, 'src', 'umockdump')
 
 def call(args):
     '''Call umockdump with given arguments.
