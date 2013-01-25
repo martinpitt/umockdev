@@ -47,6 +47,7 @@ AM_CFLAGS = 	\
 	-Werror=format=2		\
 	-Werror=missing-include-dirs	\
 	-Werror=unused-variable		\
+	-Werror=return-type		\
 	-Wall
 
 # -------------------------------------------------------------
@@ -195,24 +196,39 @@ endif
 # -------------------------------------------------------------
 # tests
 
-noinst_PROGRAMS += tests/test-umockdev
+noinst_PROGRAMS += tests/test-umockdev tests/test-ioctl-tree
 
 tests_test_umockdev_SOURCES = tests/test-umockdev.c
 
-tests_test_umockdev_CFLAGS =		\
+tests_test_umockdev_CFLAGS =	\
 	$(AM_CFLAGS)		\
 	$(GLIB_CFLAGS)		\
 	$(GUDEV_CFLAGS)		\
 	-I $(top_srcdir)/src	\
 	$(NULL)
 
-tests_test_umockdev_LDADD =		\
+tests_test_umockdev_LDADD =	\
 	libumockdev.la		\
 	$(GLIB_LIBS)		\
 	$(GUDEV_LIBS)		\
 	$(NULL)
 
-TESTS += tests/test-umockdev
+tests_test_ioctl_tree_SOURCES =	\
+	src/ioctl_tree.c	\
+	tests/test-ioctl-tree.c	\
+	$(NULL)
+
+tests_test_ioctl_tree_CFLAGS =	\
+	$(AM_CFLAGS)		\
+	$(GLIB_CFLAGS)		\
+	-I $(top_srcdir)/src	\
+	$(NULL)
+
+tests_test_ioctl_tree_LDADD =	\
+	$(GLIB_LIBS)		\
+	$(NULL)
+
+TESTS += tests/test-umockdev tests/test-ioctl-tree
 
 EXTRA_DIST += tests/test-umockdev.py tests/test-umockdump
 
