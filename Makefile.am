@@ -56,6 +56,7 @@ AM_CFLAGS = 	\
 lib_LTLIBRARIES += libumockdev-preload.la
 
 libumockdev_preload_la_SOURCES = \
+	src/ioctl_tree.c	 \
 	src/libumockdev-preload.c
 
 libumockdev_preload_la_CFLAGS = \

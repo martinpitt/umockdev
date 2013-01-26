@@ -158,22 +158,12 @@ class System(unittest.TestCase):
             self.assertEqual(err, '')
             self.assertFalse(os.path.exists(log))
 
-            # this should log one OPEN call
+            # this should create a log
             (code, out, err) = call(['--ioctl', log, '/dev/zero', '--',
                                      'head', '-c1', '/dev/zero'])
             self.assertEqual(code, 0)
             self.assertEqual(out, '\x00')
             self.assertEqual(err, '')
-            with open(log) as f:
-                self.assertEqual(f.read(), 'OPEN\n')
-
-            # next call appends to the file
-            (code, out, err) = call(['--ioctl', log, '/dev/zero', '--',
-                                     'head', '-c1', '/dev/zero'])
-            self.assertEqual(code, 0)
-            self.assertEqual(out, '\x00')
-            self.assertEqual(err, '')
-            with open(log) as f:
-                self.assertEqual(f.read(), 'OPEN\nOPEN\n')
+            self.assertEqual(os.path.getsize(log), 0)
 
 unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))

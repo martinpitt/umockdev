@@ -43,10 +43,13 @@
 #include <linux/usbdevice_fs.h>
 #include <unistd.h>
 
+#include "ioctl_tree.h"
+
 
 /* global state for recording ioctls */
 int ioctl_record_fd = -1;
 FILE* ioctl_record_log;
+ioctl_tree* ioctl_record;
 
 
 /********************************
@@ -228,6 +231,13 @@ ioctl_record_open(int fd)
 		return;
 	if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != record_rdev)
 		return;
+
+	/* ensure recording is not already in progress */
+	if (ioctl_record_fd >= 0) {
+		fprintf(stderr, "umockdev: recording for this device is already ongoing, aborting\n");
+		exit(1);
+	}
+
 	ioctl_record_fd = fd;
 
 	/* lazily open the record file */
@@ -241,54 +251,43 @@ ioctl_record_open(int fd)
 			fprintf(stderr, "umockdev: $UMOCKDEV_DIR cannot be used while recording\n");
 			exit(1);
 		}
-		ioctl_record_log = fopen(path, "a");
+		ioctl_record_log = fopen(path, "a+");
 		if (ioctl_record_log == NULL) {
 			perror("umockdev: failed to open ioctl record file");
 			exit (1);
 		}
-	}
 
-	/* mark the opening of device, so that we can keep apart multiple
-	 * sessions/operations in the same dump */
-	fputs("OPEN\n", ioctl_record_log);
+		/* load an already existing log */
+		ioctl_record = ioctl_tree_read(ioctl_record_log);
+	}
 }
 
 static void
-print_buffer(FILE* file, const char* buf, int len)
+ioctl_record_close(void)
 {
-	int i;
-	
-	if (len == 0)
-		return;
-
-	for (i = 0; i < len; ++i)
-		fprintf(file, "%02X", buf[i]);
-	fputc('\n', file);
+	/* recorded anything? */
+	if (ioctl_record != NULL) {
+		rewind (ioctl_record_log);
+		ftruncate (fileno (ioctl_record_log), 0);
+		ioctl_tree_write(ioctl_record_log, ioctl_record);
+		fflush(ioctl_record_log);
+	}
 }
 
 static void
 record_ioctl (unsigned long request, void *arg)
 {
-	struct usbdevfs_urb *urb;
+	ioctl_tree *node;
 
 	assert(ioctl_record_log != NULL);
 
-	if (request == USBDEVFS_CONNECTINFO) {
-		struct usbdevfs_connectinfo *i = arg;
-		fprintf(ioctl_record_log, "USBDEVFS_CONNECT_INFO %u %i\n", i->devnum, (int) i->slow);
-	}
-	/* we assume that every SUBMITURB is followed by a REAPURB and that
-	 * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
-	else if (request == USBDEVFS_REAPURBNDELAY || request == USBDEVFS_REAPURB) {
-		urb = *((struct usbdevfs_urb **) arg);
-		fprintf(ioctl_record_log, "USBDEVFS_REAPURB %u %u %i %u %i %i %i ",
-				(unsigned) urb->type, (unsigned) urb->endpoint,
-				urb->status, (unsigned) urb->flags,
-				urb->buffer_length, urb->actual_length,
-				urb->error_count);
-		print_buffer(ioctl_record_log, urb->buffer,
-			urb->endpoint & 0x80 ? urb->actual_length : urb->buffer_length);
-	}
+	node = ioctl_tree_new_from_bin (request, arg);
+	if (node == NULL)
+		return;
+	ioctl_tree_insert(ioctl_record, node);
+	/* handle initial node */
+	if (ioctl_record == NULL)
+		ioctl_record = node;
 }
 
 
@@ -511,8 +510,10 @@ int close(int fd)
 		/* printf("testbed wrapped close: closing netlink socket fd %i\n", fd); */
 		unmark_wrapped_socket(fd);
 	}
-	if (fd == ioctl_record_fd)
+	if (fd == ioctl_record_fd) {
+		ioctl_record_close();
 		ioctl_record_fd = -1;
+	}
 	if (fd == ioctl_wrapped_fd)
 		ioctl_wrapped_fd = -1;
 
