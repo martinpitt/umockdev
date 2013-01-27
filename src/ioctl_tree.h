@@ -29,7 +29,8 @@ typedef struct {
     int           (*init_from_text)(ioctl_tree*, const char*);
     void          (*write)(const ioctl_tree*, FILE*);
     int           (*equal)(const ioctl_tree*, const ioctl_tree*);
-    int           (*execute)(const ioctl_tree*, void*);
+    /* ret: 0: unhandled, 1: handled, move to next node, 2: handled, keep node */
+    int           (*execute)(const ioctl_tree*, unsigned long, void*, int*);
     ioctl_tree*   (*insertion_parent)(ioctl_tree*, ioctl_tree*);
 } ioctl_type;
 
@@ -59,6 +60,8 @@ void        ioctl_tree_write         (FILE* f, const ioctl_tree* tree);
 ioctl_tree* ioctl_tree_insert        (ioctl_tree* tree, ioctl_tree* node);
 ioctl_tree* ioctl_tree_find_equal    (ioctl_tree* tree, ioctl_tree* node);
 ioctl_tree* ioctl_tree_next          (const ioctl_tree* node);
+ioctl_tree* ioctl_tree_execute       (ioctl_tree* tree, ioctl_tree *last,
+                                      unsigned long id, void* arg, int* ret);
 
 /* node lists */
 ioctl_node_list* ioctl_node_list_new (void);
@@ -75,6 +78,8 @@ ioctl_node_list_get (ioctl_node_list* list, ssize_t n)
 static inline ioctl_tree*
 ioctl_tree_next_wrap (ioctl_tree *tree, ioctl_tree* node)
 {
+    if (node == NULL)
+        return tree;
     ioctl_tree *t = ioctl_tree_next (node);
     return (t != NULL) ? t : tree;
 }

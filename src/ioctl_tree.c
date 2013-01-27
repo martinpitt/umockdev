@@ -27,8 +27,10 @@
 
 #ifdef DEBUG
 #   define DBG(...) printf(__VA_ARGS__)
+#   define IFDBG(x) x
 #else
 #   define DBG(...) {}
+#   define IFDBG(x) {}
 #endif
 
 #define TRUE 1
@@ -287,7 +289,8 @@ ioctl_node_list_free (ioctl_node_list* list)
     free (list);
 }
 
-void ioctl_node_list_append (ioctl_node_list* list, ioctl_tree* element)
+void
+ioctl_node_list_append (ioctl_node_list* list, ioctl_tree* element)
 {
     if (list->n == list->capacity) {
         list->capacity *= 2;
@@ -296,6 +299,45 @@ void ioctl_node_list_append (ioctl_node_list* list, ioctl_tree* element)
     }
 
     list->items[list->n++] = element;
+}
+
+ioctl_tree*
+ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
+                    void* arg, int* ret)
+{
+    ioctl_tree *i = ioctl_tree_next_wrap (tree, last);
+    int r, handled;
+
+    DBG ("ioctl_tree_execute ioctl %lu\n", id);
+
+    /* start at the previously executed node to maintain original order of
+     * ioctls as much as possible (i. e. maintain it while the requests come in
+     * at the same order as originally recorded) */
+    for (;;) {
+        DBG ("   ioctl_tree_execute: checking node %s(%lu) ", i->type->name, i->type->id);
+        IFDBG (i->type->write (i, stdout));
+        DBG ("\n");
+        if (i == last) {
+            /* we did a full circle */
+            DBG ("    -> full iteration, not found\n");
+            break;
+        }
+
+        handled = i->type->execute (i, id, arg, &r);
+        if (handled) {
+            DBG ("    -> match, ret %i, adv: %i\n", r, handled);
+            *ret = r;
+            if (handled == 1)
+                return i;
+            else 
+                return last;
+        }
+
+        i = ioctl_tree_next_wrap (tree, i);
+    }
+
+    /* not found */
+    return NULL;
 }
 
 /***********************************
@@ -395,9 +437,14 @@ usbdevfs_connectinfo_equal (const ioctl_tree* n1, const ioctl_tree *n2)
 }
 
 static int
-usbdevfs_connectinfo_execute (const ioctl_tree* node, void* arg)
+usbdevfs_connectinfo_execute (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
 {
-    memcpy (arg, node->data, sizeof (struct usbdevfs_connectinfo));
+    if (node->type->id == id) {
+        memcpy (arg, node->data, sizeof (struct usbdevfs_connectinfo));
+        *ret = 0;
+        return 1;
+    }
+
     return 0;
 }
 
@@ -486,15 +533,60 @@ usbdevfs_reapurb_equal (const ioctl_tree* n1, const ioctl_tree *n2)
 }
 
 static int
-usbdevfs_reapurb_execute (const ioctl_tree* node, void* arg)
+usbdevfs_reapurb_execute (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
 {
-    const struct usbdevfs_urb* urb = node->data;
+    const struct usbdevfs_urb* n_urb = node->data;
+    /* set in SUBMIT, cleared in REAP */
+    static const ioctl_tree *submit_node = NULL;
+    static struct usbdevfs_urb *submit_urb = NULL;
 
-    /* nothing to do for an output EP; for an input EP we need to copy the
-     * buffer data; TODO: we need to intercept SUBMITURB to catch the pointer! */
-    if (urb->endpoint & 0x80)
-        memcpy ((*(struct usbdevfs_urb**) arg)->buffer,
-                urb->buffer, urb->actual_length);
+    if (id == USBDEVFS_SUBMITURB) {
+        struct usbdevfs_urb *a_urb = arg;
+        assert (submit_node == NULL);
+
+        if (n_urb->type != a_urb->type || n_urb->endpoint != a_urb->endpoint ||
+            n_urb->status != a_urb->status || n_urb->flags != a_urb->flags ||
+            n_urb->buffer_length != a_urb->buffer_length)
+            return 0;
+
+        DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, metadata match\n");
+
+        /* for an output URB we also require the buffer contents to match; for
+         * an input URB it can be uninitialized */
+        if ((n_urb->endpoint & 0x80) == 0 && 
+            memcmp (n_urb->buffer, a_urb->buffer, n_urb->buffer_length) != 0) {
+            DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer mismatch, rejecting\n");
+            return 0;
+        }
+        DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer match, remembering\n");
+
+        /* remember the node for the next REAP */
+        submit_node = node;
+        submit_urb = a_urb;
+        *ret = 0;
+        return 1;
+    }
+
+    if (id == node->type->id) {
+        struct usbdevfs_urb* orig_node_urb = submit_node->data;
+        assert (submit_node != NULL);
+
+        DBG ("  usbdevfs_reapurb_execute: handling %s\n", node->type->name);
+
+        /* for an input EP we need to copy the buffer data */
+        if (n_urb->endpoint & 0x80) {
+            submit_urb->actual_length = orig_node_urb->actual_length;
+            memcpy (submit_urb->buffer,
+                    orig_node_urb->buffer,
+                    submit_urb->actual_length);
+        }
+        *((struct usbdevfs_urb**) arg) = submit_urb;
+        submit_urb = NULL;
+        submit_node = NULL;
+        *ret = 0;
+        return 2;
+    }
+
     return 0;
 }
 

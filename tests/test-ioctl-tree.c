@@ -301,6 +301,114 @@ t_iteration (void)
     g_assert (ioctl_tree_next_wrap (tree, i) == tree);
 }
 
+static void
+init_urb (struct usbdevfs_urb* urb, const struct usbdevfs_urb* orig)
+{
+    urb->type = orig->type;
+    urb->endpoint = orig->endpoint;
+    urb->status = orig->status;
+    urb->flags = orig->flags;
+    urb->buffer_length = orig->buffer_length;
+
+    if (urb->endpoint & 0x80) {
+        /* clear buffer for input EPs */
+        urb->actual_length = 0;
+        memset (urb->buffer, 0, urb->buffer_length);
+    } else {
+        /* copy for output */
+        urb->actual_length = orig->buffer_length;
+        memcpy (urb->buffer, orig->buffer, orig->buffer_length);
+    }
+}
+
+static void
+t_execute_check_outurb (const struct usbdevfs_urb *orig, ioctl_tree *tree, ioctl_tree **last)
+{
+    char urbbuf[15];
+    struct usbdevfs_urb urb;
+    struct usbdevfs_urb *urb_ret;
+    int ret;
+
+    urb.buffer = urbbuf;
+    init_urb (&urb, orig);
+    *last = ioctl_tree_execute (tree, *last, USBDEVFS_SUBMITURB, &urb, &ret);
+    g_assert (*last != NULL);
+    g_assert (ret == 0);
+    g_assert (urb.buffer == urbbuf);
+
+    /* now reap it */
+    *last = ioctl_tree_execute (tree, *last, USBDEVFS_REAPURB, &urb_ret, &ret);
+    g_assert (ret == 0);
+    g_assert (urb_ret == &urb);
+    g_assert_cmpint (urb.actual_length, ==, orig->actual_length);
+    g_assert (memcmp (urbbuf, orig->buffer, urb.actual_length) == 0);
+}
+
+static void
+t_execute_check_inurb (const struct usbdevfs_urb *orig, ioctl_tree *tree, ioctl_tree **last)
+{
+    char urbbuf[15];
+    struct usbdevfs_urb urb;
+    struct usbdevfs_urb *urb_ret;
+    int ret;
+
+    urb.buffer = urbbuf;
+    init_urb (&urb, orig);
+
+    *last = ioctl_tree_execute (tree, *last, USBDEVFS_SUBMITURB, &urb, &ret);
+    g_assert (*last != NULL);
+    g_assert (ret == 0);
+    g_assert (urb.buffer == urbbuf);
+    /* not reaped yet */
+    g_assert_cmpint (urbbuf[0], ==, 0);
+    g_assert_cmpint (urb.actual_length, ==, 0);
+
+    /* now reap */
+    *last = ioctl_tree_execute (tree, *last, USBDEVFS_REAPURB, &urb_ret, &ret);
+    g_assert (*last != NULL);
+    g_assert (ret == 0);
+    g_assert (urb_ret == &urb);
+    g_assert_cmpint (urb.actual_length, ==, orig->actual_length);
+    g_assert (memcmp (urbbuf, orig->buffer, urb.actual_length) == 0);
+}
+
+static void
+t_execute (void)
+{
+    ioctl_tree *tree = get_test_tree ();
+    ioctl_tree *last = NULL;
+    int ret;
+    struct usbdevfs_connectinfo ci;
+
+    /* should first get CI, then CI2 */
+    last = ioctl_tree_execute (tree, last, USBDEVFS_CONNECTINFO, &ci, &ret);
+    g_assert (last == tree);
+    g_assert (ret == 0);
+    g_assert_cmpint (ci.devnum, ==, 11);
+    g_assert_cmpint (ci.slow, ==, 0);
+
+    last = ioctl_tree_execute (tree, last, USBDEVFS_CONNECTINFO, &ci, &ret);
+    g_assert (last != NULL);
+    g_assert (ret == 0);
+    g_assert_cmpint (ci.devnum, ==, 12);
+    g_assert_cmpint (ci.slow, ==, 0);
+
+    /* output URB, should leave buffer untouched */
+    t_execute_check_outurb (&s_out1, tree, &last);
+    g_assert (last == tree->next);
+    /* now get the input */
+    t_execute_check_inurb (&s_in1a, tree, &last);
+    g_assert (last == tree->next->child);
+
+    /* jump to out2 */
+    t_execute_check_outurb (&s_out2, tree, &last);
+    /* get in2[abc], but interject unknown ioctl */
+    t_execute_check_inurb (&s_in2a, tree, &last);
+    g_assert (ioctl_tree_execute (tree, last, TCGETS, NULL, &ret) == NULL);
+    t_execute_check_inurb (&s_in2b, tree, &last);
+    t_execute_check_inurb (&s_in2c, tree, &last);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -314,6 +422,7 @@ main (int argc, char **argv)
   g_test_add_func ("/umockdev-ioctl-tree/write", t_write);
   g_test_add_func ("/umockdev-ioctl-tree/read", t_read);
   g_test_add_func ("/umockdev-ioctl-tree/iteration", t_iteration);
+  g_test_add_func ("/umockdev-ioctl-tree/execute", t_execute);
 
   return g_test_run ();
 }
