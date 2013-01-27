@@ -55,6 +55,22 @@ const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 11 0\n"
         " USBDEVFS_REAPURB 1 129 0 0 15 5 0 66696C6532\n"
         "USBDEVFS_CONNECTINFO 12 0\n";
 
+static ioctl_tree*
+get_test_tree (void)
+{
+    FILE* f;
+    ioctl_tree *tree;
+
+    f = tmpfile();
+    g_assert (f != NULL);
+    g_assert_cmpint (fwrite (test_tree_str, strlen (test_tree_str), 1, f), ==, 1);
+    rewind (f);
+    tree = ioctl_tree_read (f);
+    fclose (f);
+    g_assert (tree != NULL);
+    return tree;
+}
+
 
 static void
 t_type_get_by (void)
@@ -220,22 +236,13 @@ t_write (void)
 static void
 t_read (void)
 {
-    ioctl_tree *tree;
     FILE* f;
     char contents[1000];
 
-    f = tmpfile();
-    g_assert (f != NULL);
-    g_assert_cmpint (fwrite (test_tree_str, strlen (test_tree_str), 1, f), ==, 1);
-    rewind (f);
-    tree = ioctl_tree_read (f);
-    g_assert (tree != NULL);
-
-    /* write it into the tempfile and read it back to compare with original
+    /* write test tree into the tempfile and read it back to compare with original
      * (easier than comparing nodes) */
-    rewind (f);
-    ftruncate (fileno (f), 0);
-    ioctl_tree_write (f, tree);
+    f = tmpfile();
+    fwrite (test_tree_str, strlen (test_tree_str), 1, f);
     rewind (f);
     memset (contents, 0, sizeof (contents));
     g_assert_cmpint (fread (contents, 1, sizeof (contents), f), >, 10);
@@ -266,16 +273,8 @@ t_read (void)
 static void
 t_iteration (void)
 {
-    FILE* f;
-    ioctl_tree *tree, *i;
-
-    f = tmpfile();
-    g_assert (f != NULL);
-    g_assert_cmpint (fwrite (test_tree_str, strlen (test_tree_str), 1, f), ==, 1);
-    rewind (f);
-    tree = ioctl_tree_read (f);
-    fclose (f);
-    g_assert (tree != NULL);
+    ioctl_tree *tree = get_test_tree ();
+    ioctl_tree *i;
 
     i = tree;
     assert_ci (i, &ci);
