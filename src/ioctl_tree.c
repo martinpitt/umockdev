@@ -391,7 +391,7 @@ write_hex (FILE* file, const char* buf, size_t len)
                 return;
 
         for (i = 0; i < len; ++i)
-                fprintf(file, "%02X", buf[i]);
+                fprintf(file, "%02X", (unsigned) (unsigned char) buf[i]);
 }
 
 /***********************************

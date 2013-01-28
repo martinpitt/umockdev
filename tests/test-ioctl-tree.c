@@ -32,7 +32,7 @@ const struct usbdevfs_connectinfo ci = { 11, 0 };
 const struct usbdevfs_connectinfo ci2 = { 12, 0 };
 const struct usbdevfs_urb s_out1 = { 1, 2, 0, 0, "what", 4, 4 };
 const struct usbdevfs_urb s_in1a = { 1, 129, 0, 0, "this\0\0\0\0\0\0", 10, 4 };
-const struct usbdevfs_urb s_in1b = { 1, 129, 0, 0, "andthat\0\0\0", 10, 7 };
+const struct usbdevfs_urb s_in1b = { 1, 129, 0, 0, "andthat\xFF\xC0\0", 10, 9 };
 const struct usbdevfs_urb s_out2 = { 1, 2, 0, 0, "readfile", 8, 8 };
 const struct usbdevfs_urb s_in2a = { 1, 129, 0, 0, "file1a\0\0\0\0\0\0\0\0\0", 15, 6 };
 const struct usbdevfs_urb s_in2b = { 1, 129, 0, 0, "file1bb\0\0\0\0\0\0\0\0", 15, 7 };
@@ -47,7 +47,7 @@ const struct usbdevfs_urb *out1 = &s_out1, *in1a = &s_in1a, *in1b = &s_in1b,
 const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 11 0\n"
         "USBDEVFS_REAPURB 1 2 0 0 4 4 0 77686174\n"
         " USBDEVFS_REAPURB 1 129 0 0 10 4 0 74686973\n"
-        "  USBDEVFS_REAPURB 1 129 0 0 10 7 0 616E6474686174\n"
+        "  USBDEVFS_REAPURB 1 129 0 0 10 9 0 616E6474686174FFC0\n"
         "USBDEVFS_REAPURB 1 2 0 0 8 8 0 7265616466696C65\n"
         " USBDEVFS_REAPURB 1 129 0 0 15 6 0 66696C653161\n"
         "  USBDEVFS_REAPURB 1 129 0 0 15 7 0 66696C65316262\n"
