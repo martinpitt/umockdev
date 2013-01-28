@@ -535,12 +535,12 @@ usbdevfs_reapurb_equal (const ioctl_tree* n1, const ioctl_tree *n2)
 static int
 usbdevfs_reapurb_execute (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
 {
-    const struct usbdevfs_urb* n_urb = node->data;
     /* set in SUBMIT, cleared in REAP */
     static const ioctl_tree *submit_node = NULL;
     static struct usbdevfs_urb *submit_urb = NULL;
 
     if (id == USBDEVFS_SUBMITURB) {
+        const struct usbdevfs_urb* n_urb = node->data;
         struct usbdevfs_urb *a_urb = arg;
         assert (submit_node == NULL);
 
@@ -571,16 +571,24 @@ usbdevfs_reapurb_execute (const ioctl_tree* node, unsigned long id, void* arg, i
         struct usbdevfs_urb* orig_node_urb = submit_node->data;
         assert (submit_node != NULL);
 
-        DBG ("  usbdevfs_reapurb_execute: handling %s\n", node->type->name);
-
+        submit_urb->actual_length = orig_node_urb->actual_length;
+        submit_urb->error_count = orig_node_urb->error_count;
         /* for an input EP we need to copy the buffer data */
-        if (n_urb->endpoint & 0x80) {
-            submit_urb->actual_length = orig_node_urb->actual_length;
+        if (orig_node_urb->endpoint & 0x80) {
             memcpy (submit_urb->buffer,
                     orig_node_urb->buffer,
-                    submit_urb->actual_length);
+                    orig_node_urb->actual_length);
         }
         *((struct usbdevfs_urb**) arg) = submit_urb;
+
+        DBG ("  usbdevfs_reapurb_execute: handling %s %u %u %i %u %i %i %i ",
+             node->type->name, (unsigned) submit_urb->type,
+             (unsigned) submit_urb->endpoint, submit_urb->status,
+             (unsigned) submit_urb->flags, submit_urb->buffer_length,
+             submit_urb->actual_length, submit_urb->error_count);
+        IFDBG (write_hex (stdout, submit_urb->buffer, submit_urb->endpoint & 0x80 ? 
+                    submit_urb->actual_length : submit_urb->buffer_length));
+
         submit_urb = NULL;
         submit_node = NULL;
         *ret = 0;
