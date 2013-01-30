@@ -50,6 +50,7 @@
 int ioctl_record_fd = -1;
 FILE* ioctl_record_log;
 ioctl_tree* ioctl_record;
+ioctl_tree* ioctl_last = NULL;
 
 
 /********************************
@@ -302,14 +303,34 @@ static int ioctl_wrapped_fd = -1;
 static void
 ioctl_wrap_open(int fd, const char* dev_path)
 {
+	FILE* f;
+	static char ioctl_path[PATH_MAX];
+
 	ioctl_wrapped_fd = fd;
 
-	/* TODO: Search for ioctl record file for dev_path and load it */
+	/* check if we have an ioctl tree for this*/
+	snprintf (ioctl_path, sizeof (ioctl_path), "%s/ioctl/%s",
+		  getenv ("UMOCKDEV_DIR"), dev_path);
+
+	f = fopen(ioctl_path, "r");
+	if (f == NULL)
+		return;
+
+	/* TODO: Support multiple different trees at the same time */
+	/* TODO: free the old one once we can do that */
+	ioctl_record = ioctl_tree_read (f);
+	fclose (f);
+	assert (ioctl_record != NULL);
+
+	ioctl_last = NULL;
 }
 
 static int
 ioctl_emulate(unsigned long request, void *arg)
 {
+	ioctl_tree *ret;
+	int ioctl_result;
+
 	switch (request) {
 	    /* hw/operation independent USBDEVFS management requests */
 	    case USBDEVFS_CLAIMINTERFACE:
@@ -317,6 +338,7 @@ ioctl_emulate(unsigned long request, void *arg)
 	    case USBDEVFS_CLEAR_HALT:
 	    case USBDEVFS_RESET:
 	    case USBDEVFS_RESETEP:
+		errno = 0;
 	        return 0;
 
 	    case USBDEVFS_GETDRIVER:
@@ -327,6 +349,16 @@ ioctl_emulate(unsigned long request, void *arg)
 		errno = ENOTTY;
 		return -1;
 	}
+
+	/* check our ioctl tree */
+	if (ioctl_record != NULL) {
+		ret = ioctl_tree_execute (ioctl_record, ioctl_last, request, arg, &ioctl_result);
+		if (ret != NULL) {
+			ioctl_last = ret;
+			return ioctl_result;
+		}
+	}
+
 
 	/* means "unhandled" */
 	return -2;
@@ -478,7 +510,8 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 		ret = _fn(p, flags);				    \
 	if (path != p)						    \
 		ioctl_wrap_open(ret, path);			    \
-	ioctl_record_open(ret);					    \
+	else							    \
+		ioctl_record_open(ret);				    \
 	return ret;						    \
 }
 

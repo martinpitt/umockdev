@@ -850,6 +850,7 @@ static void
 t_testbed_usbfs_ioctl_static (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
   GError *error = NULL;
+  struct usbdevfs_connectinfo ci;
   int fd;
   int i;
 
@@ -868,9 +869,56 @@ t_testbed_usbfs_ioctl_static (UMockdevTestbedFixture *fixture, gconstpointer dat
   g_assert_cmpint (ioctl (fd, USBDEVFS_GETDRIVER), ==, -1);
   g_assert_cmpint (errno, ==, ENODATA);
   errno = 0;
+  /* no ioctl tree loaded */
+  g_assert_cmpint (ioctl (fd, USBDEVFS_CONNECTINFO, &ci), ==, -1);
+  g_assert_cmpint (errno, ==, ENOTTY);
+  errno = 0;
 
   close (fd);
 }
+
+static void
+t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
+{
+  GError *error = NULL;
+  char *dir, *path;
+  int fd;
+  int i;
+  struct usbdevfs_connectinfo ci;
+
+  umockdev_testbed_add_from_string (fixture->testbed, 
+        "P: /devices/mycam\n"
+        "N: 001\n"
+        "E: SUBSYSTEM=usb\n", &error);
+  g_assert_no_error (error);
+
+  /* add simple ioctl tree */
+  dir = g_build_filename (umockdev_testbed_get_root_dir (fixture->testbed),
+          "ioctl", "dev", NULL);
+  g_assert_cmpint (g_mkdir_with_parents (dir, 0755), ==, 0);
+  path = g_build_filename (dir, "001", NULL);
+  g_assert (g_file_set_contents (path, "USBDEVFS_CONNECTINFO 11 0\n", -1, NULL));
+  g_free (dir);
+  g_free (path);
+
+  fd = g_open ("/dev/001", O_RDWR, 0);
+  g_assert_cmpint (fd, >=, 0);
+
+  /* static ioctl */
+  i = 1;
+  g_assert_cmpint (ioctl (fd, USBDEVFS_CLAIMINTERFACE, &i), ==, 0);
+  g_assert_cmpint (errno, ==, 0);
+  errno = 0;
+
+  /* loaded ioctl */
+  g_assert_cmpint (ioctl (fd, USBDEVFS_CONNECTINFO, &ci), ==, 0);
+  g_assert_cmpint (errno, ==, 0);
+  g_assert_cmpint (ci.devnum, ==, 11);
+  g_assert_cmpint (ci.slow, ==, 0);
+
+  close (fd);
+}
+
 
 int
 main (int argc, char **argv)
@@ -916,6 +964,8 @@ main (int argc, char **argv)
   /* tests for mocking ioctls */
   g_test_add ("/umockdev-testbed/usbfs_ioctl_static", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
               t_testbed_usbfs_ioctl_static, t_testbed_fixture_teardown);
+  g_test_add ("/umockdev-testbed/usbfs_ioctl_tree", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+              t_testbed_usbfs_ioctl_tree, t_testbed_fixture_teardown);
 
   return g_test_run ();
 }
