@@ -233,11 +233,14 @@ ioctl_record_open(int fd)
 	if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != record_rdev)
 		return;
 
-	/* ensure recording is not already in progress */
+	/* recording is already in progress? e. g. libmtp opens the device
+	 * multiple times */
+	/*
 	if (ioctl_record_fd >= 0) {
-		fprintf(stderr, "umockdev: recording for this device is already ongoing, aborting\n");
-		exit(1);
+		fprintf(stderr, "umockdev: recording for this device is already ongoing, stopping recording of previous open()\n");
+		ioctl_record_close();
 	}
+	*/
 
 	ioctl_record_fd = fd;
 
