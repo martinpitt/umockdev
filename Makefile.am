@@ -20,6 +20,7 @@ pkgconfiglibdir=$(libdir)/pkgconfig
 
 SUBDIRS = .
 bin_SCRIPTS =
+bin_PROGRAMS =
 lib_LTLIBRARIES =
 pkgconfiglib_DATA =
 noinst_PROGRAMS =
@@ -243,6 +244,21 @@ endif
 
 if HAVE_VALAC
 
+bin_PROGRAMS += src/umockdev-run
+
+src_umockdev_run_vala.stamp: $(VAPIGEN_VAPIS)
+
+src_umockdev_run_SOURCES = src/umockdev-run.vala
+src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
+src_umockdev_run_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
+src_umockdev_run_VALAFLAGS =		\
+	--vapidir $(top_builddir)/src	\
+	--pkg umockdev-1.0		\
+	--pkg glib-2.0			\
+	--pkg posix			\
+	$(NULL)
+
+
 noinst_PROGRAMS += tests/test-umockdev-vala
 
 tests_test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
@@ -262,6 +278,7 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 
 CLEANFILES += \
 	$(test_umockdev_vala_SOURCES:.vala=.c)	\
+	$(src_umockdev_run_SOURCES:.vala=.c)	\
 	*_vala.stamp				\
 	$(NULL)
 
