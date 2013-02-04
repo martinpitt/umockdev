@@ -51,7 +51,7 @@ ioctl_tree_new_from_bin (unsigned long id, const void* data)
 
     type = ioctl_type_get_by_id (id);
     if (type == NULL) {
-        DBG ("ioctl_tree_new_from_bin: unknown ioctl %lu\n", id);
+        DBG ("ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
         return NULL;
     }
     t = calloc(sizeof (ioctl_tree), 1);
@@ -308,13 +308,13 @@ ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
     ioctl_tree *i = ioctl_tree_next_wrap (tree, last);
     int r, handled;
 
-    DBG ("ioctl_tree_execute ioctl %lu\n", id);
+    DBG ("ioctl_tree_execute ioctl %lX\n", id);
 
     /* start at the previously executed node to maintain original order of
      * ioctls as much as possible (i. e. maintain it while the requests come in
      * at the same order as originally recorded) */
     for (;;) {
-        DBG ("   ioctl_tree_execute: checking node %s(%lu) ", i->type->name, i->type->id);
+        DBG ("   ioctl_tree_execute: checking node %s(%lX) ", i->type->name, i->type->id);
         IFDBG (i->type->write (i, stdout));
         DBG ("\n");
         if (i == last) {
