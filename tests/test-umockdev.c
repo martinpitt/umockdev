@@ -885,6 +885,9 @@ t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
   int fd;
   int i;
   struct usbdevfs_connectinfo ci;
+  char urb_buffer[4] = {0, 0, 0, 0};
+  struct usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
+  struct usbdevfs_urb* urb_reap;
 
   umockdev_testbed_add_from_string (fixture->testbed, 
         "P: /devices/mycam\n"
@@ -897,7 +900,8 @@ t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
           "ioctl", "dev", NULL);
   g_assert_cmpint (g_mkdir_with_parents (dir, 0755), ==, 0);
   path = g_build_filename (dir, "001", NULL);
-  g_assert (g_file_set_contents (path, "USBDEVFS_CONNECTINFO 11 0\n", -1, NULL));
+  g_assert (g_file_set_contents (path, "USBDEVFS_CONNECTINFO 11 0\n"
+              "USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF\n", -1, NULL));
   g_free (dir);
   g_free (path);
 
@@ -908,13 +912,23 @@ t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
   i = 1;
   g_assert_cmpint (ioctl (fd, USBDEVFS_CLAIMINTERFACE, &i), ==, 0);
   g_assert_cmpint (errno, ==, 0);
-  errno = 0;
 
   /* loaded ioctl */
   g_assert_cmpint (ioctl (fd, USBDEVFS_CONNECTINFO, &ci), ==, 0);
   g_assert_cmpint (errno, ==, 0);
   g_assert_cmpint (ci.devnum, ==, 11);
   g_assert_cmpint (ci.slow, ==, 0);
+
+  g_assert_cmpint (ioctl (fd, USBDEVFS_SUBMITURB, &urb), ==, 0);
+  g_assert_cmpint (errno, ==, 0);
+  g_assert_cmpint (urb.status, ==, 0);
+  g_assert_cmpint (urb_buffer[0], ==, 0);
+  g_assert_cmpint (ioctl (fd, USBDEVFS_REAPURB, &urb_reap), ==, 0);
+  g_assert_cmpint (errno, ==, 0);
+  g_assert (urb_reap == &urb);
+  g_assert (urb.buffer == urb_buffer);
+  g_assert_cmpint (urb.status, ==, -1);
+  g_assert (memcmp (urb.buffer, "\x99\x02\xAA\xFF", 4) == 0);
 
   close (fd);
 }

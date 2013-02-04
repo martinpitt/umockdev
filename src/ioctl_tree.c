@@ -317,12 +317,6 @@ ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
         DBG ("   ioctl_tree_execute: checking node %s(%lX) ", i->type->name, i->type->id);
         IFDBG (i->type->write (i, stdout));
         DBG ("\n");
-        if (i == last) {
-            /* we did a full circle */
-            DBG ("    -> full iteration, not found\n");
-            break;
-        }
-
         handled = i->type->execute (i, id, arg, &r);
         if (handled) {
             DBG ("    -> match, ret %i, adv: %i\n", r, handled);
@@ -331,6 +325,12 @@ ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
                 return i;
             else 
                 return last;
+        }
+
+        if (i == last) {
+            /* we did a full circle */
+            DBG ("    -> full iteration, not found\n");
+            break;
         }
 
         i = ioctl_tree_next_wrap (tree, i);
@@ -545,8 +545,7 @@ usbdevfs_reapurb_execute (const ioctl_tree* node, unsigned long id, void* arg, i
         assert (submit_node == NULL);
 
         if (n_urb->type != a_urb->type || n_urb->endpoint != a_urb->endpoint ||
-            n_urb->status != a_urb->status || n_urb->flags != a_urb->flags ||
-            n_urb->buffer_length != a_urb->buffer_length)
+            n_urb->flags != a_urb->flags || n_urb->buffer_length != a_urb->buffer_length)
             return 0;
 
         DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, metadata match\n");
@@ -579,6 +578,7 @@ usbdevfs_reapurb_execute (const ioctl_tree* node, unsigned long id, void* arg, i
                     orig_node_urb->buffer,
                     orig_node_urb->actual_length);
         }
+        submit_urb->status = orig_node_urb->status;
         *((struct usbdevfs_urb**) arg) = submit_urb;
 
         DBG ("  usbdevfs_reapurb_execute: handling %s %u %u %i %u %i %i %i ",

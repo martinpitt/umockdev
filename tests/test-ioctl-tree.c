@@ -37,7 +37,7 @@ const struct usbdevfs_urb s_out2 = { 1, 2, 0, 0, "readfile", 8, 8 };
 const struct usbdevfs_urb s_in2a = { 1, 129, 0, 0, "file1a\0\0\0\0\0\0\0\0\0", 15, 6 };
 const struct usbdevfs_urb s_in2b = { 1, 129, 0, 0, "file1bb\0\0\0\0\0\0\0\0", 15, 7 };
 const struct usbdevfs_urb s_in2c = { 1, 129, 0, 0, "file1ccc\0\0\0\0\0\0\0", 15, 8 };
-const struct usbdevfs_urb s_in3  = { 1, 129, 0, 0, "file2\0\0\0\0\0\0\0\0\0\0", 15, 5 };
+const struct usbdevfs_urb s_in3  = { 1, 129, -5, 0, "file2\0\0\0\0\0\0\0\0\0\0", 15, 5 };
 
 /* REAPURB expects a pointer to a urb struct pointer */
 const struct usbdevfs_urb *out1 = &s_out1, *in1a = &s_in1a, *in1b = &s_in1b,
@@ -52,7 +52,7 @@ const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 11 0\n"
         " USBDEVFS_REAPURB 1 129 0 0 15 6 0 66696C653161\n"
         "  USBDEVFS_REAPURB 1 129 0 0 15 7 0 66696C65316262\n"
         "   USBDEVFS_REAPURB 1 129 0 0 15 8 0 66696C6531636363\n"
-        " USBDEVFS_REAPURB 1 129 0 0 15 5 0 66696C6532\n"
+        " USBDEVFS_REAPURB 1 129 -5 0 15 5 0 66696C6532\n"
         "USBDEVFS_CONNECTINFO 12 0\n";
 
 static ioctl_tree*
