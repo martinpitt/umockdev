@@ -5,16 +5,18 @@ umockdev mocks hardware devices for creating unit tests for libraries and
 programs that handle Linux hardware devices.
 
 The UMockdevTestbed class builds a temporary sandbox for mock devices.  Right
-now this covers sysfs, uevents, and /dev devices, but other aspects (such as
-ioctls) will be added in the future. You can add a number of devices including
+now this covers sysfs, uevents, basic support for /dev devices, and
+recording/mocking usbdevfs ioctls (for PtP/MTP devices), but other aspects
+will be added in the future. You can add a number of devices including
 arbitrary sysfs attributes and udev properties, and then run your software in
 that test bed that is independent of the actual hardware it is running on.
 With this you can simulate particular hardware in virtual environments up to
 some degree, without needing any particular privileges or disturbing the whole
 system.
 
-The library supports gobject-introspection, so that you can also use it with
-Python, JavaScript, and other languages which support GI.
+The library supports gobject-introspection and builds a VAPI, so that you can
+also use it with Python, JavaScript, and other languages which support GI, and
+Vala.
 
 Development
 ===========
