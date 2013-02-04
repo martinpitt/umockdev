@@ -309,6 +309,9 @@ ioctl_wrap_open(int fd, const char* dev_path)
 	FILE* f;
 	static char ioctl_path[PATH_MAX];
 
+	if (strncmp (dev_path, "/dev/", 5) != 0)
+		return;
+
 	ioctl_wrapped_fd = fd;
 
 	/* check if we have an ioctl tree for this*/
