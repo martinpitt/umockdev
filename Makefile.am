@@ -49,6 +49,7 @@ AM_CFLAGS = 	\
 	-Werror=missing-include-dirs	\
 	-Werror=unused-variable		\
 	-Werror=return-type		\
+	-Werror=uninitialized		\
 	-Wall
 
 # -------------------------------------------------------------

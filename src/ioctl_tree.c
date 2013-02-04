@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <errno.h>
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
 
@@ -305,11 +306,27 @@ ioctl_tree*
 ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
                     void* arg, int* ret)
 {
-    ioctl_tree *i = ioctl_tree_next_wrap (tree, last);
+    const ioctl_type *t;
+    ioctl_tree *i;
     int r, handled;
 
     DBG ("ioctl_tree_execute ioctl %lX\n", id);
 
+    /* check if it's a hardware independent stateless ioctl */
+    t = ioctl_type_get_by_id (id);
+    if (t != NULL && t->insertion_parent == NULL) {
+        DBG ("  ioctl_tree_execute: stateless\n");
+        if (t->execute (NULL, id, arg, &r))
+            *ret = r;
+        else
+            *ret = -1;
+        return last;
+    }
+
+    if (tree == NULL)
+        return NULL;
+
+    i = ioctl_tree_next_wrap (tree, last);
     /* start at the previously executed node to maintain original order of
      * ioctls as much as possible (i. e. maintain it while the requests come in
      * at the same order as originally recorded) */
@@ -622,6 +639,36 @@ usbdevfs_reapurb_insertion_parent (ioctl_tree* tree,
 
 /***********************************
  *
+ * generic implementations for hardware/state independent ioctls
+ *
+ ***********************************/
+
+static int
+ioctl_execute_success (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+{
+    errno = 0;
+    *ret = 0;
+    return 1;
+}
+
+static int
+ioctl_execute_enodata (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+{
+    errno = ENODATA;
+    *ret = -1;
+    return 1;
+}
+
+static int
+ioctl_execute_enotty (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+{
+    errno = ENOTTY;
+    *ret = -1;
+    return 1;
+}
+
+/***********************************
+ *
  * Known ioctls
  *
  ***********************************/
@@ -641,6 +688,23 @@ ioctl_type ioctl_db[] = {
       usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
       usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
       usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent },
+
+    /* hardware/state independent ioctls */
+    { USBDEVFS_CLAIMINTERFACE, "USBDEVFS_CLAIMINTERFACE",
+      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
+    { USBDEVFS_RELEASEINTERFACE, "USBDEVFS_RELEASEINTERFACE",
+      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
+    { USBDEVFS_CLEAR_HALT, "USBDEVFS_CLEAR_HALT",
+      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
+    { USBDEVFS_RESET, "USBDEVFS_RESET",
+      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
+    { USBDEVFS_RESETEP, "USBDEVFS_RESETEP",
+      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
+    { USBDEVFS_GETDRIVER, "USBDEVFS_GETDRIVER",
+      NULL, NULL, NULL, NULL, ioctl_execute_enodata, NULL },
+    { USBDEVFS_IOCTL, "USBDEVFS_IOCTL",
+      NULL, NULL, NULL, NULL, ioctl_execute_enotty, NULL },
+
     /* terminator */
     { 0, "", NULL, NULL, NULL, NULL, NULL }
 };

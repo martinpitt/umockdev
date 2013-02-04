@@ -39,8 +39,6 @@
 #include <sys/socket.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
-#include <linux/ioctl.h>
-#include <linux/usbdevice_fs.h>
 #include <unistd.h>
 
 #include "ioctl_tree.h"
@@ -335,39 +333,15 @@ static int
 ioctl_emulate(unsigned long request, void *arg)
 {
 	ioctl_tree *ret;
-	int ioctl_result;
-
-	switch (request) {
-	    /* hw/operation independent USBDEVFS management requests */
-	    case USBDEVFS_CLAIMINTERFACE:
-	    case USBDEVFS_RELEASEINTERFACE:
-	    case USBDEVFS_CLEAR_HALT:
-	    case USBDEVFS_RESET:
-	    case USBDEVFS_RESETEP:
-		errno = 0;
-	        return 0;
-
-	    case USBDEVFS_GETDRIVER:
-		errno = ENODATA;
-		return -1;
-
-	    case USBDEVFS_IOCTL:
-		errno = ENOTTY;
-		return -1;
-	}
+	int ioctl_result = -2;
 
 	/* check our ioctl tree */
-	if (ioctl_record != NULL) {
-		ret = ioctl_tree_execute (ioctl_record, ioctl_last, request, arg, &ioctl_result);
-		if (ret != NULL) {
-			ioctl_last = ret;
-			return ioctl_result;
-		}
-	}
+	ret = ioctl_tree_execute (ioctl_record, ioctl_last, request, arg, &ioctl_result);
+	if (ret != NULL)
+		ioctl_last = ret;
 
-
-	/* means "unhandled" */
-	return -2;
+	/* -2 means "unhandled" */
+	return ioctl_result;
 }
 
 
