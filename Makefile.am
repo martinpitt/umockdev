@@ -27,6 +27,7 @@ noinst_PROGRAMS =
 INSTALL_EXEC_HOOKS =
 UNINSTALL_EXEC_HOOKS =
 CLEANFILES =
+DISTCLEANFILES =
 TESTS =
 
 EXTRA_DIST = COPYING Makefile.vapigen
@@ -59,6 +60,7 @@ lib_LTLIBRARIES += libumockdev-preload.la
 
 libumockdev_preload_la_SOURCES = \
 	src/ioctl_tree.c	 \
+	src/ioctl_tree.h	 \
 	src/libumockdev-preload.c
 
 libumockdev_preload_la_CFLAGS = \
@@ -171,7 +173,8 @@ src_umockdev_1_0_vapi_FILES = $(src_umockdev_1_0_vapi_GIR)
 vapidir = $(datarootdir)/vala/vapi/
 vapi_DATA = $(VAPIGEN_VAPIS)
 
-CLEANFILES += $(VAPIGEN_VAPIS)
+EXTRA_DIST += $(VAPIGEN_VAPIS)
+DISTCLEANFILES += $(VAPIGEN_VAPIS)
 endif
 
 # -------------------------------------------------------------
@@ -182,7 +185,7 @@ EXTRA_DIST += src/umockdev-wrapper
 
 bin_PROGRAMS += src/umockdev-run
 
-src_umockdev_run_vala.stamp: $(VAPIGEN_VAPIS)
+$(srcdir)/src_umockdev_run_vala.stamp: $(VAPIGEN_VAPIS)
 
 src_umockdev_run_SOURCES = src/umockdev-run.vala
 src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
@@ -193,6 +196,12 @@ src_umockdev_run_VALAFLAGS =		\
 	--pkg glib-2.0			\
 	--pkg posix			\
 	$(NULL)
+
+DISTCLEANFILES += \
+	$(src_umockdev_run_SOURCES:.vala=.c)	\
+	$(srcdir)/src_umockdev_run_vala.stamp	\
+	$(NULL)
+
 
 if HAVE_PYTHON
 
@@ -256,7 +265,7 @@ endif
 
 noinst_PROGRAMS += tests/test-umockdev-vala
 
-tests_test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
+$(srcdir)/tests_test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
 
 tests_test_umockdev_vala_SOURCES = tests/test-umockdev-vala.vala
 tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src
@@ -270,11 +279,9 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	--pkg assertions		\
 	$(NULL)
 
-
-CLEANFILES += \
+DISTCLEANFILES += \
 	$(test_umockdev_vala_SOURCES:.vala=.c)	\
-	$(src_umockdev_run_SOURCES:.vala=.c)	\
-	*_vala.stamp				\
+	$(srcdir)/tests_test_umockdev_vala_vala.stamp	\
 	$(NULL)
 
 TESTS += tests/test-umockdev-vala
