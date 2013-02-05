@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Canonical Ltd.
+# Copyright (C) 2012-2013 Canonical Ltd.
 # Author: Martin Pitt <martin.pitt@ubuntu.com>
 #
 #  umockdev is free software; you can redistribute it and/or modify it
@@ -60,22 +60,8 @@ AM_CONDITIONAL(HAVE_PYTHON, [test x$PYTHON != x])
 
 # if we have vapigen, generate a .vapi
 AC_CHECK_PROGS(VAPIGEN, [vapigen])
-AM_CONDITIONAL(HAVE_VAPIGEN, [test x$VAPIGEN != x])
-if [test x$VAPIGEN != x]; then
-  enable_vapigen="yes"
-else
-  enable_vapigen="no"
-fi
-
-# if we have valac, we can test the .vapi
-#AC_CHECK_PROGS(VALAC, [valac])
-AM_PROG_VALAC(0.16)
-AM_CONDITIONAL(HAVE_VALAC, [test x$VALAC != x])
-if [test x$VALAC != x]; then
-  enable_valac="yes"
-else
-  enable_valac="no"
-fi
+AC_CHECK_PROGS(VALAC, [valac])
+AM_PROG_VALAC([0.16])
 
 AC_CONFIG_FILES([
 	Makefile
@@ -93,9 +79,7 @@ AC_MSG_RESULT([
   CFLAGS:				${CFLAGS}
   LDFLAGS:				${LDFLAGS}
 
-  gobject-introspection support:	${enable_introspection}
-  Vala .vapi generation support:	${enable_vapigen}
-  valac available for testing the vapi:	${enable_valac}])
+  gobject-introspection support:	${enable_introspection}])
 
 if test x$PYTHON != x; then
   AC_MSG_RESULT([  Python:				${PYTHON}])

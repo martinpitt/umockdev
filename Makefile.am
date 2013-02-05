@@ -83,12 +83,6 @@ libumockdev-preload-uninstall-hook:
 INSTALL_EXEC_HOOKS += libumockdev-preload-install-hook
 UNINSTALL_EXEC_HOOKS += libumockdev-preload-uninstall-hook
 
-# -------------------------------------------------------------
-# preload wrapper
-
-bin_SCRIPTS += src/umockdev-wrapper
-
-EXTRA_DIST += src/umockdev-wrapper
 
 # -------------------------------------------------------------
 # main library
@@ -166,7 +160,6 @@ endif
 # .vapi build
 
 if HAVE_INTROSPECTION
-if HAVE_VAPIGEN
 -include $(srcdir)/Makefile.vapigen
 
 EXTRA_DIST += src/UMockdev-1.0.metadata
@@ -180,10 +173,27 @@ vapi_DATA = $(VAPIGEN_VAPIS)
 
 CLEANFILES += $(VAPIGEN_VAPIS)
 endif
-endif
 
 # -------------------------------------------------------------
 # tools
+
+bin_SCRIPTS += src/umockdev-wrapper
+EXTRA_DIST += src/umockdev-wrapper
+
+bin_PROGRAMS += src/umockdev-run
+
+src_umockdev_run_vala.stamp: $(VAPIGEN_VAPIS)
+
+src_umockdev_run_SOURCES = src/umockdev-run.vala
+src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
+src_umockdev_run_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
+src_umockdev_run_VALAFLAGS =		\
+	--vapidir $(top_builddir)/src	\
+	--pkg umockdev-1.0		\
+	--pkg glib-2.0			\
+	--pkg posix			\
+	$(NULL)
+
 if HAVE_PYTHON
 
 bin_SCRIPTS += src/umockdump
@@ -243,22 +253,6 @@ check-local: $(INTROSPECTION_GIRS)
 	$(PYTEST) $(srcdir)/tests/test-umockdump
 endif
 
-if HAVE_VALAC
-
-bin_PROGRAMS += src/umockdev-run
-
-src_umockdev_run_vala.stamp: $(VAPIGEN_VAPIS)
-
-src_umockdev_run_SOURCES = src/umockdev-run.vala
-src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
-src_umockdev_run_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
-src_umockdev_run_VALAFLAGS =		\
-	--vapidir $(top_builddir)/src	\
-	--pkg umockdev-1.0		\
-	--pkg glib-2.0			\
-	--pkg posix			\
-	$(NULL)
-
 
 noinst_PROGRAMS += tests/test-umockdev-vala
 
@@ -287,7 +281,6 @@ TESTS += tests/test-umockdev-vala
 
 EXTRA_DIST += tests/assertions.vapi
 
-endif
 endif
 
 # -------------------------------------------------------------
