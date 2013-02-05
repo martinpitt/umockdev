@@ -270,7 +270,7 @@ ioctl_record_close(void)
 	/* recorded anything? */
 	if (ioctl_record != NULL) {
 		rewind (ioctl_record_log);
-		ftruncate (fileno (ioctl_record_log), 0);
+		assert(ftruncate (fileno (ioctl_record_log), 0) == 0);
 		ioctl_tree_write(ioctl_record_log, ioctl_record);
 		fflush(ioctl_record_log);
 	}
