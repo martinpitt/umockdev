@@ -27,4 +27,4 @@ else
     echo 'EXTRA_DIST =' > docs/gtk-doc.make
 fi
 autoreconf --install --symlink
-./configure "$args" "$@"
+[ -n "$NOCONFIGURE" ] || ./configure "$args" "$@"
