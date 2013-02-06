@@ -117,8 +117,8 @@ static void
 t_testbed_add_devicev (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
   gchar *syspath;
-  const gchar *attributes[] = { "idVendor", "0815", "idProduct", "AFFE", NULL };
-  const gchar *properties[] = { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL };
+  gchar *attributes[] = { "idVendor", "0815", "idProduct", "AFFE", NULL };
+  gchar *properties[] = { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL };
 
   syspath = umockdev_testbed_add_devicev (fixture->testbed,
                                         "usb",
@@ -384,7 +384,8 @@ t_testbed_set_attribute (UMockdevTestbedFixture *fixture, gconstpointer data)
   /* add a new one */
   umockdev_testbed_set_attribute (fixture->testbed, syspath, "color", "yellow");
   /* add a binary attribute */
-  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptor", "\x01\x00\xFF\x00\x05\x40\xA0", 7);
+  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptor",
+                                         (guint8*) "\x01\x00\xFF\x00\x05\x40\xA0", 7);
   /* int attributes */
   umockdev_testbed_set_attribute_int (fixture->testbed, syspath, "count", 1000);
   umockdev_testbed_set_attribute_hex (fixture->testbed, syspath, "addr", 0x1a01);
@@ -552,17 +553,19 @@ t_testbed_add_from_string (UMockdevTestbedFixture *fixture, gconstpointer data)
   GUdevDevice     *device, *subdev;
   gchar           *contents;
   gsize            length;
+  gboolean         success;
   GError          *error = NULL;
 
   /* start with adding one device */
-  g_assert (umockdev_testbed_add_from_string (fixture->testbed, 
+  success = umockdev_testbed_add_from_string (fixture->testbed, 
         "P: /devices/dev1\n"
         "E: SIMPLE_PROP=1\n"
         "E: SUBSYSTEM=pci\n"
         "H: binary_attr=41A9FF0005FF00\n"
         "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
-        "A: simple_attr=1\n", &error));
+        "A: simple_attr=1\n", &error);
   g_assert_no_error (error);
+  g_assert (success);
 
   client = g_udev_client_new (NULL);
 
@@ -674,6 +677,7 @@ t_testbed_add_from_string_errors (UMockdevTestbedFixture *fixture, gconstpointer
   /* uneven hex string */
   g_assert (!umockdev_testbed_add_from_string (fixture->testbed, 
         "P: /devices/dev1\n"
+        "E: SUBSYSTEM=usb\n"
         "H: binary_attr=41F\n", &error));
   g_assert_error (error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
   g_clear_error (&error);
@@ -719,7 +723,7 @@ t_testbed_usb_lsusb (UMockdevTestbedFixture *fixture, gconstpointer data)
                                        "ID_GPHOTO2", "1", NULL);
   g_assert (syspath);
   /* descriptor from a Canon PowerShot SX200 */
-  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptors",
+  umockdev_testbed_set_attribute_binary (fixture->testbed, syspath, "descriptors", (guint8*)
           "\x12\x01\x00\x02\x00\x00\x00\x40\xa9\x04\xc0\x31\x02\x00\x01\x02"
           "\x03\x01\x09\x02\x27\x00\x01\x01\x00\xc0\x01\x09\x04\x00\x00\x03"
           "\x06\x01\x01\x00\x07\x05\x81\x02\x00\x02\x00\x07\x05\x02\x02\x00"

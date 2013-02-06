@@ -32,7 +32,7 @@ from gi.repository import UMockdev
 
 class Testbed(unittest.TestCase):
     def setUp(self):
-        self.testbed = UMockdev.Testbed()
+        self.testbed = UMockdev.Testbed.new()
 
     def test_root_dir(self):
         self.assertTrue(os.path.isdir(self.testbed.get_root_dir()))

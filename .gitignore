@@ -27,6 +27,8 @@ version.xml
 /libtool
 /docs/reference/
 src/umockdev-1.0.vapi
+src/umockdev.h
+src/umockdev.c
 src/umockdev-run
 src/umockdev-run.c
 tests/test-ioctl-tree

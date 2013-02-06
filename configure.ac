@@ -49,9 +49,10 @@ m4_ifdef([GOBJECT_INTROSPECTION_CHECK],
 
 
 AC_SEARCH_LIBS([dlsym], [dl], [], [AC_MSG_ERROR([Dynamic linking loader library not found])])
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0 gobject-2.0 >= 2.24.0])
+PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0 gobject-2.0 >= 2.24.0 gio-2.0 >= 2.24.0])
 PKG_CHECK_MODULES([LIBUDEV], [libudev])
 PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
+
 
 # if we have Python 2 or 3, run the GI test (they will skip if gi.repository is
 # not available)
@@ -59,7 +60,6 @@ AC_CHECK_PROGS(PYTHON, [python3 python])
 AM_CONDITIONAL(HAVE_PYTHON, [test x$PYTHON != x])
 
 # if we have vapigen, generate a .vapi
-AC_CHECK_PROGS(VAPIGEN, [vapigen])
 AC_CHECK_PROGS(VALAC, [valac])
 AM_PROG_VALAC([0.16])
 

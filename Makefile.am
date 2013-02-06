@@ -30,12 +30,12 @@ CLEANFILES =
 DISTCLEANFILES =
 TESTS =
 
-EXTRA_DIST = COPYING Makefile.vapigen
+EXTRA_DIST = COPYING
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(srcdir)/src/umockdev-wrapper
 
 # use this for running Python tests
-PYTEST = env LD_LIBRARY_PATH=.libs GI_TYPELIB_PATH=src/ $(srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
+PYTEST = env LD_LIBRARY_PATH=.libs GI_TYPELIB_PATH=$(builddir) $(srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
 
 AM_CFLAGS = 	\
 	-Werror=missing-prototypes	\
@@ -96,13 +96,21 @@ libumockdev_includedir = $(includedir)/umockdev-1.0/
 libumockdev_include_HEADERS = src/umockdev.h
 
 libumockdev_la_SOURCES =	\
-	src/umockdev.c		\
+	src/umockdev.vala	\
+	src/uevent_sender.vapi	\
 	src/uevent_sender.h	\
 	src/uevent_sender.c	\
 	$(NULL)
 
+libumockdev_la_VALAFLAGS =		\
+	--pkg gio-2.0			\
+	-H src/umockdev.h		\
+	--library=UMockdev-1.0		\
+	--vapi=src/umockdev-1.0.vapi	\
+	--gir=UMockdev-1.0.gir		\
+	$(NULL)
+
 libumockdev_la_CFLAGS =		\
-	$(AM_CFLAGS)		\
 	$(GLIB_CFLAGS)		\
 	$(LIBUDEV_CFLAGS)	\
 	$(NULL)
@@ -120,62 +128,19 @@ libumockdev_la_LDFLAGS =	\
 	-export-symbols-regex '^umockdev_.*' \
 	$(NULL)
 
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = UMockdev-1.0.typelib
+
+# no way to insert "Rename to:" into annotations, so hack it
+UMockdev-1.0.typelib: UMockdev-1.0.gir
+	sed -i '/name="add_devicev"/ s/icev">$$/icev" shadows="add_device">/' UMockdev-1.0.gir
+	g-ir-compiler -l libumockdev.so -o $@ $<
+
 pkgconfiglib_DATA += src/umockdev-1.0.pc
 EXTRA_DIST += src/umockdev-1.0.pc.in
-CLEANFILES += src/umockdev-1.0.pc
 
-# -------------------------------------------------------------
-# introspection for main library
-
-if HAVE_INTROSPECTION
-include $(INTROSPECTION_MAKEFILE)
-
-INTROSPECTION_GIRS = src/UMockdev-1.0.gir
-INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir)/src
-INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)/src
-
-src/UMockdev-1.0.gir: libumockdev.la
-src_UMockdev_1_0_gir_INCLUDES = GObject-2.0
-src_UMockdev_1_0_gir_CFLAGS = 
-src_UMockdev_1_0_gir_LIBS = libumockdev.la
-
-src_UMockdev_1_0_gir_FILES =	\
-	$(libumockdev_include_HEADERS)	\
-	src/umockdev.c			\
-	$(NULL)
-
-src_UMockdev_1_0_gir_SCANNERFLAGS =	\
-	--pkg-export=umockdev-1.0	\
-	--symbol-prefix=umockdev	\
-	--warn-all			\
-	$(NULL)
-
-girdir = $(datadir)/gir-1.0
-gir_DATA = $(INTROSPECTION_GIRS)
-typelibdir = $(libdir)/girepository-1.0
-typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
-CLEANFILES += $(gir_DATA) $(typelib_DATA)
-
-endif
-
-# -------------------------------------------------------------
-# .vapi build
-
-if HAVE_INTROSPECTION
--include $(srcdir)/Makefile.vapigen
-
-EXTRA_DIST += src/UMockdev-1.0.metadata
-VAPIGEN_VAPIS = src/umockdev-1.0.vapi
-
-src_umockdev_1_0_vapi_GIR = $(INTROSPECTION_GIRS)
-src_umockdev_1_0_vapi_FILES = $(src_umockdev_1_0_vapi_GIR)
-
-vapidir = $(datarootdir)/vala/vapi/
-vapi_DATA = $(VAPIGEN_VAPIS)
-
-EXTRA_DIST += $(VAPIGEN_VAPIS)
-DISTCLEANFILES += $(VAPIGEN_VAPIS)
-endif
+CLEANFILES += UMockdev-1.0.typelib src/umockdev-1.0.pc
+DISTCLEANFILES += src/umockdev.h src/umockdev.c src/umockdev-1.0.vapi UMockdev-1.0.gir 
 
 # -------------------------------------------------------------
 # tools
@@ -185,7 +150,7 @@ EXTRA_DIST += src/umockdev-wrapper
 
 bin_PROGRAMS += src/umockdev-run
 
-$(srcdir)/src_umockdev_run_vala.stamp: $(VAPIGEN_VAPIS)
+$(srcdir)/src_umockdev_run_vala.stamp: $(srcdir)/src/umockdev-1.0.vapi
 
 src_umockdev_run_SOURCES = src/umockdev-run.vala
 src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
@@ -256,7 +221,7 @@ EXTRA_DIST += tests/test-umockdev.py tests/test-umockdump
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
-check-local: $(INTROSPECTION_GIRS)
+check-local: UMockdev-1.0.typelib
 	@echo "  Running gobject-introspection test with $(PYTHON)"
 	$(PYTEST) $(srcdir)/tests/test-umockdev.py
 	$(PYTEST) $(srcdir)/tests/test-umockdump
@@ -264,8 +229,6 @@ endif
 
 
 noinst_PROGRAMS += tests/test-umockdev-vala
-
-$(srcdir)/tests_test_umockdev_vala_vala.stamp: $(VAPIGEN_VAPIS)
 
 tests_test_umockdev_vala_SOURCES = tests/test-umockdev-vala.vala
 tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src

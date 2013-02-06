@@ -45,7 +45,7 @@ def call(args):
 
 class Testbed(unittest.TestCase):
     def setUp(self):
-        self.testbed = UMockdev.Testbed()
+        self.testbed = UMockdev.Testbed.new()
 
     def test_all_empty(self):
         '''--all on empty testbed'''
@@ -137,7 +137,7 @@ class System(unittest.TestCase):
         self.assertTrue(out.startswith('P:'), out[:100] + '[..]')
         self.assertGreater(len(out), 100, out[:100] + '[..]')
 
-        testbed = UMockdev.Testbed()
+        testbed = UMockdev.Testbed.new()
         self.assertTrue(testbed.add_from_string(out))
 
     def test_ioctl_log(self):
