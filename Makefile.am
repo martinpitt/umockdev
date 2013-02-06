@@ -132,14 +132,16 @@ typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = UMockdev-1.0.typelib
 
 # no way to insert "Rename to:" into annotations, so hack it
-UMockdev-1.0.typelib: UMockdev-1.0.gir
-	sed -i '/name="add_devicev"/ s/icev">$$/icev" shadows="add_device">/' UMockdev-1.0.gir
+UMockdev-1.0-hacked.gir: $(srcdir)/UMockdev-1.0.gir
+	sed '/name="add_devicev"/ s/icev">$$/icev" shadows="add_device">/' $< > $@
+
+UMockdev-1.0.typelib: UMockdev-1.0-hacked.gir
 	g-ir-compiler -l libumockdev.so -o $@ $<
 
 pkgconfiglib_DATA += src/umockdev-1.0.pc
-EXTRA_DIST += src/umockdev-1.0.pc.in
+EXTRA_DIST += src/umockdev-1.0.pc.in UMockdev-1.0.gir
 
-CLEANFILES += UMockdev-1.0.typelib src/umockdev-1.0.pc
+CLEANFILES += UMockdev-1.0.typelib src/umockdev-1.0.pc UMockdev-1.0-hacked.gir
 DISTCLEANFILES += src/umockdev.h src/umockdev.c src/umockdev-1.0.vapi UMockdev-1.0.gir 
 
 # -------------------------------------------------------------
