@@ -350,6 +350,19 @@ public class Testbed: GLib.Object {
         this.ev_sender.send(devpath, action);
     }
 
+    /**
+     *
+     */
+    public bool load_ioctl (string dev, string recordfile) throws FileError
+    {
+        string dest = Path.build_filename(this.root_dir, "ioctl", dev);
+        string contents;
+        if (FileUtils.get_contents(recordfile, out contents)) {
+            assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
+            return FileUtils.set_contents(dest, contents);
+        }
+        return false;
+    }
 
     private string add_dev_from_string(string data) throws UMockdev.Error
     {

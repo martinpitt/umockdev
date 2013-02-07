@@ -885,13 +885,16 @@ static void
 t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
 {
   GError *error = NULL;
-  char *dir, *path;
+  char *tmppath;
   int fd;
   int i;
   struct usbdevfs_connectinfo ci;
   char urb_buffer[4] = {0, 0, 0, 0};
   struct usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
   struct usbdevfs_urb* urb_reap;
+
+  static const char test_tree[] = "USBDEVFS_CONNECTINFO 11 0\n"
+               "USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF\n";
 
   umockdev_testbed_add_from_string (fixture->testbed, 
         "P: /devices/mycam\n"
@@ -900,14 +903,12 @@ t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert_no_error (error);
 
   /* add simple ioctl tree */
-  dir = g_build_filename (umockdev_testbed_get_root_dir (fixture->testbed),
-          "ioctl", "dev", NULL);
-  g_assert_cmpint (g_mkdir_with_parents (dir, 0755), ==, 0);
-  path = g_build_filename (dir, "001", NULL);
-  g_assert (g_file_set_contents (path, "USBDEVFS_CONNECTINFO 11 0\n"
-              "USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF\n", -1, NULL));
-  g_free (dir);
-  g_free (path);
+  fd = g_file_open_tmp ("test_ioctl_tree.XXXXXX", &tmppath, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (write (fd, test_tree, sizeof (test_tree)-1), >, 20);
+  close (fd);
+  g_assert (umockdev_testbed_load_ioctl (fixture->testbed, "/dev/001", tmppath, &error));
+  g_assert_no_error (error);
 
   fd = g_open ("/dev/001", O_RDWR, 0);
   g_assert_cmpint (fd, >=, 0);
@@ -935,6 +936,7 @@ t_testbed_usbfs_ioctl_tree (UMockdevTestbedFixture *fixture, gconstpointer data)
   g_assert (memcmp (urb.buffer, "\x99\x02\xAA\xFF", 4) == 0);
 
   close (fd);
+  g_unlink (tmppath);
 }
 
 

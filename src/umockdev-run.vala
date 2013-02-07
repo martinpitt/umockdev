@@ -71,19 +71,10 @@ main (string[] args)
 
     foreach (var i in opt_ioctl) {
         string[] parts = i.split ("=", 2); // devname, ioctlfilename
-        string contents;
         try {
-            FileUtils.get_contents (parts[1], out contents);
+            testbed.load_ioctl (parts[0], parts[1]);
         } catch (FileError e) {
-            stderr.printf ("Error: Cannot open %s: %s\n", parts[1], e.message);
-            Process.exit (1);
-        }
-        string dest = Path.build_filename (testbed.get_root_dir(), "ioctl", parts[0]);
-        DirUtils.create_with_parents (Path.get_dirname (dest), 0755);
-        try {
-            FileUtils.set_contents (dest, contents);
-        } catch (FileError e) {
-            stderr.printf ("Error: Cannot write %s: %s\n", dest, e.message);
+            stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
             Process.exit (1);
         }
     }
