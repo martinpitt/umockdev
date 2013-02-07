@@ -172,14 +172,14 @@ DISTCLEANFILES += \
 
 if HAVE_PYTHON
 
-bin_SCRIPTS += src/umockdump
-EXTRA_DIST += src/umockdump
+bin_SCRIPTS += src/umockdev-record
+EXTRA_DIST += src/umockdev-record
 
 # adjust shebang line to detected PYTHON
-umockdump-install-hook:
-	sed -i '1 s_[^/]\+$$_$(PYTHON)_' $(DESTDIR)$(bindir)/umockdump
+umockdev-record-install-hook:
+	sed -i '1 s_[^/]\+$$_$(PYTHON)_' $(DESTDIR)$(bindir)/umockdev-record
 
-INSTALL_EXEC_HOOKS += umockdump-install-hook
+INSTALL_EXEC_HOOKS += umockdev-record-install-hook
 endif
 
 # -------------------------------------------------------------
@@ -219,14 +219,14 @@ tests_test_ioctl_tree_LDADD =	\
 
 TESTS += tests/test-umockdev tests/test-ioctl-tree
 
-EXTRA_DIST += tests/test-umockdev.py tests/test-umockdump
+EXTRA_DIST += tests/test-umockdev.py tests/test-umockdev-record
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
 check-local: UMockdev-1.0.typelib
 	@echo "  Running gobject-introspection test with $(PYTHON)"
 	$(PYTEST) $(srcdir)/tests/test-umockdev.py
-	$(PYTEST) $(srcdir)/tests/test-umockdump
+	$(PYTEST) $(srcdir)/tests/test-umockdev-record
 endif
 
 

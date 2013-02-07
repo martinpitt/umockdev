@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-'''Dump Linux devices and their ancestors from sysfs/udev.
+'''Record Linux devices and their ancestors from sysfs/udev.
 
 All attributes and properties are included, non-ASCII ones get printed in hex.
-The dump is written to the standard output.
+The record is written to the standard output.
 '''
 
 __copyright__ = "Copyright (C) 2012-2013 Canonical Ltd."
@@ -46,11 +46,11 @@ def all_devices():
 
 def parse_args():
     ap = argparse.ArgumentParser(
-        description=_('Dump Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.'))
+        description=_('Record Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.'))
     ap.add_argument('devices', metavar='DEVICE', nargs="*",
                     help=_('Path of a device in /dev or /sys.'))
     ap.add_argument('--all', '-a', action='store_true',
-                    help=_('Dump all devices'))
+                    help=_('Record all devices'))
     ap.add_argument('--ioctl', metavar='FILE',
                     help=_('Trace ioctls on the device, record into given file. In this case, the first argument specifies the device, and all remaining arguments are a command (and its arguments) to run that gets traced.'))
 
@@ -147,8 +147,8 @@ def dev_contents(dev):
 
     return '=' + format_hex(contents)
 
-def dump_device(dev):
-    '''Dump a single device'''
+def record_device(dev):
+    '''Record a single device'''
 
     prop_blacklist = ['DEVPATH', 'UDEV_LOG', 'USEC_INITIALIZED']
     attr_blacklist = ['subsystem', 'firmware_node', 'driver', 'uevent']
@@ -207,8 +207,8 @@ def parent(dev):
     return parent(dev)
 
 
-def dump_ioctl(dev, outfile, argv):
-    '''Dump ioctls for given device into outfile while running a command.'''
+def record_ioctl(dev, outfile, argv):
+    '''Record ioctls for given device into outfile while running a command.'''
 
     # build device major/minor
     with open(os.path.join(dev, 'dev')) as f:
@@ -229,7 +229,7 @@ def dump_ioctl(dev, outfile, argv):
 args = parse_args()
 
 if args.ioctl:
-    dump_ioctl(resolve(args.devices[0]), args.ioctl, args.devices[1:])
+    record_ioctl(resolve(args.devices[0]), args.ioctl, args.devices[1:])
 else:
     seen = set()
     for device in args.devices:
@@ -237,5 +237,5 @@ else:
             device = resolve(device)
             if device not in seen:
                 seen.add(device)
-                dump_device(device)
+                record_device(device)
             device = parent(device)

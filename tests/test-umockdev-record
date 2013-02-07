@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-'''umockdump tests'''
+'''umockdev-record tests'''
 
 __copyright__ = 'Copyright (C) 2012-2013 Canonical Ltd.'
 __author__ = 'Martin Pitt <martin.pitt@ubuntu.com>'
@@ -27,21 +27,21 @@ import tempfile
 from gi.repository import UMockdev
 
 rootdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-umockdump_path = os.path.join(rootdir, 'src', 'umockdump')
+umockdev_record_path = os.path.join(rootdir, 'src', 'umockdev-record')
 
 def call(args):
-    '''Call umockdump with given arguments.
+    '''Call umockdev-record with given arguments.
 
     Return (code, stdout, stderr) tuple.
     '''
-    umockdump = subprocess.Popen([umockdump_path] + args,
+    umockdev_record = subprocess.Popen([umockdev_record_path] + args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
                                  universal_newlines=True)
-    (out, err) = umockdump.communicate()
+    (out, err) = umockdev_record.communicate()
     out = out.strip()
     err = err.strip()
-    return (umockdump.returncode, out, err)
+    return (umockdev_record.returncode, out, err)
 
 class Testbed(unittest.TestCase):
     def setUp(self):
@@ -129,7 +129,7 @@ A: dev1color=green''')
 
 class System(unittest.TestCase):
     def test_all(self):
-        '''system /sys: umockdump --all works and result loads back'''
+        '''system /sys: umockdev-record --all works and result loads back'''
 
         (code, out, err) = call(['--all'])
         self.assertEqual(err, '')
@@ -141,7 +141,7 @@ class System(unittest.TestCase):
         self.assertTrue(testbed.add_from_string(out))
 
     def test_ioctl_log(self):
-        '''umockdump --ioctl recording to a file
+        '''umockdev-record --ioctl recording to a file
 
         Note that this cannot test actual ioctls, as we cannot rely on an USB
         device which accepts the ioctls that we can handle; but we can at

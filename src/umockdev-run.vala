@@ -27,10 +27,10 @@ static string[] opt_program;
 
 static const GLib.OptionEntry[] options = {
     {"load", 'l', 0, OptionArg.FILENAME_ARRAY, ref opt_load,
-     "Load an umockdump file into the testbed. Can be specified multiple times.",
-     "dumpfilename"},
+     "Load an umockdev-record file into the testbed. Can be specified multiple times.",
+     "filename"},
     {"ioctl", 'i', 0, OptionArg.FILENAME_ARRAY, ref opt_ioctl,
-     "Load an ioctl dump file into the testbed. Can be specified multiple times.",
+     "Load an ioctl record file into the testbed. Can be specified multiple times.",
      "devname=ioctlfilename"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_program, "", "program [args..]"},
     { null }
@@ -54,17 +54,17 @@ main (string[] args)
     var testbed = new UMockdev.Testbed ();
 
     foreach (var path in opt_load) {
-        string dump;
+        string record;
         try {
-            FileUtils.get_contents (path, out dump);
+            FileUtils.get_contents (path, out record);
         } catch (FileError e) {
             stderr.printf ("Error: Cannot open %s: %s\n", path, e.message);
             Process.exit (1);
         }
         try {
-            testbed.add_from_string (dump);
+            testbed.add_from_string (record);
         } catch (GLib.Error e) {
-            stderr.printf ("Error: Invalid dump file %s: %s\n", path, e.message);
+            stderr.printf ("Error: Invalid record file %s: %s\n", path, e.message);
             Process.exit (1);
         }
     }
