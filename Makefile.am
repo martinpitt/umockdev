@@ -232,7 +232,11 @@ endif
 
 noinst_PROGRAMS += tests/test-umockdev-vala
 
-tests_test_umockdev_vala_SOURCES = tests/test-umockdev-vala.vala
+tests_test_umockdev_vala_SOURCES = 	\
+	tests/test-umockdev-vala.vala	\
+	tests/assertions.vapi		\
+	$(NULL)
+
 tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src
 tests_test_umockdev_vala_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
 tests_test_umockdev_vala_VALAFLAGS =		\
@@ -241,7 +245,6 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	--pkg umockdev-1.0		\
 	--pkg glib-2.0			\
 	--pkg gudev-1.0			\
-	--pkg assertions		\
 	$(NULL)
 
 DISTCLEANFILES += \
@@ -250,8 +253,6 @@ DISTCLEANFILES += \
 	$(NULL)
 
 TESTS += tests/test-umockdev-vala
-
-EXTRA_DIST += tests/assertions.vapi
 
 endif
 

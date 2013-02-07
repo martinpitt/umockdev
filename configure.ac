@@ -59,7 +59,6 @@ PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
 AC_CHECK_PROGS(PYTHON, [python3 python])
 AM_CONDITIONAL(HAVE_PYTHON, [test x$PYTHON != x])
 
-# if we have vapigen, generate a .vapi
 AC_CHECK_PROGS(VALAC, [valac])
 AM_PROG_VALAC([0.16])
 
