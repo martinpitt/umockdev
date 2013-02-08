@@ -55,6 +55,10 @@ ioctl_tree_new_from_bin (unsigned long id, const void* data)
         DBG ("ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
         return NULL;
     }
+    /* state independent ioctl? */
+    if (type->init_from_bin == NULL)
+        return NULL;
+
     t = calloc(sizeof (ioctl_tree), 1);
     t->type = type;
     type->init_from_bin (t, data);
