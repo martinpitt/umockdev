@@ -592,10 +592,4 @@ public errordomain Error {
    VALUE,
 }
 
-/* workaround to get unistd.h included for symlink() */
-private static void
-_workaround_dummy(){
-    FileUtils.close(-1);
-}
-
 } /* namespace */
