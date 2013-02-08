@@ -150,7 +150,7 @@ DISTCLEANFILES += src/umockdev.h src/umockdev.c src/umockdev-1.0.vapi UMockdev-1
 bin_SCRIPTS += src/umockdev-wrapper
 EXTRA_DIST += src/umockdev-wrapper
 
-bin_PROGRAMS += src/umockdev-run
+bin_PROGRAMS += src/umockdev-run src/umockdev-record
 
 $(srcdir)/src_umockdev_run_vala.stamp: $(srcdir)/src/umockdev-1.0.vapi
 
@@ -164,23 +164,20 @@ src_umockdev_run_VALAFLAGS =		\
 	--pkg posix			\
 	$(NULL)
 
-DISTCLEANFILES += \
-	$(src_umockdev_run_SOURCES:.vala=.c)	\
-	$(srcdir)/src_umockdev_run_vala.stamp	\
+src_umockdev_record_SOURCES = src/umockdev-record.vala src/posix_extra.vapi
+src_umockdev_record_CFLAGS = $(GLIB_CFLAGS)
+src_umockdev_record_LDADD = $(GLIB_LIBS)
+src_umockdev_record_VALAFLAGS =		\
+	--pkg glib-2.0			\
+	--pkg posix			\
 	$(NULL)
 
-
-if HAVE_PYTHON
-
-bin_SCRIPTS += src/umockdev-record
-EXTRA_DIST += src/umockdev-record
-
-# adjust shebang line to detected PYTHON
-umockdev-record-install-hook:
-	sed -i '1 s_[^/]\+$$_$(PYTHON)_' $(DESTDIR)$(bindir)/umockdev-record
-
-INSTALL_EXEC_HOOKS += umockdev-record-install-hook
-endif
+DISTCLEANFILES += \
+	$(src_umockdev_run_SOURCES:.vala=.c)		\
+	$(src_umockdev_record_SOURCES:.vala=.c)		\
+	$(srcdir)/src_umockdev_run_vala.stamp		\
+	$(srcdir)/src_umockdev_record_vala.stamp	\
+	$(NULL)
 
 # -------------------------------------------------------------
 # tests
