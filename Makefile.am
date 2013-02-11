@@ -173,8 +173,8 @@ src_umockdev_record_VALAFLAGS =		\
 	$(NULL)
 
 DISTCLEANFILES += \
-	$(src_umockdev_run_SOURCES:.vala=.c)		\
-	$(src_umockdev_record_SOURCES:.vala=.c)		\
+	$(srcdir)/umockdev-run.c			\
+	$(srcdir)/umockdev-record.c			\
 	$(srcdir)/src_umockdev_run_vala.stamp		\
 	$(srcdir)/src_umockdev_record_vala.stamp	\
 	$(NULL)
@@ -245,7 +245,7 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	$(NULL)
 
 DISTCLEANFILES += \
-	$(test_umockdev_vala_SOURCES:.vala=.c)	\
+	tests/test-umockdev-vala.c	\
 	$(srcdir)/tests_test_umockdev_vala_vala.stamp	\
 	$(NULL)
 
