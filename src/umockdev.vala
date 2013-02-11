@@ -68,9 +68,12 @@ public class Testbed: GLib.Object {
     }
 
     /**
-     * Get the root directory for @testbed.
+     * umockdev_testbed_get_root_dir:
+     * @self: A #UMockdevTestbed.
+     * 
+     * Get the root directory for the testbed.
      *
-     * Returns: The root directory for @testbed.
+     * Returns: The testbed's root directory.
      */
     public string get_root_dir()
     {
@@ -78,9 +81,12 @@ public class Testbed: GLib.Object {
     }
 
     /**
-     * Get the sysfs directory for @testbed.
+     * umockdev_testbed_get_sys_dir:
+     * @self: A #UMockdevTestbed.
+     * 
+     * Get the sysfs directory for the testbed.
      *
-     * Returns: The sysfs directory for @testbed.
+     * Returns: The testbed's sysfs directory.
      */
     public string get_sys_dir()
     {
@@ -159,23 +165,24 @@ public class Testbed: GLib.Object {
 
 
     /**
-     * @testbed: A #UMockdevTestbed.
+     * umockdev_testbed_add_devicev:
+     * @self: A #UMockdevTestbed.
      * @subsystem: The subsystem name, e. g. "usb"
      * @name: The device name; arbitrary, but needs to be unique within the testbed
      * @parent: (allow-none): device path of the parent device. Use %NULL for a
      *          top-level device.
-     * @attributes: (array zero-terminated=1) (transfer none):
+     * @attributes: (array zero-terminated=1):
      *              A list of device sysfs attributes, alternating names and
-     *              values, terminated with NULL:
+     *              values, terminated with %NULL:
      *              { "key1", "value1", "key2", "value2", ..., NULL }
-     * @properties: (array zero-terminated=1) (transfer none):
+     * @properties: (array zero-terminated=1):
      *              A list of device udev properties; same format as @attributes
      *
      * This method is mostly meant for language bindings (where it is named
      * umockdev_testbed_add_device()). For C programs it is usually more convenient to
      * use umockdev_testbed_add_device().
      *
-     * Add a new device to the @testbed. A Linux kernel device always has a
+     * Add a new device to the testbed. A Linux kernel device always has a
      * subsystem (such as "usb" or "pci"), and a device name. The test bed only
      * builds a very simple sysfs structure without nested namespaces, so it
      * requires device names to be unique. Some gudev client programs might make
@@ -185,8 +192,7 @@ public class Testbed: GLib.Object {
      * possible to change them later on with umockdev_testbed_set_attribute() and
      * umockdev_testbed_set_property().
      *
-     * Returns: (transfer full): The sysfs path for the newly created device. Free
-     *          with g_free().
+     * Returns: The sysfs path for the newly created device. Free with g_free().
      *
      * Rename to: umockdev_testbed_add_device
      */
@@ -253,6 +259,36 @@ public class Testbed: GLib.Object {
         return dev_path;
     }
 
+    /**
+     * umockdev_testbed_add_device: (skip)
+     * @self: A #UMockdevTestbed.
+     * @subsystem: The subsystem name, e. g. "usb"
+     * @name: The device name; arbitrary, but needs to be unique within the testbed
+     * @parent: (allow-none): device path of the parent device. Use %NULL for a
+     *          top-level device.
+     * @...: Arbitrarily many pairs of sysfs attributes (alternating names and
+     *       values), terminated by %NULL, followed by arbitrarily many pairs of udev
+     *       properties, terminated by another %NULL.
+     *
+     * Add a new device to the testbed. A Linux kernel device always has a
+     * subsystem (such as "usb" or "pci"), and a device name. The test bed only
+     * builds a very simple sysfs structure without nested namespaces, so it
+     * requires device names to be unique. Some gudev client programs might make
+     * assumptions about the name (e. g. a SCSI disk block device should be called
+     * sdaN). A device also has an arbitrary number of sysfs attributes and udev
+     * properties; usually you should specify them upon creation, but it is also
+     * possible to change them later on with umockdev_testbed_set_attribute() and
+     * umockdev_testbed_set_property().
+     *
+     * Example:
+     *   |[
+     *   umockdev_testbed_add_device (testbed, "usb", "dev1", NULL,
+     *                              "idVendor", "0815", "idProduct", "AFFE", NULL,
+     *                              "ID_MODEL", "KoolGadget", NULL);
+     *   ]|
+     *
+     * Returns: The sysfs path for the newly created device. Free with g_free().
+     */
     public string? add_device(string subsystem, string name, string? parent, ...)
     {
         string[] attributes = {};
@@ -280,7 +316,10 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_add_from_string:
+     * @self: A #UMockdevTestbed.
      * @data: Description of the device(s) as generated with umockdev-record
+     * @error: return location for a GError, or %NULL
      *
      * Add a set of devices to the testbed from a textual description. This reads
      * the format generated by the umockdev-record tool.
@@ -334,6 +373,8 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_uevent:
+     * @self: A #UMockdevTestbed.
      * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
      * @action: "add", "remove", or "change"
      *
@@ -351,7 +392,18 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_load_ioctl:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) for which to load the ioctl record.
+     * @recordfile: Path of the ioctl record file.
+     * @error: return location for a GError, or %NULL
      *
+     * Load an ioctl record file for a particular device into the testbed.
+     *
+     * ioctl records can be created with umockdev-record --ioctl.
+     *
+     * Returns: %TRUE on success, %FALSE if the data is invalid and an error
+     *          occurred.
      */
     public bool load_ioctl (string dev, string recordfile) throws FileError
     {
@@ -461,11 +513,12 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_record_parse_line:
      * @data: String to parse
      * @type: Pointer to a gchar which will get the line type (one of P, N,
      *        S, E, or H)
      * @key:  Pointer to a string which will get the key name; this will be
-     *        set to NULL for line types which do not have a key (P, N, S). You
+     *        set to %NULL for line types which do not have a key (P, N, S). You
      *        need to free this with g_free().
      * @value: Pointer to a string which will get the value. You need to
      *         free this with g_free().
@@ -515,9 +568,7 @@ public class Testbed: GLib.Object {
 }
 
 
-/**
- * Recursively remove a directory and all its contents.
- */
+// Recursively remove a directory and all its contents.
 private static void
 remove_dir (string path)
 {
@@ -583,10 +634,6 @@ decode_hex (string data) throws UMockdev.Error
     return bin;
 }
 
-/**
- * @PARSE: Syntax error in device description string or file
- * @VALUE: Missing or wrong data in device description string or file
- */
 public errordomain Error {
    PARSE,
    VALUE,

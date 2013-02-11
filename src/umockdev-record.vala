@@ -67,9 +67,7 @@ all_devices ()
     return devs.data;
 }
 
-/**
- * If dev is a block or character device, convert it to a sysfs path.
- */
+// If dev is a block or character device, convert it to a sysfs path.
 static string
 resolve (string dev)
 {
