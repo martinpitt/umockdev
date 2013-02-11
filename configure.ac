@@ -84,5 +84,5 @@ if test x$PYTHON != x; then
   AC_MSG_RESULT([  Python:				${PYTHON}])
 else
   AC_MSG_RESULT([
-  WARNING! No Python interpreter found. Some tools and tests are not available.])
+  WARNING! No Python interpreter found. Some tests cannot be run.])
 fi
