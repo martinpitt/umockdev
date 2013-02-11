@@ -27,6 +27,11 @@
 
 #include "ioctl_tree.h"
 
+
+#if !defined(GLIB_VERSION_2_36)
+#include <glib-object.h>
+#endif
+
 /* test ioctl data */
 const struct usbdevfs_connectinfo ci = { 11, 0 };
 const struct usbdevfs_connectinfo ci2 = { 12, 0 };
