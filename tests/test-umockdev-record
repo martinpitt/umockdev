@@ -18,6 +18,7 @@ __author__ = 'Martin Pitt <martin.pitt@ubuntu.com>'
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program; If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import os.path
 import sys
 import subprocess
@@ -26,7 +27,7 @@ import tempfile
 
 from gi.repository import UMockdev
 
-rootdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+rootdir = os.environ.get('TOP_BUILDDIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 umockdev_record_path = os.path.join(rootdir, 'src', 'umockdev-record')
 
 def call(args):
