@@ -131,6 +131,12 @@ libumockdev_la_LDFLAGS =	\
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = UMockdev-1.0.typelib
 
+girdir = $(datadir)/gir-1.0
+gir_DATA = UMockdev-1.0.gir
+
+vapidir = $(datadir)/vala/vapi
+vapi_DATA = src/umockdev-1.0.vapi
+
 # no way to insert "Rename to:" into annotations, so hack it
 UMockdev-1.0-hacked.gir: $(srcdir)/UMockdev-1.0.gir
 	sed '/name="add_devicev"/ s/icev">$$/icev" shadows="add_device">/' $< > $@
