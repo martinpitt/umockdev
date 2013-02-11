@@ -128,6 +128,7 @@ A: dev1color=green''')
         self.assertTrue('UMOCKDEV_DIR cannot be used' in err, err)
 
 
+@unittest.skipUnless(os.path.isdir('/sys/devices/system'), 'no /sys')
 class System(unittest.TestCase):
     def test_all(self):
         '''system /sys: umockdev-record --all works and result loads back'''
