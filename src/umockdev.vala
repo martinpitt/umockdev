@@ -507,7 +507,7 @@ public class Testbed: GLib.Object {
 
         /* skip over multiple blank lines */
         while (cur_data[0] != '\0' && cur_data[0] == '\n')
-            cur_data = cur_data.substring(1); /* TODO: next_char()? */
+            cur_data = cur_data.next_char();
 
         return cur_data;
     }
