@@ -8,5 +8,5 @@ Description: Mock hardware devices for creating unit tests
 Version: @VERSION@
 Requires: glib-2.0, gobject-2.0
 Libs: -L${libdir} -lumockdev
-Cflags: -I${includedir}/umockdev
+Cflags: -I${includedir}/umockdev-1.0
 
