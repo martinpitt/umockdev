@@ -87,10 +87,16 @@ resolve (string dev)
     else
         link = dev;
 
-    if (!FileUtils.test(Path.build_filename(link, "uevent"), FileTest.EXISTS))
-        exit_error("Invalid device %s, has no uevent attribute", link);
+    string real = Posix.fixed_realpath(link);
+    // FIXME: does not work under testbed for test suite
+    //assert(real != null);
+    if (real == null)
+        real = link;
 
-    return link;
+    if (!FileUtils.test(Path.build_filename(real, "uevent"), FileTest.EXISTS))
+        exit_error("Invalid device %s, has no uevent attribute", real);
+
+    return real;
 }
 
 static string?
