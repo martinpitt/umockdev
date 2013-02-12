@@ -30,7 +30,7 @@ CLEANFILES =
 DISTCLEANFILES =
 TESTS =
 
-EXTRA_DIST = COPYING
+EXTRA_DIST = COPYING README.rst
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(srcdir)/src/umockdev-wrapper
 
@@ -260,10 +260,24 @@ TESTS += tests/test-umockdev-vala
 endif
 
 # -------------------------------------------------------------
+# documentation
 if ENABLE_GTK_DOC
 SUBDIRS += \
         docs/reference
 endif
+
+doc_DATA = \
+	 README.rst	\
+	 $(NULL)
+
+EXAMPLES = \
+	docs/examples/battery.c 	\
+	docs/examples/battery.py	\
+	$(NULL)
+
+examplesdir = $(docdir)/examples
+examples_DATA = $(EXAMPLES)
+EXTRA_DIST += $(EXAMPLES)
 
 
 install-exec-hook: $(INSTALL_EXEC_HOOKS)
