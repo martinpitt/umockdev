@@ -145,7 +145,7 @@ UMockdev-1.0.typelib: UMockdev-1.0-hacked.gir
 	g-ir-compiler -l libumockdev.so -o $@ $<
 
 pkgconfiglib_DATA += src/umockdev-1.0.pc
-EXTRA_DIST += src/umockdev-1.0.pc.in UMockdev-1.0.gir
+EXTRA_DIST += src/umockdev-1.0.pc.in src/umockdev-1.0.vapi UMockdev-1.0.gir
 
 CLEANFILES += UMockdev-1.0.typelib src/umockdev-1.0.pc UMockdev-1.0-hacked.gir
 DISTCLEANFILES += src/umockdev.h src/umockdev.c src/umockdev-1.0.vapi UMockdev-1.0.gir 
