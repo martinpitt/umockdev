@@ -76,6 +76,68 @@ static void *get_libc_func(const char *f)
 	return fp;
 }
 
+/********************************
+ *
+ * fd -> pointer map
+ *
+ ********************************/
+
+#define FD_MAP_MAX 50
+typedef struct {
+	int set[FD_MAP_MAX];
+	int fd[FD_MAP_MAX];
+	const void* data[FD_MAP_MAX];
+} fd_map;
+
+static void
+fd_map_add (fd_map *map, int fd, const void* data)
+{
+	size_t i;
+	for (i = 0; i < sizeof(map->set); ++i) {
+		if (!map->set[i]) {
+			map->set[i] = 1;
+			map->fd[i] = fd;
+			map->data[i] = data;
+			return;
+		}
+	}
+
+	fprintf(stderr, "libumockdev-preload fd_map_add(): overflow");
+	abort();
+}
+
+static void
+fd_map_remove (fd_map *map, int fd)
+{
+	size_t i;
+	for (i = 0; i < sizeof(map->set); ++i) {
+		if (map->set[i] && map->fd[i] == fd) {
+			map->set[i] = 0;
+			return;
+		}
+	}
+
+	fprintf(stderr, "libumockdev-preload fd_map_remove(): did not find fd %i", fd);
+	abort();
+}
+
+static int
+fd_map_get (fd_map *map, int fd, const void** data_out)
+{
+	size_t i;
+	for (i = 0; i < sizeof(map->set); ++i) {
+		if (map->set[i] && map->fd[i] == fd) {
+			if (data_out != NULL)
+				*data_out = map->data[i];
+			return 1;
+		}
+	}
+
+	if (data_out != NULL)
+		*data_out = NULL;
+	return 0;
+}
+
 
 /********************************
  *
@@ -85,48 +147,7 @@ static void *get_libc_func(const char *f)
 
 /* keep track of the last socket fds wrapped by socket(), so that we can
  * identify them in the other functions */
-static int wrapped_sockets[] = {-1, -1, -1, -1, -1, -1, -1};
-
-/* mark fd as wrapped */
-static void mark_wrapped_socket (int fd)
-{
-	unsigned i;
-	for (i = 0; i < sizeof(wrapped_sockets); ++i) {
-		if (wrapped_sockets[i] < 0) {
-			wrapped_sockets[i] = fd;
-			return;
-		}
-	}
-
-	printf("testbed mark_wrapped_socket overflow");
-	abort();
-}
-
-static void unmark_wrapped_socket (int fd)
-{
-	unsigned i;
-	for (i = 0; i < sizeof(wrapped_sockets); ++i) {
-		if (wrapped_sockets[i] == fd) {
-			wrapped_sockets[i] = -1;
-			return;
-		}
-	}
-
-	printf("testbed unmark_wrapped_socket %i not found", fd);
-	abort();
-}
-
-static int is_wrapped_socket (int fd)
-{
-	unsigned i;
-	if (fd < 0)
-		return 0;
-
-	for (i = 0; i < sizeof(wrapped_sockets); ++i)
-		if (wrapped_sockets[i] == fd)
-			return 1;
-	return 0;
-}
+static fd_map wrapped_sockets;
 
 int socket(int domain, int type, int protocol)
 {
@@ -136,7 +157,7 @@ int socket(int domain, int type, int protocol)
 
 	if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT) {
 		fd = _socket(AF_UNIX, type, 0);
-		mark_wrapped_socket(fd);
+		fd_map_add (&wrapped_sockets, fd, NULL);
 		/* printf("testbed wrapped socket: intercepting netlink, fd %i\n", fd); */
 		return fd;
 	}
@@ -152,7 +173,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	size_t path_len;
 
 	_bind = get_libc_func("bind");
-	if (is_wrapped_socket(sockfd) && path != NULL) {
+	if (fd_map_get (&wrapped_sockets, sockfd, NULL) && path != NULL) {
 		/* printf("testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd); */
 		sa.sun_family = AF_UNIX;
 
@@ -177,7 +198,7 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 	_recvmsg = get_libc_func("recvmsg");
 	ret = _recvmsg(sockfd, msg, flags);
 
-	if (is_wrapped_socket (sockfd) && ret > 0) {
+	if (fd_map_get (&wrapped_sockets, sockfd, NULL) && ret > 0) {
 		/*printf("testbed wrapped recvmsg: netlink socket fd %i, got %zi bytes\n", sockfd, ret); */
 
                 /* fake sender to be netlink */
@@ -519,9 +540,9 @@ int close(int fd)
 {
 	static int (*_close)(int);
 	_close = get_libc_func("close");
-	if (is_wrapped_socket(fd)) {
+	if (fd_map_get (&wrapped_sockets, fd, NULL)) {
 		/* printf("testbed wrapped close: closing netlink socket fd %i\n", fd); */
-		unmark_wrapped_socket(fd);
+		fd_map_remove (&wrapped_sockets, fd);
 	}
 	if (fd == ioctl_record_fd) {
 		ioctl_record_close();
