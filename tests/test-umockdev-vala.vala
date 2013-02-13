@@ -102,11 +102,18 @@ E: SUBSYSTEM=usb
   // add simple ioctl tree
   string test_tree = """USBDEVFS_CONNECTINFO 11 0
 USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
+USBDEVFS_CONNECTINFO 12 1
 """;
 
   string tmppath;
   int fd = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+
+  // ioctl emulation does not get in the way of non-/dev fds
+  int i = 1;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, -1);
+  assert_cmpint (Posix.errno, Op.EQ, Posix.ENOTTY);
+
   Posix.close (fd);
   tb.load_ioctl ("/dev/001", tmppath);
   FileUtils.unlink (tmppath);
@@ -115,7 +122,6 @@ USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
   assert_cmpint (fd, Op.GE, 0);
 
   // static ioctl
-  int i = 1;
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
   assert_cmpint (Posix.errno, Op.EQ, 0);
 
@@ -143,6 +149,26 @@ USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
   assert_cmpuint (urb.buffer[1], Op.EQ, 0x02);
   assert_cmpuint (urb.buffer[2], Op.EQ, 0xAA);
   assert_cmpuint (urb.buffer[3], Op.EQ, 0xFF);
+
+  // open the device a second time
+  int fd2 = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd2, Op.GE, 0);
+
+  // exercise ioctl on fd2, should iterate from beginning
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
+
+  // should still work on first fd, and continue with original tree state
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 12);
+  assert_cmpuint (ci.slow, Op.EQ, 1);
 
   Posix.close (fd);
 }

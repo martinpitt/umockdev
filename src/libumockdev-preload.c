@@ -55,7 +55,6 @@
 int ioctl_record_fd = -1;
 FILE* ioctl_record_log;
 ioctl_tree* ioctl_record;
-ioctl_tree* ioctl_last = NULL;
 
 
 /********************************
@@ -327,18 +326,27 @@ record_ioctl (unsigned long request, void *arg)
  *
  ********************************/
 
-static int ioctl_wrapped_fd = -1;
+static fd_map ioctl_wrapped_fds;
+
+struct ioctl_fd_info {
+	ioctl_tree *tree;
+	ioctl_tree *last;
+};
 
 static void
 ioctl_wrap_open(int fd, const char* dev_path)
 {
 	FILE* f;
 	static char ioctl_path[PATH_MAX];
+	struct ioctl_fd_info* fdinfo;
 
 	if (strncmp (dev_path, "/dev/", 5) != 0)
 		return;
 
-	ioctl_wrapped_fd = fd;
+	fdinfo = malloc (sizeof (struct ioctl_fd_info));
+	fdinfo->tree = NULL;
+	fdinfo->last = NULL;
+	fd_map_add (&ioctl_wrapped_fds, fd, fdinfo);
 
 	/* check if we have an ioctl tree for this*/
 	snprintf (ioctl_path, sizeof (ioctl_path), "%s/ioctl/%s",
@@ -348,25 +356,24 @@ ioctl_wrap_open(int fd, const char* dev_path)
 	if (f == NULL)
 		return;
 
-	/* TODO: Support multiple different trees at the same time */
-	/* TODO: free the old one once we can do that */
-	ioctl_record = ioctl_tree_read (f);
+	fdinfo->tree = ioctl_tree_read (f);
 	fclose (f);
-	assert (ioctl_record != NULL);
-
-	ioctl_last = NULL;
+	assert (fdinfo->tree != NULL);
 }
 
 static int
-ioctl_emulate(unsigned long request, void *arg)
+ioctl_emulate(int fd, unsigned long request, void *arg)
 {
 	ioctl_tree *ret;
 	int ioctl_result = -2;
+	struct ioctl_fd_info* fdinfo;
 
-	/* check our ioctl tree */
-	ret = ioctl_tree_execute (ioctl_record, ioctl_last, request, arg, &ioctl_result);
-	if (ret != NULL)
-		ioctl_last = ret;
+	if (fd_map_get (&ioctl_wrapped_fds, fd, (const void**) &fdinfo)) {
+		/* check our ioctl tree */
+		ret = ioctl_tree_execute (fdinfo->tree, fdinfo->last, request, arg, &ioctl_result);
+		if (ret != NULL)
+			fdinfo->last = ret;
+	}
 
 	/* -2 means "unhandled" */
 	return ioctl_result;
@@ -385,11 +392,9 @@ ioctl(int d, unsigned long request, void *arg)
 	static int (*_fn)(int, unsigned long, void*);
 	int result;
 
-	if (d == ioctl_wrapped_fd) {
-		result = ioctl_emulate(request, arg);
-		if (result != -2)
-			return result;
-	}
+	result = ioctl_emulate(d, request, arg);
+	if (result != -2)
+		return result;
 
 	/* call original ioctl */
 	_fn = get_libc_func("ioctl");
@@ -547,17 +552,23 @@ WRAP_OPEN(,64);
 int close(int fd)
 {
 	static int (*_close)(int);
+	struct ioctl_fd_info* fdinfo;
+
 	_close = get_libc_func("close");
 	if (fd_map_get (&wrapped_sockets, fd, NULL)) {
 		DBG("testbed wrapped close: closing netlink socket fd %i\n", fd);
 		fd_map_remove (&wrapped_sockets, fd);
 	}
+	if (fd_map_get (&ioctl_wrapped_fds, fd, (const void**) &fdinfo)) {
+		DBG("testbed wrapped close: closing ioctl socket fd %i\n", fd);
+		fd_map_remove (&ioctl_wrapped_fds, fd);
+		/* TODO: free fdinfo->tree once we can do that */
+		free (fdinfo);
+	}
 	if (fd == ioctl_record_fd) {
 		ioctl_record_close();
 		ioctl_record_fd = -1;
 	}
-	if (fd == ioctl_wrapped_fd)
-		ioctl_wrapped_fd = -1;
 
 	return _close(fd);
 }
