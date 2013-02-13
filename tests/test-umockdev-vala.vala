@@ -28,7 +28,7 @@ t_testbed_empty ()
   var enumerator = new GUdev.Enumerator (new GUdev.Client(null));
   var devices = enumerator.execute ();
 
-  assert_cmpuint (devices.length(), OperatorType.EQUAL, 0);
+  assert_cmpuint (devices.length(), Op.EQ, 0);
 }
 
 void
@@ -41,24 +41,24 @@ t_testbed_add_device ()
                                    null,
                                    { "idVendor", "0815", "idProduct", "AFFE" },
                                    { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1" });
-  assert_cmpstr (syspath, OperatorType.EQUAL, "/sys/devices/extkeyboard1");
+  assert_cmpstr (syspath, Op.EQ, "/sys/devices/extkeyboard1");
 
   var enumerator = new GUdev.Enumerator (new GUdev.Client(null));
   var devices = enumerator.execute ();
-  assert_cmpuint (devices.length(), OperatorType.EQUAL, 1);
+  assert_cmpuint (devices.length(), Op.EQ, 1);
 
   GUdev.Device device = devices.nth_data(0);
-  assert_cmpstr (device.get_name (), OperatorType.EQUAL, "extkeyboard1");
-  assert_cmpstr (device.get_sysfs_path (), OperatorType.EQUAL, "/sys/devices/extkeyboard1");
-  assert_cmpstr (device.get_subsystem (), OperatorType.EQUAL, "usb");
-  assert_cmpstr (device.get_sysfs_attr ("idVendor"), OperatorType.EQUAL, "0815");
-  assert_cmpstr (device.get_sysfs_attr ("idProduct"), OperatorType.EQUAL, "AFFE");
-  assert_cmpstr (device.get_sysfs_attr ("noSuchAttr"), OperatorType.EQUAL, null);
-  assert_cmpstr (device.get_property ("DEVPATH"), OperatorType.EQUAL, "/devices/extkeyboard1");
-  assert_cmpstr (device.get_property ("SUBSYSTEM"), OperatorType.EQUAL, "usb");
-  assert_cmpstr (device.get_property ("ID_INPUT"), OperatorType.EQUAL, "1");
-  assert_cmpstr (device.get_property ("ID_INPUT_KEYBOARD"), OperatorType.EQUAL, "1");
-  assert_cmpstr (device.get_property ("NO_SUCH_PROP"), OperatorType.EQUAL, null);
+  assert_cmpstr (device.get_name (), Op.EQ, "extkeyboard1");
+  assert_cmpstr (device.get_sysfs_path (), Op.EQ, "/sys/devices/extkeyboard1");
+  assert_cmpstr (device.get_subsystem (), Op.EQ, "usb");
+  assert_cmpstr (device.get_sysfs_attr ("idVendor"), Op.EQ, "0815");
+  assert_cmpstr (device.get_sysfs_attr ("idProduct"), Op.EQ, "AFFE");
+  assert_cmpstr (device.get_sysfs_attr ("noSuchAttr"), Op.EQ, null);
+  assert_cmpstr (device.get_property ("DEVPATH"), Op.EQ, "/devices/extkeyboard1");
+  assert_cmpstr (device.get_property ("SUBSYSTEM"), Op.EQ, "usb");
+  assert_cmpstr (device.get_property ("ID_INPUT"), Op.EQ, "1");
+  assert_cmpstr (device.get_property ("ID_INPUT_KEYBOARD"), Op.EQ, "1");
+  assert_cmpstr (device.get_property ("NO_SUCH_PROP"), Op.EQ, null);
 }
 
 void
@@ -72,19 +72,19 @@ E: SUBSYSTEM=usb
 """);
 
   int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd, OperatorType.GE, 0);
+  assert_cmpint (fd, Op.GE, 0);
 
   int i = 1;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), OperatorType.EQUAL, 0);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_GETDRIVER, ref i), OperatorType.EQUAL, -1);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, Posix.ENODATA);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_GETDRIVER, ref i), Op.EQ, -1);
+  assert_cmpint (Posix.errno, Op.EQ, Posix.ENODATA);
   Posix.errno = 0;
 
   /* no ioctl tree loaded */
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), OperatorType.EQUAL, -1);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, Posix.ENOTTY);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, -1);
+  assert_cmpint (Posix.errno, Op.EQ, Posix.ENOTTY);
   errno = 0;
 
   Posix.close (fd);
@@ -106,43 +106,43 @@ USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
 
   string tmppath;
   int fd = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
-  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), OperatorType.GT, 20);
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
   Posix.close (fd);
   tb.load_ioctl ("/dev/001", tmppath);
   FileUtils.unlink (tmppath);
 
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd, OperatorType.GE, 0);
+  assert_cmpint (fd, Op.GE, 0);
 
   // static ioctl
   int i = 1;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), OperatorType.EQUAL, 0);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
 
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), OperatorType.EQUAL, 0);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
-  assert_cmpuint (ci.devnum, OperatorType.EQUAL, 11);
-  assert_cmpuint (ci.slow, OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
 
   /* loaded ioctl: URB */
   var urb_buffer = new uint8[4];
   Ioctl.usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), OperatorType.EQUAL, 0);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
-  assert_cmpuint (urb.status, OperatorType.EQUAL, 0);
-  assert_cmpint (urb_buffer[0], OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (urb.status, Op.EQ, 0);
+  assert_cmpint (urb_buffer[0], Op.EQ, 0);
 
   Ioctl.usbdevfs_urb* urb_reap = null;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), OperatorType.EQUAL, 0);
-  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
   assert (urb_reap == &urb);
-  assert_cmpint (urb.status, OperatorType.EQUAL, -1);
-  assert_cmpuint (urb.buffer[0], OperatorType.EQUAL, 0x99);
-  assert_cmpuint (urb.buffer[1], OperatorType.EQUAL, 0x02);
-  assert_cmpuint (urb.buffer[2], OperatorType.EQUAL, 0xAA);
-  assert_cmpuint (urb.buffer[3], OperatorType.EQUAL, 0xFF);
+  assert_cmpint (urb.status, Op.EQ, -1);
+  assert_cmpuint (urb.buffer[0], Op.EQ, 0x99);
+  assert_cmpuint (urb.buffer[1], Op.EQ, 0x02);
+  assert_cmpuint (urb.buffer[2], Op.EQ, 0xAA);
+  assert_cmpuint (urb.buffer[3], Op.EQ, 0xFF);
 
   Posix.close (fd);
 }

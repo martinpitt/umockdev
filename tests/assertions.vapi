@@ -1,8 +1,8 @@
 [CCode (cprefix = "G", lower_case_cprefix = "g_", cheader_filename = "glib.h")]
 namespace Assertions {
-  public enum OperatorType {
+  public enum Op {
     [CCode (cname = "==")]
-    EQUAL,
+    EQ,
     [CCode (cname = "!=")]
     NE,
     [CCode (cname = "<")]
@@ -15,9 +15,9 @@ namespace Assertions {
     GE
   }
 
-  public void assert_cmpstr (string? s1, OperatorType op, string? s2);
-  public void assert_cmpint (int n1, OperatorType op, int n2);
-  public void assert_cmpuint (uint n1, OperatorType op, uint n2);
-  public void assert_cmphex (uint n1, OperatorType op, uint n2);
-  public void assert_cmpfloat (float n1, OperatorType op, float n2);
+  public void assert_cmpstr (string? s1, Op op, string? s2);
+  public void assert_cmpint (int n1, Op op, int n2);
+  public void assert_cmpuint (uint n1, Op op, uint n2);
+  public void assert_cmphex (uint n1, Op op, uint n2);
+  public void assert_cmpfloat (float n1, Op op, float n2);
 }
