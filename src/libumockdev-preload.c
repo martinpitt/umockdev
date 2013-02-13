@@ -423,9 +423,9 @@ static const char *trap_path(const char *path)
 	if (prefix == NULL)
 		return path;
 
-	if (strncmp(path, "/dev/", 5) == 0)
+	if (strncmp(path, "/dev/", 5) == 0 || strcmp(path, "/dev") == 0)
 		check_exist = 1;
-	else if (strncmp(path, "/sys/", 5) != 0)
+	else if (strncmp(path, "/sys/", 5) != 0 && strcmp(path, "/sys") != 0)
 		return path;
 
 	path_len = strlen(path);

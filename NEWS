@@ -1,6 +1,7 @@
 0.2 (UNRELEASED)
 ------------------
 - umockdev-run: Fix running of child program to keep stdin.
+- preload: Fix resolution of "/dev" and "/sys"
 
 0.1 (2013-02-12)
 ----------------
