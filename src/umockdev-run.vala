@@ -79,14 +79,7 @@ main (string[] args)
         }
     }
 
-    int status;
-    try {
-        Process.spawn_sync (null, opt_program, null, SpawnFlags.SEARCH_PATH,
-                            null, null, null, out status);
-    } catch (SpawnError e) {
-            stderr.printf ("Error: %s\n", e.message);
-            Process.exit (1);
-    }
-
-    return status;
+    Posix.execvp(opt_program[0], opt_program);
+    stderr.printf ("Cannot run program: %s\n", strerror (errno));
+    return 1;
 }
