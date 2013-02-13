@@ -4,15 +4,15 @@ namespace Assertions {
     [CCode (cname = "==")]
     EQUAL,
     [CCode (cname = "!=")]
-    NOT_EQUAL,
+    NE,
     [CCode (cname = "<")]
-    LESS_THAN,
+    LT,
     [CCode (cname = ">")]
-    GREATER_THAN,
+    GT,
     [CCode (cname = "<=")]
-    LESS_OR_EQUAL,
+    LE,
     [CCode (cname = ">=")]
-    GREATER_OR_EQUAL
+    GE
   }
 
   public void assert_cmpstr (string? s1, OperatorType op, string? s2);

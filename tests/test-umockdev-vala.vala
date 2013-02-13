@@ -61,12 +61,102 @@ t_testbed_add_device ()
   assert_cmpstr (device.get_property ("NO_SUCH_PROP"), OperatorType.EQUAL, null);
 }
 
+void
+t_usbfs_ioctl_static ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  tb.add_from_string ("""P: /devices/mycam
+N: 001
+E: SUBSYSTEM=usb
+""");
+
+  int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, OperatorType.GE, 0);
+
+  int i = 1;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_GETDRIVER, ref i), OperatorType.EQUAL, -1);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, Posix.ENODATA);
+  Posix.errno = 0;
+
+  /* no ioctl tree loaded */
+  var ci = Ioctl.usbdevfs_connectinfo();
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), OperatorType.EQUAL, -1);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, Posix.ENOTTY);
+  errno = 0;
+
+  Posix.close (fd);
+}
+
+void
+t_usbfs_ioctl_tree ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb.add_from_string ("""P: /devices/mycam
+N: 001
+E: SUBSYSTEM=usb
+""");
+
+  // add simple ioctl tree
+  string test_tree = """USBDEVFS_CONNECTINFO 11 0
+USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
+""";
+
+  string tmppath;
+  int fd = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), OperatorType.GT, 20);
+  Posix.close (fd);
+  tb.load_ioctl ("/dev/001", tmppath);
+  FileUtils.unlink (tmppath);
+
+  fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, OperatorType.GE, 0);
+
+  // static ioctl
+  int i = 1;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+
+  // loaded ioctl
+  var ci = Ioctl.usbdevfs_connectinfo();
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+  assert_cmpuint (ci.devnum, OperatorType.EQUAL, 11);
+  assert_cmpuint (ci.slow, OperatorType.EQUAL, 0);
+
+  /* loaded ioctl: URB */
+  var urb_buffer = new uint8[4];
+  Ioctl.usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+  assert_cmpuint (urb.status, OperatorType.EQUAL, 0);
+  assert_cmpint (urb_buffer[0], OperatorType.EQUAL, 0);
+
+  Ioctl.usbdevfs_urb* urb_reap = null;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), OperatorType.EQUAL, 0);
+  assert_cmpint (Posix.errno, OperatorType.EQUAL, 0);
+  assert (urb_reap == &urb);
+  assert_cmpint (urb.status, OperatorType.EQUAL, -1);
+  assert_cmpuint (urb.buffer[0], OperatorType.EQUAL, 0x99);
+  assert_cmpuint (urb.buffer[1], OperatorType.EQUAL, 0x02);
+  assert_cmpuint (urb.buffer[2], OperatorType.EQUAL, 0xAA);
+  assert_cmpuint (urb.buffer[3], OperatorType.EQUAL, 0xFF);
+
+  Posix.close (fd);
+}
 
 int
 main (string[] args)
 {
   Test.init (ref args);
+  /* tests for mocking /sys */
   Test.add_func ("/umockdev-testbed-vala/empty", t_testbed_empty);
   Test.add_func ("/umockdev-testbed-vala/add_devicev", t_testbed_add_device);
+
+  /* tests for mocking ioctls */
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree", t_usbfs_ioctl_tree);
   return Test.run();
 }
