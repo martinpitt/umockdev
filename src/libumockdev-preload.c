@@ -43,6 +43,13 @@
 
 #include "ioctl_tree.h"
 
+#ifdef DEBUG
+#   define DBG(...) fprintf(stderr, __VA_ARGS__)
+#   define IFDBG(x) x
+#else
+#   define DBG(...) {}
+#   define IFDBG(x) {}
+#endif
 
 /* global state for recording ioctls */
 int ioctl_record_fd = -1;
@@ -158,7 +165,7 @@ int socket(int domain, int type, int protocol)
 	if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT) {
 		fd = _socket(AF_UNIX, type, 0);
 		fd_map_add (&wrapped_sockets, fd, NULL);
-		/* printf("testbed wrapped socket: intercepting netlink, fd %i\n", fd); */
+		DBG ("testbed wrapped socket: intercepting netlink, fd %i\n", fd);
 		return fd;
 	}
 
@@ -174,7 +181,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
 	_bind = get_libc_func("bind");
 	if (fd_map_get (&wrapped_sockets, sockfd, NULL) && path != NULL) {
-		/* printf("testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd); */
+		DBG("testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd);
 		sa.sun_family = AF_UNIX;
 
 		path_len = strlen(path);
@@ -199,7 +206,7 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 	ret = _recvmsg(sockfd, msg, flags);
 
 	if (fd_map_get (&wrapped_sockets, sockfd, NULL) && ret > 0) {
-		/*printf("testbed wrapped recvmsg: netlink socket fd %i, got %zi bytes\n", sockfd, ret); */
+		DBG("testbed wrapped recvmsg: netlink socket fd %i, got %zi bytes\n", sockfd, ret);
 
                 /* fake sender to be netlink */
                 sender = (struct sockaddr_nl*) msg->msg_name;
@@ -483,9 +490,9 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
 	static int (*_fn)(int ver, const char *path, struct stat ## suffix *buf);   \
 	_fn = get_libc_func(#prefix "stat" #suffix);				    \
 	p = trap_path(path);							    \
-        /* printf("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);*/	\
 	if (p == NULL)								    \
 		return -1;							    \
+        DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	    \
 	return _fn(ver, p, st);							    \
 }
 
@@ -500,6 +507,7 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 	p = trap_path(path);					    \
 	if (p == NULL)						    \
 		return -1;					    \
+        DBG("testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p);	    \
 	if (flags & O_CREAT) {					    \
 		mode_t mode;					    \
 		va_list ap;					    \
@@ -541,7 +549,7 @@ int close(int fd)
 	static int (*_close)(int);
 	_close = get_libc_func("close");
 	if (fd_map_get (&wrapped_sockets, fd, NULL)) {
-		/* printf("testbed wrapped close: closing netlink socket fd %i\n", fd); */
+		DBG("testbed wrapped close: closing netlink socket fd %i\n", fd);
 		fd_map_remove (&wrapped_sockets, fd);
 	}
 	if (fd == ioctl_record_fd) {
