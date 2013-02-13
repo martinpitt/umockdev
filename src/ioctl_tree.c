@@ -348,13 +348,19 @@ ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
                 return last;
         }
 
-        if (i == last) {
+        if (last != NULL && i == last) {
             /* we did a full circle */
             DBG ("    -> full iteration, not found\n");
             break;
         }
 
         i = ioctl_tree_next_wrap (tree, i);
+
+        if (last == NULL && i == tree) {
+            /* we did a full circle */
+            DBG ("    -> full iteration with last == NULL, not found\n");
+            break;
+        }
     }
 
     /* not found */

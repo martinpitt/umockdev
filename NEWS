@@ -2,6 +2,7 @@
 ------------------
 - umockdev-run: Fix running of child program to keep stdin.
 - preload: Fix resolution of "/dev" and "/sys"
+- ioctl_tree: Fix endless loop when the first encountered ioctl was unknown
 
 0.1 (2013-02-12)
 ----------------

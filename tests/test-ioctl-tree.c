@@ -303,6 +303,7 @@ t_iteration (void)
     assert_ci (i, &ci2);
 
     g_assert (ioctl_tree_next (i) == NULL);
+    g_assert (ioctl_tree_next_wrap (tree, NULL) == tree);
     g_assert (ioctl_tree_next_wrap (tree, i) == tree);
 }
 
@@ -412,6 +413,24 @@ t_execute (void)
     g_assert (ioctl_tree_execute (tree, last, TCGETS, NULL, &ret) == NULL);
     t_execute_check_inurb (&s_in2b, tree, &last);
     t_execute_check_inurb (&s_in2c, tree, &last);
+
+    /* URB with last == NULL */
+    last = NULL;
+    t_execute_check_outurb (&s_out1, tree, &last);
+    g_assert (last == tree->next);
+}
+
+static void
+t_execute_unknown (void)
+{
+    ioctl_tree *tree = get_test_tree ();
+    struct usbdevfs_urb unknown_urb = { 1, 9, 0, 0, "yo!", 3, 3 };
+    int ret;
+
+    /* not found with last != NULL */
+    g_assert (ioctl_tree_execute (tree, tree->next, USBDEVFS_SUBMITURB, &unknown_urb, &ret) == NULL);
+    /* not found with last == NULL */
+    g_assert (ioctl_tree_execute (tree, NULL, USBDEVFS_SUBMITURB, &unknown_urb, &ret) == NULL);
 }
 
 int
@@ -428,6 +447,7 @@ main (int argc, char **argv)
   g_test_add_func ("/umockdev-ioctl-tree/read", t_read);
   g_test_add_func ("/umockdev-ioctl-tree/iteration", t_iteration);
   g_test_add_func ("/umockdev-ioctl-tree/execute", t_execute);
+  g_test_add_func ("/umockdev-ioctl-tree/execute_unknown", t_execute_unknown);
 
   return g_test_run ();
 }
