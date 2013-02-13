@@ -170,7 +170,15 @@ USBDEVFS_CONNECTINFO 12 1
   assert_cmpuint (ci.devnum, Op.EQ, 12);
   assert_cmpuint (ci.slow, Op.EQ, 1);
 
+  // should work after closing first fd, advancing position
   Posix.close (fd);
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 12);
+  assert_cmpuint (ci.slow, Op.EQ, 1);
+  Posix.close (fd2);
 }
 
 int

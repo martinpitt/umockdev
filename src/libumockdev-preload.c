@@ -359,6 +359,7 @@ ioctl_wrap_open(int fd, const char* dev_path)
 	fdinfo->tree = ioctl_tree_read (f);
 	fclose (f);
 	assert (fdinfo->tree != NULL);
+	DBG ("ioctl_wrap_open fd %i (%s): loaded ioctl tree\n", fd, dev_path);
 }
 
 static int
@@ -393,12 +394,15 @@ ioctl(int d, unsigned long request, void *arg)
 	int result;
 
 	result = ioctl_emulate(d, request, arg);
-	if (result != -2)
+	if (result != -2) {
+		DBG ("ioctl fd %i request %lX: emulated, result %i\n", d, request, result);
 		return result;
+	}
 
 	/* call original ioctl */
 	_fn = get_libc_func("ioctl");
 	result = _fn(d, request, arg);
+	DBG ("ioctl fd %i request %lX: original, result %i\n", d, request, result);
 
 	if (result != -1 && ioctl_record_fd == d)
 		record_ioctl (request, arg);
