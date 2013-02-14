@@ -181,6 +181,44 @@ USBDEVFS_CONNECTINFO 12 1
   Posix.close (fd2);
 }
 
+void
+t_usbfs_ioctl_tree_xz ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb.add_from_string ("""P: /devices/mycam
+N: 001
+E: SUBSYSTEM=usb
+""");
+
+  // add simple ioctl tree
+  string test_tree = """USBDEVFS_CONNECTINFO 11 0
+USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
+USBDEVFS_CONNECTINFO 12 1
+""";
+
+  string tmppath;
+  Posix.close (FileUtils.open_tmp ("test_ioctl_tree.XXXXXX.xz", out tmppath));
+
+  int exit;
+  Process.spawn_command_line_sync (
+        "sh -c 'echo \"" + test_tree + "\" | xz -9c > " + tmppath + "; sync'",
+        null, null, out exit);
+  assert_cmpint (exit, Op.EQ, 0);
+  tb.load_ioctl ("/dev/001", tmppath);
+  FileUtils.unlink (tmppath);
+
+  int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, Op.GE, 0);
+
+  var ci = Ioctl.usbdevfs_connectinfo();
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
+
+  Posix.close (fd);
+}
+
 int
 main (string[] args)
 {
@@ -192,5 +230,6 @@ main (string[] args)
   /* tests for mocking ioctls */
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree", t_usbfs_ioctl_tree);
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_xz", t_usbfs_ioctl_tree_xz);
   return Test.run();
 }

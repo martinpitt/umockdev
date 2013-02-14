@@ -98,6 +98,9 @@ Command line: Record and replay PtP/MTP USB devices
   | $ umockdev-run --load mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
   | $ umockdev-run --load mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
 
+Note that if your ``*.ioctl`` files get too large for some purpose, you can
+xz-compress them.
+
 
 Development
 ===========

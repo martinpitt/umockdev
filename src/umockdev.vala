@@ -399,8 +399,9 @@ public class Testbed: GLib.Object {
      * @error: return location for a GError, or %NULL
      *
      * Load an ioctl record file for a particular device into the testbed.
-     *
      * ioctl records can be created with umockdev-record --ioctl.
+     * They can optionally be xz compressed to save space (but then are
+     * required to have an .xz file name suffix).
      *
      * Returns: %TRUE on success, %FALSE if the data is invalid and an error
      *          occurred.
@@ -409,11 +410,26 @@ public class Testbed: GLib.Object {
     {
         string dest = Path.build_filename(this.root_dir, "ioctl", dev);
         string contents;
-        if (FileUtils.get_contents(recordfile, out contents)) {
-            assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
-            return FileUtils.set_contents(dest, contents);
-        }
-        return false;
+
+        assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
+
+        if (recordfile.has_suffix (".xz")) {
+            try {
+                int exit;
+                Process.spawn_sync (null, {"xz", "-cd", recordfile}, null,
+                                    SpawnFlags.SEARCH_PATH,
+                                    null,
+                                    out contents,
+                                    null,
+                                    out exit);
+                assert (exit == 0);
+            } catch (SpawnError e) {
+                error ("Cannot call xz to decompress %s: %s", recordfile, e.message);
+            }
+        } else
+            assert (FileUtils.get_contents(recordfile, out contents));
+
+        return FileUtils.set_contents(dest, contents);
     }
 
     private string add_dev_from_string(string data) throws UMockdev.Error

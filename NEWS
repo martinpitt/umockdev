@@ -6,6 +6,7 @@
 - preload: Support opening a /dev node multiple times for ioctl emulation
   (issue #3)
 - Fix parallel build (issue #2)
+- Support xz compressed ioctl files in umockdev_testbed_load_ioctl().
 
 0.1 (2013-02-12)
 ----------------
