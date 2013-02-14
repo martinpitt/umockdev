@@ -5,6 +5,7 @@
 - ioctl_tree: Fix endless loop when the first encountered ioctl was unknown
 - preload: Support opening a /dev node multiple times for ioctl emulation
   (issue #3)
+- Fix parallel build (issue #2)
 
 0.1 (2013-02-12)
 ----------------

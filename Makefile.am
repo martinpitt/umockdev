@@ -150,6 +150,11 @@ EXTRA_DIST += src/umockdev-1.0.pc.in src/umockdev-1.0.vapi UMockdev-1.0.gir
 CLEANFILES += UMockdev-1.0.typelib src/umockdev-1.0.pc UMockdev-1.0-hacked.gir
 DISTCLEANFILES += src/umockdev.h src/umockdev.c src/umockdev-1.0.vapi UMockdev-1.0.gir 
 
+# this really wants to say "Build the .vapi and .gir first", in a way that
+# automake understands; without that, a parallel build of all consumers of
+# these two will fail
+BUILT_SOURCES = libumockdev.la
+
 # -------------------------------------------------------------
 # tools
 
@@ -157,8 +162,6 @@ bin_SCRIPTS += src/umockdev-wrapper
 EXTRA_DIST += src/umockdev-wrapper
 
 bin_PROGRAMS += src/umockdev-run src/umockdev-record
-
-$(srcdir)/src_umockdev_run_vala.stamp: $(srcdir)/src/umockdev-1.0.vapi
 
 src_umockdev_run_SOURCES = src/umockdev-run.vala
 src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
