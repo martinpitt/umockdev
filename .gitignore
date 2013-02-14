@@ -39,3 +39,5 @@ tests/test-umockdev
 tests/test-umockdev-vala
 tests/test-integration
 tests/test-integration.c
+tests/test-umockdev-record
+tests/test-umockdev-record.c

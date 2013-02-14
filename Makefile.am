@@ -225,18 +225,17 @@ tests_test_ioctl_tree_LDADD =	\
 
 TESTS += tests/test-umockdev tests/test-ioctl-tree
 
-EXTRA_DIST += tests/test-umockdev.py tests/test-umockdev-record
+EXTRA_DIST += tests/test-umockdev.py
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
 check-local: UMockdev-1.0.typelib
 	@echo "  Running gobject-introspection test with $(PYTHON)"
 	$(PYTEST) $(srcdir)/tests/test-umockdev.py
-	$(PYTEST) $(srcdir)/tests/test-umockdev-record
 endif
 
 
-noinst_PROGRAMS += tests/test-umockdev-vala tests/test-integration
+noinst_PROGRAMS += tests/test-umockdev-vala tests/test-integration tests/test-umockdev-record
 
 tests_test_umockdev_vala_SOURCES = 	\
 	tests/test-umockdev-vala.vala	\
@@ -266,14 +265,32 @@ tests_test_integration_VALAFLAGS =	\
 	--pkg glib-2.0			\
 	$(NULL)
 
+tests_test_umockdev_record_SOURCES = 	\
+	tests/test-umockdev-record.vala	\
+	tests/assertions.vapi		\
+	src/posix_extra.vapi		\
+	$(NULL)
+
+tests_test_umockdev_record_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
+tests_test_umockdev_record_LDADD = $(GLIB_LIBS) libumockdev.la
+tests_test_umockdev_record_VALAFLAGS =	\
+	--vapidir src			\
+	--vapidir tests			\
+	--pkg glib-2.0			\
+	--pkg posix			\
+	--pkg umockdev-1.0		\
+	$(NULL)
+
 DISTCLEANFILES += \
 	tests/test-umockdev-vala.c	\
 	tests/test-integration.c	\
+	tests/test-umockdev-record.c	\
 	$(srcdir)/tests_test_umockdev_vala_vala.stamp	\
 	$(srcdir)/tests_test_integration_vala.stamp	\
+	$(srcdir)/tests_test_umockdev_record_vala.stamp	\
 	$(NULL)
 
-TESTS += tests/test-umockdev-vala tests/test-integration
+TESTS += tests/test-umockdev-vala tests/test-integration tests/test-umockdev-record
 
 endif
 
