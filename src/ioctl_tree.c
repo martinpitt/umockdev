@@ -27,16 +27,15 @@
 #include "ioctl_tree.h"
 
 #ifdef DEBUG
-#   define DBG(...) printf(__VA_ARGS__)
-#   define IFDBG(x) x
+#    define DBG(...) printf(__VA_ARGS__)
+#    define IFDBG(x) x
 #else
-#   define DBG(...) {}
-#   define IFDBG(x) {}
+#    define DBG(...) {}
+#    define IFDBG(x) {}
 #endif
 
 #define TRUE 1
 #define FALSE 0
-
 
 /***********************************
  *
@@ -44,72 +43,71 @@
  *
  ***********************************/
 
-ioctl_tree*
-ioctl_tree_new_from_bin (unsigned long id, const void* data)
+ioctl_tree *
+ioctl_tree_new_from_bin(unsigned long id, const void *data)
 {
-    const ioctl_type* type;
-    ioctl_tree* t;
+    const ioctl_type *type;
+    ioctl_tree *t;
 
-    type = ioctl_type_get_by_id (id);
+    type = ioctl_type_get_by_id(id);
     if (type == NULL) {
-        DBG ("ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
-        return NULL;
+	DBG("ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
+	return NULL;
     }
     /* state independent ioctl? */
     if (type->init_from_bin == NULL)
-        return NULL;
+	return NULL;
 
-    t = calloc(sizeof (ioctl_tree), 1);
+    t = calloc(sizeof(ioctl_tree), 1);
     t->type = type;
-    type->init_from_bin (t, data);
+    type->init_from_bin(t, data);
     return t;
 }
 
-ioctl_tree*
-ioctl_tree_new_from_text (const char* line)
+ioctl_tree *
+ioctl_tree_new_from_text(const char *line)
 {
     static char lead_ws[1000];
     static char ioctl_name[100];
-    int         offset;
-    const ioctl_type* type;
-    ioctl_tree* t;
+    int offset;
+    const ioctl_type *type;
+    ioctl_tree *t;
 
     if (line[0] == ' ') {
-        if (sscanf (line, "%1000[ ]%100s %n", lead_ws, ioctl_name, &offset) < 2) {
-            DBG ("ioctl_tree_new_from_text: failed to parse indent and ioctl name from '%s'\n", line);
-            return NULL;
-        }
+	if (sscanf(line, "%1000[ ]%100s %n", lead_ws, ioctl_name, &offset) < 2) {
+	    DBG("ioctl_tree_new_from_text: failed to parse indent and ioctl name from '%s'\n", line);
+	    return NULL;
+	}
     } else {
-        if (sscanf (line, "%100s %n", ioctl_name, &offset) < 1) {
-            DBG ("ioctl_tree_new_from_text: failed to parse ioctl name from '%s'\n", line);
-            return NULL;
-        }
-        lead_ws[0] = '\0';
+	if (sscanf(line, "%100s %n", ioctl_name, &offset) < 1) {
+	    DBG("ioctl_tree_new_from_text: failed to parse ioctl name from '%s'\n", line);
+	    return NULL;
+	}
+	lead_ws[0] = '\0';
     }
 
-    type = ioctl_type_get_by_name (ioctl_name);
+    type = ioctl_type_get_by_name(ioctl_name);
     if (type == NULL) {
-        DBG ("ioctl_tree_new_from_text: unknown ioctl %s\n", ioctl_name);
-        return NULL;
+	DBG("ioctl_tree_new_from_text: unknown ioctl %s\n", ioctl_name);
+	return NULL;
     }
 
-    t = calloc(sizeof (ioctl_tree), 1);
+    t = calloc(sizeof(ioctl_tree), 1);
     t->type = type;
-    t->depth = strlen (lead_ws);
-    if (!type->init_from_text (t, line + offset)) {
-        DBG ("ioctl_tree_new_from_text: ioctl %s failed to initialize from data '%s'\n",
-             ioctl_name, line + offset);
-        free (t);
-        return NULL;
+    t->depth = strlen(lead_ws);
+    if (!type->init_from_text(t, line + offset)) {
+	DBG("ioctl_tree_new_from_text: ioctl %s failed to initialize from data '%s'\n", ioctl_name, line + offset);
+	free(t);
+	return NULL;
     }
     return t;
 }
 
-static ioctl_tree*
-ioctl_tree_last_sibling (ioctl_tree* node)
+static ioctl_tree *
+ioctl_tree_last_sibling(ioctl_tree * node)
 {
     while (node != NULL && node->next != NULL)
-        node = node->next;
+	node = node->next;
     return node;
 }
 
@@ -119,55 +117,55 @@ ioctl_tree_last_sibling (ioctl_tree* node)
  * If an equal node already exists, return that node and do not insert "node".
  * Otherwise, insert it and return NULL.
  */
-ioctl_tree*
-ioctl_tree_insert (ioctl_tree* tree, ioctl_tree* node)
+ioctl_tree *
+ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
 {
-    ioctl_tree* existing;
+    ioctl_tree *existing;
 
     /* creating the root element? */
     if (tree == NULL) {
-        node->last_added = ioctl_node_list_new ();
-        ioctl_node_list_append (node->last_added, node);
-        return NULL;
+	node->last_added = ioctl_node_list_new();
+	ioctl_node_list_append(node->last_added, node);
+	return NULL;
     }
 
     /* trying to insert into itself? */
-    assert (tree != node);
+    assert(tree != node);
 
-    existing = ioctl_tree_find_equal (tree, node);
+    existing = ioctl_tree_find_equal(tree, node);
     if (existing) {
-        DBG ("ioctl_tree_insert: node of type %s ptr %p already exists\n", node->type->name, node);
-        ioctl_node_list_append (tree->last_added, existing);
-        return existing;
+	DBG("ioctl_tree_insert: node of type %s ptr %p already exists\n", node->type->name, node);
+	ioctl_node_list_append(tree->last_added, existing);
+	return existing;
     }
 
-    node->parent = node->type->insertion_parent (tree, node);
+    node->parent = node->type->insertion_parent(tree, node);
     if (node->parent == NULL) {
-        fprintf (stderr, "ioctl_tree_insert: did not get insertion parent for node type %s ptr %p\n",
-                 node->type->name, node);
-        abort();
+	fprintf(stderr, "ioctl_tree_insert: did not get insertion parent for node type %s ptr %p\n",
+		node->type->name, node);
+	abort();
     }
 
     /* if the parent is the whole tree, then we put it as a sibling, not a
      * child */
     if (node->parent == tree) {
-        ioctl_tree_last_sibling (tree)->next = node;
-        node->depth = 0;
+	ioctl_tree_last_sibling(tree)->next = node;
+	node->depth = 0;
     } else {
-        if (node->parent->child == NULL)
-            node->parent->child = node;
-        else
-            ioctl_tree_last_sibling (node->parent->child)->next = node;
+	if (node->parent->child == NULL)
+	    node->parent->child = node;
+	else
+	    ioctl_tree_last_sibling(node->parent->child)->next = node;
 
-        node->depth = node->parent->depth + 1;
+	node->depth = node->parent->depth + 1;
     }
 
-    ioctl_node_list_append (tree->last_added, node);
+    ioctl_node_list_append(tree->last_added, node);
     return NULL;
 }
 
-ioctl_tree*
-ioctl_tree_read (FILE* f)
+ioctl_tree *
+ioctl_tree_read(FILE * f)
 {
     ioctl_tree *tree = NULL;
     ioctl_tree *node, *prev = NULL;
@@ -175,95 +173,95 @@ ioctl_tree_read (FILE* f)
     char *line = NULL;
     size_t line_len;
 
-    while (getline (&line, &line_len, f) >= 0) {
-        node = ioctl_tree_new_from_text (line);
-        if (node == NULL) {
-            DBG ("ioctl_tree_read: failure to parse line: %s", line);
-            free (line);
-            break;
-        }
+    while (getline(&line, &line_len, f) >= 0) {
+	node = ioctl_tree_new_from_text(line);
+	if (node == NULL) {
+	    DBG("ioctl_tree_read: failure to parse line: %s", line);
+	    free(line);
+	    break;
+	}
 
-        if (tree == NULL) {
-            tree = node;
-            node->last_added = ioctl_node_list_new ();
-        } else {
-            /* insert at the right depth */
-            if (node->depth > prev->depth) {
-                assert (node->depth == prev->depth + 1);
-                assert (prev->child == NULL);
-                prev->child = node;
-                node->parent = prev;
-            } else {
-                for (sibling = prev; sibling != NULL; sibling = sibling->parent) {
-                    if (node->depth == sibling->depth) {
-                        assert (sibling->next == NULL);
-                        sibling->next = node;
-                        //ioctl_tree_last_sibling (sibling)->next = node;
-                        node->parent = sibling->parent;
-                        break;
-                    }
-                }
-            }
-        }
+	if (tree == NULL) {
+	    tree = node;
+	    node->last_added = ioctl_node_list_new();
+	} else {
+	    /* insert at the right depth */
+	    if (node->depth > prev->depth) {
+		assert(node->depth == prev->depth + 1);
+		assert(prev->child == NULL);
+		prev->child = node;
+		node->parent = prev;
+	    } else {
+		for (sibling = prev; sibling != NULL; sibling = sibling->parent) {
+		    if (node->depth == sibling->depth) {
+			assert(sibling->next == NULL);
+			sibling->next = node;
+			//ioctl_tree_last_sibling (sibling)->next = node;
+			node->parent = sibling->parent;
+			break;
+		    }
+		}
+	    }
+	}
 
-        free (line);
-        line = NULL;
-        prev = node;
+	free(line);
+	line = NULL;
+	prev = node;
     }
 
     return tree;
 }
 
 void
-ioctl_tree_write (FILE *f, const ioctl_tree* tree)
+ioctl_tree_write(FILE * f, const ioctl_tree * tree)
 {
     int i;
     if (tree == NULL)
-        return;
+	return;
 
     /* write indent */
     for (i = 0; i < tree->depth; ++i)
-        fputc (' ', f);
-    fputs (tree->type->name, f);
-    fputc (' ', f);
-    tree->type->write (tree, f);
-    assert (fputc ('\n', f) == '\n');
+	fputc(' ', f);
+    fputs(tree->type->name, f);
+    fputc(' ', f);
+    tree->type->write(tree, f);
+    assert(fputc('\n', f) == '\n');
 
-    ioctl_tree_write (f, tree->child);
-    ioctl_tree_write (f, tree->next);
+    ioctl_tree_write(f, tree->child);
+    ioctl_tree_write(f, tree->next);
 }
 
-ioctl_tree*
-ioctl_tree_find_equal (ioctl_tree* tree, ioctl_tree* node)
+ioctl_tree *
+ioctl_tree_find_equal(ioctl_tree * tree, ioctl_tree * node)
 {
-    ioctl_tree* t;
+    ioctl_tree *t;
 
-    if (node->type == tree->type && node->type->equal (node, tree))
-        return tree;
+    if (node->type == tree->type && node->type->equal(node, tree))
+	return tree;
     if (tree->child) {
-        t = ioctl_tree_find_equal (tree->child, node);
-        if (t != NULL)
-            return t;
+	t = ioctl_tree_find_equal(tree->child, node);
+	if (t != NULL)
+	    return t;
     }
     if (tree->next) {
-        t = ioctl_tree_find_equal (tree->next, node);
-        if (t != NULL)
-            return t;
+	t = ioctl_tree_find_equal(tree->next, node);
+	if (t != NULL)
+	    return t;
     }
     return NULL;
 }
 
-ioctl_tree*
-ioctl_tree_next (const ioctl_tree* node)
+ioctl_tree *
+ioctl_tree_next(const ioctl_tree * node)
 {
     if (node->child != NULL)
-        return node->child;
+	return node->child;
     if (node->next != NULL)
-        return node->next;
+	return node->next;
     /* walk up the parents until we find an alternative sibling */
     for (; node != NULL; node = node->parent)
-        if (node->next != NULL)
-            return node->next;
+	if (node->next != NULL)
+	    return node->next;
 
     /* no alternative siblings left, iteration done */
     return NULL;
@@ -275,92 +273,91 @@ ioctl_tree_next (const ioctl_tree* node)
  *
  ***********************************/
 
-ioctl_node_list*
-ioctl_node_list_new (void)
+ioctl_node_list *
+ioctl_node_list_new(void)
 {
-    ioctl_node_list* l;
-    l = malloc (sizeof (ioctl_node_list));
+    ioctl_node_list *l;
+    l = malloc(sizeof(ioctl_node_list));
     l->n = 0;
     l->capacity = 10;
-    l->items = calloc (sizeof (ioctl_tree*), l->capacity);
+    l->items = calloc(sizeof(ioctl_tree *), l->capacity);
     return l;
 }
 
 void
-ioctl_node_list_free (ioctl_node_list* list)
+ioctl_node_list_free(ioctl_node_list * list)
 {
-    free (list->items);
+    free(list->items);
     list->items = NULL;
-    free (list);
+    free(list);
 }
 
 void
-ioctl_node_list_append (ioctl_node_list* list, ioctl_tree* element)
+ioctl_node_list_append(ioctl_node_list * list, ioctl_tree * element)
 {
     if (list->n == list->capacity) {
-        list->capacity *= 2;
-        list->items = realloc (list->items, list->capacity * sizeof (ioctl_tree*));
-        assert (list->items != NULL);
+	list->capacity *= 2;
+	list->items = realloc(list->items, list->capacity * sizeof(ioctl_tree *));
+	assert(list->items != NULL);
     }
 
     list->items[list->n++] = element;
 }
 
-ioctl_tree*
-ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
-                    void* arg, int* ret)
+ioctl_tree *
+ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void *arg, int *ret)
 {
     const ioctl_type *t;
     ioctl_tree *i;
     int r, handled;
 
-    DBG ("ioctl_tree_execute ioctl %lX\n", id);
+    DBG("ioctl_tree_execute ioctl %lX\n", id);
 
     /* check if it's a hardware independent stateless ioctl */
-    t = ioctl_type_get_by_id (id);
+    t = ioctl_type_get_by_id(id);
     if (t != NULL && t->insertion_parent == NULL) {
-        DBG ("  ioctl_tree_execute: stateless\n");
-        if (t->execute (NULL, id, arg, &r))
-            *ret = r;
-        else
-            *ret = -1;
-        return last;
+	DBG("  ioctl_tree_execute: stateless\n");
+	if (t->execute(NULL, id, arg, &r))
+	    *ret = r;
+	else
+	    *ret = -1;
+	return last;
     }
 
     if (tree == NULL)
-        return NULL;
+	return NULL;
 
-    i = ioctl_tree_next_wrap (tree, last);
+    i = ioctl_tree_next_wrap(tree, last);
     /* start at the previously executed node to maintain original order of
      * ioctls as much as possible (i. e. maintain it while the requests come in
      * at the same order as originally recorded) */
     for (;;) {
-        DBG ("   ioctl_tree_execute: checking node %s(%lX) ", i->type->name, i->type->id);
-        IFDBG (i->type->write (i, stdout));
-        DBG ("\n");
-        handled = i->type->execute (i, id, arg, &r);
-        if (handled) {
-            DBG ("    -> match, ret %i, adv: %i\n", r, handled);
-            *ret = r;
-            if (handled == 1)
-                return i;
-            else 
-                return last;
-        }
+	DBG("   ioctl_tree_execute: checking node %s(%lX) ", i->type->name, i->type->id);
+	IFDBG(i->type->write(i, stdout));
+	DBG("\n");
+	handled = i->type->execute(i, id, arg, &r);
+	if (handled) {
+	    DBG("    -> match, ret %i, adv: %i\n", r, handled);
+	    *ret = r;
+	    if (handled == 1)
+		return i;
+	    else
+		return last;
+	}
 
-        if (last != NULL && i == last) {
-            /* we did a full circle */
-            DBG ("    -> full iteration, not found\n");
-            break;
-        }
+	if (last != NULL && i == last) {
+	    /* we did a full circle */
+	    DBG("    -> full iteration, not found\n");
+	    break;
+	}
 
-        i = ioctl_tree_next_wrap (tree, i);
+	i = ioctl_tree_next_wrap(tree, i);
 
-        if (last == NULL && i == tree) {
-            /* we did a full circle */
-            DBG ("    -> full iteration with last == NULL, not found\n");
-            break;
-        }
+	if (last == NULL && i == tree) {
+	    /* we did a full circle */
+	    DBG("    -> full iteration with last == NULL, not found\n");
+	    break;
+	}
     }
 
     /* not found */
@@ -374,51 +371,51 @@ ioctl_tree_execute (ioctl_tree* tree, ioctl_tree *last, unsigned long id,
  ***********************************/
 
 static inline char
-hexdigit (char c)
+hexdigit(char c)
 {
     if (c >= '0' && c <= '9')
-        return c - '0';
+	return c - '0';
     if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
+	return c - 'A' + 10;
     if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
+	return c - 'a' + 10;
     return -1;
 }
 
 static int
-read_hex (const char* hex, char* buf, size_t bufsize)
+read_hex(const char *hex, char *buf, size_t bufsize)
 {
     const char *hexptr = hex;
     size_t written = 0;
     char upper, lower;
 
     while ((upper = hexdigit(hexptr[0])) >= 0) {
-        if (written >= bufsize) {
-            DBG ("read_hex: data is larger than buffer size %zu\n", bufsize);
-            return FALSE;
-        }
+	if (written >= bufsize) {
+	    DBG("read_hex: data is larger than buffer size %zu\n", bufsize);
+	    return FALSE;
+	}
 
-        lower = hexdigit(hexptr[1]);
-        if (lower < 0) {
-            DBG ("read_hex: data has odd number of digits: '%s'\n", hex);
-            return FALSE;
-        }
-        buf[written++] = upper << 4 | lower;
-        hexptr += 2;
+	lower = hexdigit(hexptr[1]);
+	if (lower < 0) {
+	    DBG("read_hex: data has odd number of digits: '%s'\n", hex);
+	    return FALSE;
+	}
+	buf[written++] = upper << 4 | lower;
+	hexptr += 2;
     }
     return TRUE;
 }
 
 static void
-write_hex (FILE* file, const char* buf, size_t len)
+write_hex(FILE * file, const char *buf, size_t len)
 {
-        size_t i;
+    size_t i;
 
-        if (len == 0)
-                return;
+    if (len == 0)
+	return;
 
-        for (i = 0; i < len; ++i)
-                fprintf(file, "%02X", (unsigned) (unsigned char) buf[i]);
+    for (i = 0; i < len; ++i)
+	fprintf(file, "%02X", (unsigned)(unsigned char)buf[i]);
 }
 
 /***********************************
@@ -428,56 +425,55 @@ write_hex (FILE* file, const char* buf, size_t len)
  ***********************************/
 
 static void
-usbdevfs_connectinfo_init_from_bin (ioctl_tree* node, const void* data)
+usbdevfs_connectinfo_init_from_bin(ioctl_tree * node, const void *data)
 {
-    node->data = malloc (sizeof (struct usbdevfs_connectinfo));
-    memcpy (node->data, data, sizeof (struct usbdevfs_connectinfo));
+    node->data = malloc(sizeof(struct usbdevfs_connectinfo));
+    memcpy(node->data, data, sizeof(struct usbdevfs_connectinfo));
 }
 
 static int
-usbdevfs_connectinfo_init_from_text (ioctl_tree* node, const char* data)
+usbdevfs_connectinfo_init_from_text(ioctl_tree * node, const char *data)
 {
     int slow;
-    struct usbdevfs_connectinfo* info = malloc (sizeof (struct usbdevfs_connectinfo));
-    if (sscanf (data, "%u %i\n", &info->devnum, &slow) != 2) {
-        DBG ("usbdevfs_connectinfo_init_from_text: failed to parse '%s'\n", data);
-        free (info);
-        return FALSE;
+    struct usbdevfs_connectinfo *info = malloc(sizeof(struct usbdevfs_connectinfo));
+    if (sscanf(data, "%u %i\n", &info->devnum, &slow) != 2) {
+	DBG("usbdevfs_connectinfo_init_from_text: failed to parse '%s'\n", data);
+	free(info);
+	return FALSE;
     }
-    info->slow = (char) slow;
+    info->slow = (char)slow;
     node->data = info;
     return TRUE;
 }
 
 static void
-usbdevfs_connectinfo_write (const ioctl_tree* node, FILE* f)
+usbdevfs_connectinfo_write(const ioctl_tree * node, FILE * f)
 {
-    const struct usbdevfs_connectinfo* info = node->data;
-    assert (node->data != NULL);
-    fprintf (f, "%u %i", info->devnum, info->slow);
+    const struct usbdevfs_connectinfo *info = node->data;
+    assert(node->data != NULL);
+    fprintf(f, "%u %i", info->devnum, info->slow);
 }
 
 static int
-usbdevfs_connectinfo_equal (const ioctl_tree* n1, const ioctl_tree *n2)
+usbdevfs_connectinfo_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 {
-    return memcmp (n1->data, n2->data, sizeof (struct usbdevfs_connectinfo)) == 0;
+    return memcmp(n1->data, n2->data, sizeof(struct usbdevfs_connectinfo)) == 0;
 }
 
 static int
-usbdevfs_connectinfo_execute (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+usbdevfs_connectinfo_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     if (node->type->id == id) {
-        memcpy (arg, node->data, sizeof (struct usbdevfs_connectinfo));
-        *ret = 0;
-        return 1;
+	memcpy(arg, node->data, sizeof(struct usbdevfs_connectinfo));
+	*ret = 0;
+	return 1;
     }
 
     return 0;
 }
 
-static ioctl_tree*
-usbdevfs_connectinfo_insertion_parent (ioctl_tree* tree,
-                                       ioctl_tree* node)
+static ioctl_tree *
+usbdevfs_connectinfo_insertion_parent(ioctl_tree * tree, ioctl_tree * node)
 {
     /* stateless, always new top level item */
     return tree;
@@ -490,44 +486,44 @@ usbdevfs_connectinfo_insertion_parent (ioctl_tree* tree,
  ***********************************/
 
 static void
-usbdevfs_reapurb_init_from_bin (ioctl_tree* node, const void* data)
+usbdevfs_reapurb_init_from_bin(ioctl_tree * node, const void *data)
 {
-    const struct usbdevfs_urb* urb = *((struct usbdevfs_urb**) data);
-    struct usbdevfs_urb* copy;
+    const struct usbdevfs_urb *urb = *((struct usbdevfs_urb **)data);
+    struct usbdevfs_urb *copy;
 
-    copy = calloc (sizeof (struct usbdevfs_urb), 1);
-    memcpy (copy, urb, sizeof (struct usbdevfs_urb));
+    copy = calloc(sizeof(struct usbdevfs_urb), 1);
+    memcpy(copy, urb, sizeof(struct usbdevfs_urb));
     /* we need to make a copy of the buffer */
-    copy->buffer = calloc (urb->buffer_length, 1);
-    memcpy (copy->buffer, urb->buffer, urb->buffer_length);
+    copy->buffer = calloc(urb->buffer_length, 1);
+    memcpy(copy->buffer, urb->buffer, urb->buffer_length);
     node->data = copy;
 }
 
 static int
-usbdevfs_reapurb_init_from_text (ioctl_tree* node, const char* data)
+usbdevfs_reapurb_init_from_text(ioctl_tree * node, const char *data)
 {
-    struct usbdevfs_urb* info = calloc (sizeof (struct usbdevfs_urb), 1);
+    struct usbdevfs_urb *info = calloc(sizeof(struct usbdevfs_urb), 1);
     int offset, result;
     unsigned type, endpoint;
-    result = sscanf (data, "%u %u %i %u %i %i %i %n", &type, &endpoint,
-                     &info->status, &info->flags, &info->buffer_length,
-                     &info->actual_length, &info->error_count, &offset);
+    result = sscanf(data, "%u %u %i %u %i %i %i %n", &type, &endpoint,
+		    &info->status, &info->flags, &info->buffer_length,
+		    &info->actual_length, &info->error_count, &offset);
     /* ambiguity of counting or not %n */
     if (result < 7) {
-        DBG ("usbdevfs_reapurb_init_from_text: failed to parse record '%s'\n", data);
-        free (info);
-        return FALSE;
+	DBG("usbdevfs_reapurb_init_from_text: failed to parse record '%s'\n", data);
+	free(info);
+	return FALSE;
     }
-    info->type = (unsigned char) type;
-    info->endpoint = (unsigned char) endpoint;
+    info->type = (unsigned char)type;
+    info->endpoint = (unsigned char)endpoint;
 
     /* read buffer */
-    info->buffer = calloc (info->buffer_length, 1);
-    if (!read_hex (data + offset, info->buffer, info->buffer_length)) {
-        DBG ("usbdevfs_reapurb_init_from_text: failed to parse buffer '%s'\n", data + offset);
-        free (info->buffer);
-        free (info);
-        return FALSE;
+    info->buffer = calloc(info->buffer_length, 1);
+    if (!read_hex(data + offset, info->buffer, info->buffer_length)) {
+	DBG("usbdevfs_reapurb_init_from_text: failed to parse buffer '%s'\n", data + offset);
+	free(info->buffer);
+	free(info);
+	return FALSE;
     };
 
     node->data = info;
@@ -535,115 +531,108 @@ usbdevfs_reapurb_init_from_text (ioctl_tree* node, const char* data)
 }
 
 static void
-usbdevfs_reapurb_write (const ioctl_tree* node, FILE* f)
+usbdevfs_reapurb_write(const ioctl_tree * node, FILE * f)
 {
-    const struct usbdevfs_urb* urb = node->data;
-    assert (node->data != NULL);
-    fprintf (f, "%u %u %i %u %i %i %i ", (unsigned) urb->type,
-             (unsigned) urb->endpoint, urb->status, (unsigned) urb->flags,
-             urb->buffer_length, urb->actual_length, urb->error_count);
-    write_hex (f, urb->buffer, urb->endpoint & 0x80 ? urb->actual_length : urb->buffer_length);
+    const struct usbdevfs_urb *urb = node->data;
+    assert(node->data != NULL);
+    fprintf(f, "%u %u %i %u %i %i %i ", (unsigned)urb->type,
+	    (unsigned)urb->endpoint, urb->status, (unsigned)urb->flags,
+	    urb->buffer_length, urb->actual_length, urb->error_count);
+    write_hex(f, urb->buffer, urb->endpoint & 0x80 ? urb->actual_length : urb->buffer_length);
     /* for debugging test cases with ASCII contents */
     /*fwrite (urb->buffer, urb->endpoint & 0x80 ? urb->actual_length : urb->buffer_length, 1, f); */
-} 
-
-static int
-usbdevfs_reapurb_equal (const ioctl_tree* n1, const ioctl_tree *n2)
-{
-    struct usbdevfs_urb* u1 = n1->data;
-    struct usbdevfs_urb* u2 = n2->data;
-    return u1->type == u2->type && u1->endpoint == u2->endpoint && 
-           u1->status == u2->status && u1->flags == u2->flags &&
-           u1->buffer_length == u2->buffer_length &&
-           u1->actual_length == u2->actual_length &&
-           memcmp (u1->buffer, u2->buffer, u1->buffer_length) == 0;
 }
 
 static int
-usbdevfs_reapurb_execute (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+usbdevfs_reapurb_equal(const ioctl_tree * n1, const ioctl_tree * n2)
+{
+    struct usbdevfs_urb *u1 = n1->data;
+    struct usbdevfs_urb *u2 = n2->data;
+    return u1->type == u2->type && u1->endpoint == u2->endpoint &&
+	u1->status == u2->status && u1->flags == u2->flags &&
+	u1->buffer_length == u2->buffer_length &&
+	u1->actual_length == u2->actual_length && memcmp(u1->buffer, u2->buffer, u1->buffer_length) == 0;
+}
+
+static int
+usbdevfs_reapurb_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     /* set in SUBMIT, cleared in REAP */
     static const ioctl_tree *submit_node = NULL;
     static struct usbdevfs_urb *submit_urb = NULL;
 
     if (id == USBDEVFS_SUBMITURB) {
-        const struct usbdevfs_urb* n_urb = node->data;
-        struct usbdevfs_urb *a_urb = arg;
-        assert (submit_node == NULL);
+	const struct usbdevfs_urb *n_urb = node->data;
+	struct usbdevfs_urb *a_urb = arg;
+	assert(submit_node == NULL);
 
-        if (n_urb->type != a_urb->type || n_urb->endpoint != a_urb->endpoint ||
-            n_urb->flags != a_urb->flags || n_urb->buffer_length != a_urb->buffer_length)
-            return 0;
+	if (n_urb->type != a_urb->type || n_urb->endpoint != a_urb->endpoint ||
+	    n_urb->flags != a_urb->flags || n_urb->buffer_length != a_urb->buffer_length)
+	    return 0;
 
-        DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, metadata match\n");
+	DBG("  usbdevfs_reapurb_execute: handling SUBMITURB, metadata match\n");
 
-        /* for an output URB we also require the buffer contents to match; for
-         * an input URB it can be uninitialized */
-        if ((n_urb->endpoint & 0x80) == 0 && 
-            memcmp (n_urb->buffer, a_urb->buffer, n_urb->buffer_length) != 0) {
-            DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer mismatch, rejecting\n");
-            return 0;
-        }
-        DBG ("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer match, remembering\n");
+	/* for an output URB we also require the buffer contents to match; for
+	 * an input URB it can be uninitialized */
+	if ((n_urb->endpoint & 0x80) == 0 && memcmp(n_urb->buffer, a_urb->buffer, n_urb->buffer_length) != 0) {
+	    DBG("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer mismatch, rejecting\n");
+	    return 0;
+	}
+	DBG("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer match, remembering\n");
 
-        /* remember the node for the next REAP */
-        submit_node = node;
-        submit_urb = a_urb;
-        *ret = 0;
-        return 1;
+	/* remember the node for the next REAP */
+	submit_node = node;
+	submit_urb = a_urb;
+	*ret = 0;
+	return 1;
     }
 
     if (id == node->type->id) {
-        struct usbdevfs_urb* orig_node_urb = submit_node->data;
-        assert (submit_node != NULL);
+	struct usbdevfs_urb *orig_node_urb = submit_node->data;
+	assert(submit_node != NULL);
 
-        submit_urb->actual_length = orig_node_urb->actual_length;
-        submit_urb->error_count = orig_node_urb->error_count;
-        /* for an input EP we need to copy the buffer data */
-        if (orig_node_urb->endpoint & 0x80) {
-            memcpy (submit_urb->buffer,
-                    orig_node_urb->buffer,
-                    orig_node_urb->actual_length);
-        }
-        submit_urb->status = orig_node_urb->status;
-        *((struct usbdevfs_urb**) arg) = submit_urb;
+	submit_urb->actual_length = orig_node_urb->actual_length;
+	submit_urb->error_count = orig_node_urb->error_count;
+	/* for an input EP we need to copy the buffer data */
+	if (orig_node_urb->endpoint & 0x80) {
+	    memcpy(submit_urb->buffer, orig_node_urb->buffer, orig_node_urb->actual_length);
+	}
+	submit_urb->status = orig_node_urb->status;
+	*((struct usbdevfs_urb **)arg) = submit_urb;
 
-        DBG ("  usbdevfs_reapurb_execute: handling %s %u %u %i %u %i %i %i ",
-             node->type->name, (unsigned) submit_urb->type,
-             (unsigned) submit_urb->endpoint, submit_urb->status,
-             (unsigned) submit_urb->flags, submit_urb->buffer_length,
-             submit_urb->actual_length, submit_urb->error_count);
-        IFDBG (write_hex (stdout, submit_urb->buffer, submit_urb->endpoint & 0x80 ? 
-                    submit_urb->actual_length : submit_urb->buffer_length));
+	DBG("  usbdevfs_reapurb_execute: handling %s %u %u %i %u %i %i %i ",
+	    node->type->name, (unsigned)submit_urb->type,
+	    (unsigned)submit_urb->endpoint, submit_urb->status,
+	    (unsigned)submit_urb->flags, submit_urb->buffer_length, submit_urb->actual_length, submit_urb->error_count);
+	IFDBG(write_hex(stdout, submit_urb->buffer, submit_urb->endpoint & 0x80 ?
+			submit_urb->actual_length : submit_urb->buffer_length));
 
-        submit_urb = NULL;
-        submit_node = NULL;
-        *ret = 0;
-        return 2;
+	submit_urb = NULL;
+	submit_node = NULL;
+	*ret = 0;
+	return 2;
     }
 
     return 0;
 }
 
-static ioctl_tree*
-usbdevfs_reapurb_insertion_parent (ioctl_tree* tree,
-                                   ioctl_tree* node)
+static ioctl_tree *
+usbdevfs_reapurb_insertion_parent(ioctl_tree * tree, ioctl_tree * node)
 {
-    if (((struct usbdevfs_urb*) node->data)->endpoint & 0x80)
-    {
-        /* input node: child of last REAPURB request */
-        ssize_t i;
-        ioctl_tree *t;
-        for (i = tree->last_added->n - 1; i >= 0; --i) {
-            t = ioctl_node_list_get (tree->last_added, i);
-            if (t->type->id == USBDEVFS_REAPURB || t->type->id == USBDEVFS_REAPURBNDELAY)
-                return t;
-        }
-        /* no REAPURB so far, make it a top level node */
-        return tree;
+    if (((struct usbdevfs_urb *)node->data)->endpoint & 0x80) {
+	/* input node: child of last REAPURB request */
+	ssize_t i;
+	ioctl_tree *t;
+	for (i = tree->last_added->n - 1; i >= 0; --i) {
+	    t = ioctl_node_list_get(tree->last_added, i);
+	    if (t->type->id == USBDEVFS_REAPURB || t->type->id == USBDEVFS_REAPURBNDELAY)
+		return t;
+	}
+	/* no REAPURB so far, make it a top level node */
+	return tree;
     } else {
-        /* output node: top level node */
-        return tree;
+	/* output node: top level node */
+	return tree;
     }
 }
 
@@ -654,7 +643,7 @@ usbdevfs_reapurb_insertion_parent (ioctl_tree* tree,
  ***********************************/
 
 static int
-ioctl_execute_success (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+ioctl_execute_success(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     errno = 0;
     *ret = 0;
@@ -662,7 +651,7 @@ ioctl_execute_success (const ioctl_tree* node, unsigned long id, void* arg, int 
 }
 
 static int
-ioctl_execute_enodata (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+ioctl_execute_enodata(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     errno = ENODATA;
     *ret = -1;
@@ -670,7 +659,7 @@ ioctl_execute_enodata (const ioctl_tree* node, unsigned long id, void* arg, int 
 }
 
 static int
-ioctl_execute_enotty (const ioctl_tree* node, unsigned long id, void* arg, int *ret)
+ioctl_execute_enotty(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     errno = ENOTTY;
     *ret = -1;
@@ -684,57 +673,67 @@ ioctl_execute_enotty (const ioctl_tree* node, unsigned long id, void* arg, int *
  ***********************************/
 
 ioctl_type ioctl_db[] = {
-    { USBDEVFS_CONNECTINFO, "USBDEVFS_CONNECTINFO",
-      usbdevfs_connectinfo_init_from_bin, usbdevfs_connectinfo_init_from_text,
-      usbdevfs_connectinfo_write, usbdevfs_connectinfo_equal,
-      usbdevfs_connectinfo_execute, usbdevfs_connectinfo_insertion_parent },
+    {USBDEVFS_CONNECTINFO, "USBDEVFS_CONNECTINFO",
+     usbdevfs_connectinfo_init_from_bin, usbdevfs_connectinfo_init_from_text,
+     usbdevfs_connectinfo_write, usbdevfs_connectinfo_equal,
+     usbdevfs_connectinfo_execute, usbdevfs_connectinfo_insertion_parent}
+    ,
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
-    { USBDEVFS_REAPURB, "USBDEVFS_REAPURB",
-      usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
-      usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
-      usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent },
-    { USBDEVFS_REAPURBNDELAY, "USBDEVFS_REAPURBNDELAY",
-      usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
-      usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
-      usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent },
+    {USBDEVFS_REAPURB, "USBDEVFS_REAPURB",
+     usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
+     usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
+     usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent}
+    ,
+    {USBDEVFS_REAPURBNDELAY, "USBDEVFS_REAPURBNDELAY",
+     usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
+     usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
+     usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent}
+    ,
 
     /* hardware/state independent ioctls */
-    { USBDEVFS_CLAIMINTERFACE, "USBDEVFS_CLAIMINTERFACE",
-      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
-    { USBDEVFS_RELEASEINTERFACE, "USBDEVFS_RELEASEINTERFACE",
-      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
-    { USBDEVFS_CLEAR_HALT, "USBDEVFS_CLEAR_HALT",
-      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
-    { USBDEVFS_RESET, "USBDEVFS_RESET",
-      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
-    { USBDEVFS_RESETEP, "USBDEVFS_RESETEP",
-      NULL, NULL, NULL, NULL, ioctl_execute_success, NULL },
-    { USBDEVFS_GETDRIVER, "USBDEVFS_GETDRIVER",
-      NULL, NULL, NULL, NULL, ioctl_execute_enodata, NULL },
-    { USBDEVFS_IOCTL, "USBDEVFS_IOCTL",
-      NULL, NULL, NULL, NULL, ioctl_execute_enotty, NULL },
+    {USBDEVFS_CLAIMINTERFACE, "USBDEVFS_CLAIMINTERFACE",
+     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
+    ,
+    {USBDEVFS_RELEASEINTERFACE, "USBDEVFS_RELEASEINTERFACE",
+     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
+    ,
+    {USBDEVFS_CLEAR_HALT, "USBDEVFS_CLEAR_HALT",
+     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
+    ,
+    {USBDEVFS_RESET, "USBDEVFS_RESET",
+     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
+    ,
+    {USBDEVFS_RESETEP, "USBDEVFS_RESETEP",
+     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
+    ,
+    {USBDEVFS_GETDRIVER, "USBDEVFS_GETDRIVER",
+     NULL, NULL, NULL, NULL, ioctl_execute_enodata, NULL}
+    ,
+    {USBDEVFS_IOCTL, "USBDEVFS_IOCTL",
+     NULL, NULL, NULL, NULL, ioctl_execute_enotty, NULL}
+    ,
 
     /* terminator */
-    { 0, "", NULL, NULL, NULL, NULL, NULL }
+    {0, "", NULL, NULL, NULL, NULL, NULL}
 };
 
-const ioctl_type*
-ioctl_type_get_by_id (unsigned long id)
+const ioctl_type *
+ioctl_type_get_by_id(unsigned long id)
 {
-    ioctl_type* cur;
+    ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
-        if (cur->id == id)
-            return cur;
+	if (cur->id == id)
+	    return cur;
     return NULL;
 }
 
-const ioctl_type*
-ioctl_type_get_by_name (const char *name)
+const ioctl_type *
+ioctl_type_get_by_name(const char *name)
 {
-    ioctl_type* cur;
+    ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
-        if (strcmp (cur->name, name) == 0)
-            return cur;
+	if (strcmp(cur->name, name) == 0)
+	    return cur;
     return NULL;
 }

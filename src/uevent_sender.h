@@ -17,14 +17,12 @@
  */
 
 #ifndef __UEVENT_SENDER_H
-#define __UEVENT_SENDER_H
+#    define __UEVENT_SENDER_H
 
 typedef struct _uevent_sender uevent_sender;
 
-uevent_sender* uevent_sender_open  (const char*    rootpath);
-void           uevent_sender_close (uevent_sender* sender);
-void           uevent_sender_send  (uevent_sender* sender,
-                                    const char*    devpath,
-                                    const char*    action);
+uevent_sender *uevent_sender_open(const char *rootpath);
+void uevent_sender_close(uevent_sender * sender);
+void uevent_sender_send(uevent_sender * sender, const char *devpath, const char *action);
 
-#endif /* __UEVENT_SENDER_H */
+#endif				/* __UEVENT_SENDER_H */

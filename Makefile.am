@@ -314,6 +314,12 @@ examplesdir = $(docdir)/examples
 examples_DATA = $(EXAMPLES)
 EXTRA_DIST += $(EXAMPLES)
 
+# -------------------------------------------------------------
+# developer tools
+
+indent:
+	indent -linux -ppi4 -psl -l120 -i4 src/*.h src/*.c tests/*.c
+	find -name '*~' -exec rm '{}' \;
 
 install-exec-hook: $(INSTALL_EXEC_HOOKS)
 uninstall-hook: $(UNINSTALL_EXEC_HOOKS)

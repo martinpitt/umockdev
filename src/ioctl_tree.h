@@ -17,76 +17,73 @@
  */
 
 #ifndef __IOCTL_TREE_H
-#define __IOCTL_TREE_H
+#    define __IOCTL_TREE_H
 
 struct ioctl_tree;
 typedef struct ioctl_tree ioctl_tree;
 
 typedef struct {
     unsigned long id;
-    const char    name[100];
-    void          (*init_from_bin)(ioctl_tree*, const void*);
-    int           (*init_from_text)(ioctl_tree*, const char*);
-    void          (*write)(const ioctl_tree*, FILE*);
-    int           (*equal)(const ioctl_tree*, const ioctl_tree*);
+    const char name[100];
+    void (*init_from_bin) (ioctl_tree *, const void *);
+    int (*init_from_text) (ioctl_tree *, const char *);
+    void (*write) (const ioctl_tree *, FILE *);
+    int (*equal) (const ioctl_tree *, const ioctl_tree *);
     /* ret: 0: unhandled, 1: handled, move to next node, 2: handled, keep node */
-    int           (*execute)(const ioctl_tree*, unsigned long, void*, int*);
-    ioctl_tree*   (*insertion_parent)(ioctl_tree*, ioctl_tree*);
+    int (*execute) (const ioctl_tree *, unsigned long, void *, int *);
+    ioctl_tree *(*insertion_parent) (ioctl_tree *, ioctl_tree *);
 } ioctl_type;
 
 typedef struct {
     ssize_t n;
     ssize_t capacity;
-    ioctl_tree** items;
+    ioctl_tree **items;
 } ioctl_node_list;
 
 struct ioctl_tree {
-    const ioctl_type* type;
-    int               depth;
-    void*             data;
-    ioctl_tree*       child;
-    ioctl_tree*       next; /* sibling */
-    ioctl_tree*       parent;
+    const ioctl_type *type;
+    int depth;
+    void *data;
+    ioctl_tree *child;
+    ioctl_tree *next;		/* sibling */
+    ioctl_tree *parent;
 
     /* below are internal private fields */
-    ioctl_node_list*  last_added;
+    ioctl_node_list *last_added;
 };
 
-
-ioctl_tree* ioctl_tree_new_from_bin  (unsigned long id, const void* data);
-ioctl_tree* ioctl_tree_new_from_text (const char* line);
-ioctl_tree* ioctl_tree_read          (FILE* f);
-void        ioctl_tree_write         (FILE* f, const ioctl_tree* tree);
-ioctl_tree* ioctl_tree_insert        (ioctl_tree* tree, ioctl_tree* node);
-ioctl_tree* ioctl_tree_find_equal    (ioctl_tree* tree, ioctl_tree* node);
-ioctl_tree* ioctl_tree_next          (const ioctl_tree* node);
-ioctl_tree* ioctl_tree_execute       (ioctl_tree* tree, ioctl_tree *last,
-                                      unsigned long id, void* arg, int* ret);
+ioctl_tree *ioctl_tree_new_from_bin(unsigned long id, const void *data);
+ioctl_tree *ioctl_tree_new_from_text(const char *line);
+ioctl_tree *ioctl_tree_read(FILE * f);
+void ioctl_tree_write(FILE * f, const ioctl_tree * tree);
+ioctl_tree *ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node);
+ioctl_tree *ioctl_tree_find_equal(ioctl_tree * tree, ioctl_tree * node);
+ioctl_tree *ioctl_tree_next(const ioctl_tree * node);
+ioctl_tree *ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void *arg, int *ret);
 
 /* node lists */
-ioctl_node_list* ioctl_node_list_new (void);
-void             ioctl_node_list_free (ioctl_node_list* list);
-void             ioctl_node_list_append (ioctl_node_list* list, ioctl_tree* element);
+ioctl_node_list *ioctl_node_list_new(void);
+void ioctl_node_list_free(ioctl_node_list * list);
+void ioctl_node_list_append(ioctl_node_list * list, ioctl_tree * element);
 
-static inline ioctl_tree*
-ioctl_node_list_get (ioctl_node_list* list, ssize_t n)
+static inline ioctl_tree *
+ioctl_node_list_get(ioctl_node_list * list, ssize_t n)
 {
     /* negative values count from the end */
     return (n >= 0) ? list->items[n] : list->items[list->n + n];
 }
 
-static inline ioctl_tree*
-ioctl_tree_next_wrap (ioctl_tree *tree, ioctl_tree* node)
+static inline ioctl_tree *
+ioctl_tree_next_wrap(ioctl_tree * tree, ioctl_tree * node)
 {
     if (node == NULL)
-        return tree;
-    ioctl_tree *t = ioctl_tree_next (node);
+	return tree;
+    ioctl_tree *t = ioctl_tree_next(node);
     return (t != NULL) ? t : tree;
 }
 
-
 /* database of known ioctls; return NULL for unknown ones */
-const ioctl_type* ioctl_type_get_by_id (unsigned long id);
-const ioctl_type* ioctl_type_get_by_name (const char *name);
+const ioctl_type *ioctl_type_get_by_id(unsigned long id);
+const ioctl_type *ioctl_type_get_by_name(const char *name);
 
-#endif /* __IOCTL_TREE_H */
+#endif				/* __IOCTL_TREE_H */
