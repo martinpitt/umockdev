@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
+#include <linux/input.h>
 
 #include "ioctl_tree.h"
 
@@ -712,6 +713,9 @@ ioctl_type ioctl_db[] = {
     ,
     {USBDEVFS_IOCTL, "USBDEVFS_IOCTL",
      NULL, NULL, NULL, NULL, ioctl_execute_enotty, NULL}
+    ,
+    {EVIOCGRAB, "EVIOCGRAB",
+     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
     ,
 
     /* terminator */
