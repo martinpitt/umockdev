@@ -26,10 +26,12 @@ string umockdev_record_path;
 static void
 t_testbed_all_empty ()
 {
-    var tb = new UMockdev.Testbed ();
     string sout;
     string serr;
     int exit;
+
+    var tb = new UMockdev.Testbed ();
+    assert (tb != null);
 
     Process.spawn_command_line_sync (umockdev_record_path + " --all", out sout, out serr, out exit);
 
@@ -77,7 +79,7 @@ t_testbed_multiple ()
     var dev1 = tb.add_devicev ("pci", "dev1", null, {"dev1color", "green"}, {"DEV1COLOR", "GREEN"});
     var subdev1 = tb.add_devicev ("pci", "subdev1", dev1, {"subdev1color", "yellow"},
                                   {"SUBDEV1COLOR", "YELLOW"});
-    var dev2 = tb.add_devicev ("pci", "dev2", null, {"dev2color", "brown"}, {"DEV2COLOR", "BROWN"});
+    tb.add_devicev ("pci", "dev2", null, {"dev2color", "brown"}, {"DEV2COLOR", "BROWN"});
 
     // should grab device and all parents
     Process.spawn_command_line_sync (umockdev_record_path + " " + subdev1, out sout, out serr, out exit);
@@ -110,9 +112,9 @@ A: dev1color=green
     Process.spawn_command_line_sync (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
-    assert (sout.str ("P: /devices/dev1/subdev1\n") != null);
-    assert (sout.str ("P: /devices/dev1\n") != null);
-    assert (sout.str ("P: /devices/dev2\n") != null);
+    assert (sout.contains ("P: /devices/dev1/subdev1\n"));
+    assert (sout.contains ("P: /devices/dev1\n"));
+    assert (sout.contains ("P: /devices/dev2\n"));
 }
 
 
@@ -131,7 +133,7 @@ t_testbed_no_ioctl_record ()
         out sout, out serr, out exit);
     assert_cmpint (exit, Op.NE, 0);
     assert_cmpstr (sout, Op.EQ, "");
-    assert (serr.str ("UMOCKDEV_DIR cannot be used") != null);
+    assert (serr.contains ("UMOCKDEV_DIR cannot be used"));
 }
 
 // system /sys: umockdev-record --all works and result loads back

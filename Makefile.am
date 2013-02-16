@@ -53,6 +53,9 @@ AM_CFLAGS = 	\
 	-Werror=uninitialized		\
 	-Wall
 
+# this allows us to use regexp literals without warnings
+VALAFLAGS = --enable-experimental
+
 # -------------------------------------------------------------
 # preload library
 
@@ -167,7 +170,7 @@ src_umockdev_run_SOURCES = 		\
 	src/posix_extra.vapi		\
 	$(NULL)
 
-src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
+src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src -w
 src_umockdev_run_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
 src_umockdev_run_VALAFLAGS =		\
 	--vapidir $(top_builddir)/src	\
@@ -177,7 +180,7 @@ src_umockdev_run_VALAFLAGS =		\
 	$(NULL)
 
 src_umockdev_record_SOURCES = src/umockdev-record.vala src/posix_extra.vapi
-src_umockdev_record_CFLAGS = $(GLIB_CFLAGS)
+src_umockdev_record_CFLAGS = $(GLIB_CFLAGS) -w
 src_umockdev_record_LDADD = $(GLIB_LIBS)
 src_umockdev_record_VALAFLAGS =		\
 	--pkg glib-2.0			\
@@ -246,7 +249,7 @@ tests_test_umockdev_vala_SOURCES = 	\
 	tests/ioctl.vapi		\
 	$(NULL)
 
-tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src
+tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src -w
 tests_test_umockdev_vala_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
 tests_test_umockdev_vala_VALAFLAGS =		\
 	--vapidir tests			\
@@ -261,7 +264,7 @@ tests_test_integration_SOURCES = 	\
 	tests/assertions.vapi		\
 	$(NULL)
 
-tests_test_integration_CFLAGS = $(GLIB_CFLAGS)
+tests_test_integration_CFLAGS = $(GLIB_CFLAGS) -w
 tests_test_integration_LDADD = $(GLIB_LIBS)
 tests_test_integration_VALAFLAGS =	\
 	--vapidir tests			\
@@ -274,7 +277,7 @@ tests_test_umockdev_record_SOURCES = 	\
 	src/posix_extra.vapi		\
 	$(NULL)
 
-tests_test_umockdev_record_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
+tests_test_umockdev_record_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src -w
 tests_test_umockdev_record_LDADD = $(GLIB_LIBS) libumockdev.la
 tests_test_umockdev_record_VALAFLAGS =	\
 	--vapidir src			\

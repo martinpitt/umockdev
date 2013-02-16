@@ -226,20 +226,21 @@ public class Testbed: GLib.Object {
             error("cannot create class dir '%s': %s", class_dir, strerror(errno));
 
         /* subsystem symlink */
+        string dev_path_no_sys = dev_path.substring(dev_path.index_of("/devices/"));
         assert(FileUtils.symlink(Path.build_filename(make_dotdots(dev_path), "class", subsystem),
                                  Path.build_filename(dev_dir, "subsystem")) == 0);
 
         /* device symlink from class/; skip directories in name; this happens
          * when being called from add_from_string() when the parent devices do
          * not exist yet */
-        assert(FileUtils.symlink(Path.build_filename("..", "..", dev_path.str("/devices/")),
+        assert(FileUtils.symlink(Path.build_filename("..", "..", dev_path_no_sys),
                                  Path.build_filename(class_dir, Path.get_basename(name))) == 0);
 
         /* bus symlink */
         if (subsystem == "usb" || subsystem == "pci") {
             class_dir = Path.build_filename(this.sys_dir, "bus", subsystem, "devices");
             assert(DirUtils.create_with_parents(class_dir, 0755) == 0);
-            assert(FileUtils.symlink(Path.build_filename("..", "..", "..", dev_path.str("/devices/")),
+            assert(FileUtils.symlink(Path.build_filename("..", "..", "..", dev_path_no_sys),
                                      Path.build_filename(class_dir, Path.get_basename(name))) == 0);
         }
 
