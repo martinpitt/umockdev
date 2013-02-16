@@ -98,7 +98,6 @@ libumockdev_include_HEADERS = src/umockdev.h
 libumockdev_la_SOURCES =	\
 	src/umockdev.vala	\
 	src/uevent_sender.vapi	\
-	src/uevent_sender.h	\
 	src/uevent_sender.c	\
 	$(NULL)
 
@@ -163,7 +162,11 @@ EXTRA_DIST += src/umockdev-wrapper
 
 bin_PROGRAMS += src/umockdev-run src/umockdev-record
 
-src_umockdev_run_SOURCES = src/umockdev-run.vala
+src_umockdev_run_SOURCES = 		\
+	src/umockdev-run.vala		\
+	src/posix_extra.vapi		\
+	$(NULL)
+
 src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src
 src_umockdev_run_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
 src_umockdev_run_VALAFLAGS =		\

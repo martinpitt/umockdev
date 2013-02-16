@@ -9,6 +9,7 @@
 - Support xz compressed ioctl files in umockdev_testbed_load_ioctl().
 - Add example umockdev and ioctl files for a gphoto camera and an MTP capable
   mobile phone.
+- Fix building with automake 1.11.3 and Vala 0.16.
 
 0.1 (2013-02-12)
 ----------------

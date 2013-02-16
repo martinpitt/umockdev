@@ -131,7 +131,8 @@ public class Testbed: GLib.Object {
         try {
             var inp = new DataInputStream(f.read());
             string line;
-            while ((line = inp.read_line()) != null) {
+            size_t len;
+            while ((line = inp.read_line(out len)) != null) {
                 if (line.has_prefix(prefix)) {
                     existing = true;
                     props += prefix + value + "\n";
