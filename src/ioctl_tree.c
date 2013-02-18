@@ -472,7 +472,6 @@ ioctl_simplestruct_execute(const ioctl_tree * node, unsigned long id, void *arg,
     return 0;
 }
 
-
 /***********************************
  *
  * USBDEVFS_REAPURB
@@ -672,50 +671,40 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
  *
  ***********************************/
 
+#define I_NOSTATE(name, execute_result) \
+    {name, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
+
+#define I_SIMPLE_STRUCT(name, insertion_parent_fn) \
+    {name, #name,                                                           \
+     ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,   \
+     ioctl_simplestruct_write, ioctl_simplestruct_equal,                    \
+     ioctl_simplestruct_execute, insertion_parent_fn}
+
+#define I_CUSTOM(name, fn_prefix) \
+    {name, #name,                                               \
+     fn_prefix ## _init_from_bin, fn_prefix ## _init_from_text, \
+     fn_prefix ## _write, fn_prefix ## _equal,                    \
+     fn_prefix ## _execute, fn_prefix ## _insertion_parent}
+
+
 ioctl_type ioctl_db[] = {
-    {USBDEVFS_CONNECTINFO, "USBDEVFS_CONNECTINFO",
-     ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,
-     ioctl_simplestruct_write, ioctl_simplestruct_equal,
-     ioctl_simplestruct_execute, ioctl_insertion_parent_stateless}
-    ,
+    I_SIMPLE_STRUCT(USBDEVFS_CONNECTINFO, ioctl_insertion_parent_stateless),
+
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
-    {USBDEVFS_REAPURB, "USBDEVFS_REAPURB",
-     usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
-     usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
-     usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent}
-    ,
-    {USBDEVFS_REAPURBNDELAY, "USBDEVFS_REAPURBNDELAY",
-     usbdevfs_reapurb_init_from_bin, usbdevfs_reapurb_init_from_text,
-     usbdevfs_reapurb_write, usbdevfs_reapurb_equal,
-     usbdevfs_reapurb_execute, usbdevfs_reapurb_insertion_parent}
-    ,
+    I_CUSTOM(USBDEVFS_REAPURB, usbdevfs_reapurb),
+    I_CUSTOM(USBDEVFS_REAPURBNDELAY, usbdevfs_reapurb),
 
     /* hardware/state independent ioctls */
-    {USBDEVFS_CLAIMINTERFACE, "USBDEVFS_CLAIMINTERFACE",
-     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
-    ,
-    {USBDEVFS_RELEASEINTERFACE, "USBDEVFS_RELEASEINTERFACE",
-     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
-    ,
-    {USBDEVFS_CLEAR_HALT, "USBDEVFS_CLEAR_HALT",
-     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
-    ,
-    {USBDEVFS_RESET, "USBDEVFS_RESET",
-     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
-    ,
-    {USBDEVFS_RESETEP, "USBDEVFS_RESETEP",
-     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
-    ,
-    {USBDEVFS_GETDRIVER, "USBDEVFS_GETDRIVER",
-     NULL, NULL, NULL, NULL, ioctl_execute_enodata, NULL}
-    ,
-    {USBDEVFS_IOCTL, "USBDEVFS_IOCTL",
-     NULL, NULL, NULL, NULL, ioctl_execute_enotty, NULL}
-    ,
-    {EVIOCGRAB, "EVIOCGRAB",
-     NULL, NULL, NULL, NULL, ioctl_execute_success, NULL}
-    ,
+    I_NOSTATE(USBDEVFS_CLAIMINTERFACE, success),
+    I_NOSTATE(USBDEVFS_RELEASEINTERFACE, success),
+    I_NOSTATE(USBDEVFS_CLEAR_HALT, success),
+    I_NOSTATE(USBDEVFS_RESET, success),
+    I_NOSTATE(USBDEVFS_RESETEP, success),
+    I_NOSTATE(USBDEVFS_GETDRIVER, enodata),
+    I_NOSTATE(USBDEVFS_IOCTL, enotty),
+
+    I_NOSTATE(EVIOCGRAB, success),
 
     /* terminator */
     {0, "", NULL, NULL, NULL, NULL, NULL}
