@@ -96,7 +96,7 @@ lib_LTLIBRARIES += libumockdev.la
 
 libumockdev_includedir = $(includedir)/umockdev-1.0/
 
-libumockdev_include_HEADERS = src/umockdev.h
+libumockdev_include_HEADERS = src/umockdev.h src/uevent_sender.h
 
 libumockdev_la_SOURCES =	\
 	src/umockdev.vala	\
