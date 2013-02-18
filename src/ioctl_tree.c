@@ -462,7 +462,7 @@ ioctl_simplestruct_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 }
 
 static int
-ioctl_simplestruct_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_simplestruct_in_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     if (node->type->id == id) {
 	memcpy(arg, node->data, sizeof(struct usbdevfs_connectinfo));
@@ -675,11 +675,11 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
 #define I_NOSTATE(name, execute_result) \
     {name, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
 
-#define I_SIMPLE_STRUCT(name, insertion_parent_fn) \
+#define I_SIMPLE_STRUCT_IN(name, insertion_parent_fn) \
     {name, #name,                                                           \
      ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,   \
      ioctl_simplestruct_write, ioctl_simplestruct_equal,                    \
-     ioctl_simplestruct_execute, insertion_parent_fn}
+     ioctl_simplestruct_in_execute, insertion_parent_fn}
 
 #define I_CUSTOM(name, fn_prefix) \
     {name, #name,                                               \
@@ -689,7 +689,7 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
 
 
 ioctl_type ioctl_db[] = {
-    I_SIMPLE_STRUCT(USBDEVFS_CONNECTINFO, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(USBDEVFS_CONNECTINFO, ioctl_insertion_parent_stateless),
 
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
