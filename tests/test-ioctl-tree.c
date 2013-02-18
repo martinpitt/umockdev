@@ -240,11 +240,13 @@ t_read(void)
 {
     FILE *f;
     char contents[1000];
+    /* this tests the actual ioctl_tree_read() */
+    ioctl_tree *tree = get_test_tree();
 
     /* write test tree into the tempfile and read it back to compare with original
      * (easier than comparing nodes) */
     f = tmpfile();
-    fwrite(test_tree_str, strlen(test_tree_str), 1, f);
+    ioctl_tree_write(f, tree);
     rewind(f);
     memset(contents, 0, sizeof(contents));
     g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
