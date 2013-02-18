@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
+#include <linux/input.h>
 
 #include "ioctl_tree.h"
 
@@ -78,6 +79,7 @@ static void
 t_type_get_by(void)
 {
     unsigned long id;
+    const ioctl_type *t;
 
     g_assert(ioctl_type_get_by_id(-1) == NULL);
     g_assert_cmpstr(ioctl_type_get_by_id(USBDEVFS_CONNECTINFO)->name, ==, "USBDEVFS_CONNECTINFO");
@@ -85,29 +87,22 @@ t_type_get_by(void)
 
     g_assert(ioctl_type_get_by_name("no_such_ioctl", NULL) == NULL);
     g_assert_cmpint(ioctl_type_get_by_name("USBDEVFS_CONNECTINFO", &id)->id, ==, USBDEVFS_CONNECTINFO);
-    g_assert_cmpint(id, ==, USBDEVFS_CONNECTINFO);
-    g_assert_cmpint(ioctl_type_get_by_name("USBDEVFS_REAPURBNDELAY", NULL)->id, ==, USBDEVFS_REAPURBNDELAY);
-}
+    g_assert_cmpuint(id, ==, USBDEVFS_CONNECTINFO);
+    g_assert_cmpuint(ioctl_type_get_by_name("USBDEVFS_REAPURBNDELAY", NULL)->id, ==, USBDEVFS_REAPURBNDELAY);
 
-#if 0
-static void
-print_tree(const char *description, const ioctl_tree * tree)
-{
-    size_t i;
-    ioctl_tree *t;
+    t = ioctl_type_get_by_id(EVIOCGABS(ABS_X));
+    g_assert(t != NULL);
+    g_assert_cmpuint(t->id, ==, EVIOCGABS(0));
+    g_assert_cmpstr(t->name, ==, "EVIOCGABS");
+    g_assert(ioctl_type_get_by_id(EVIOCGABS(ABS_WHEEL)) == t);
+    g_assert(ioctl_type_get_by_id(EVIOCGABS(ABS_MAX)) == t);
 
-    printf("------ tree: %s --------\n", description);
-    ioctl_tree_write(stdout, tree);
-    puts("\n#### add stack:");
-    for (i = tree->last_added->n; i > 0; --i) {
-	t = ioctl_node_list_get(tree->last_added, i - 1);
-	printf("%s[", t->type->name);
-	t->type->write(t, stdout);
-	puts("]");
-    }
-    puts("----------------------------");
+    g_assert(ioctl_type_get_by_name("EVIOCGABS", &id) == t);
+    g_assert(ioctl_type_get_by_name("EVIOCGABS(0)", &id) == t);
+    g_assert_cmpuint(id, ==, EVIOCGABS(ABS_X));
+    g_assert(ioctl_type_get_by_name("EVIOCGABS(8)", &id) == t);
+    g_assert_cmpuint(id, ==, EVIOCGABS(ABS_WHEEL));
 }
-#endif
 
 #define assert_node(n,p,c,nx) \
     g_assert (n->parent == p);      \
@@ -435,6 +430,54 @@ t_execute_unknown(void)
     g_assert(ioctl_tree_execute(tree, NULL, USBDEVFS_SUBMITURB, &unknown_urb, &ret) == NULL);
 }
 
+static void
+t_evdev(void)
+{
+    ioctl_tree *tree = NULL;
+    FILE *f;
+    char contents[1000];
+    struct input_absinfo absinfo_x = {100, 50, 150, 2, 5, 1};
+    struct input_absinfo absinfo_volume = {30, 0, 100, 0, 9, 10};
+    struct input_absinfo abs_query;
+    int ret;
+
+    /* create a tree from ioctls */
+    tree = ioctl_tree_new_from_bin(EVIOCGABS(ABS_X), &absinfo_x, 0);
+    g_assert(tree != NULL);
+    ioctl_tree_insert(NULL, tree);
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_VOLUME), &absinfo_volume, 8)) == NULL);
+    /* duplicate */
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_X), &absinfo_x, 0)) != NULL);
+
+    /* write it into file */
+    f = tmpfile();
+    ioctl_tree_write(f, tree);
+    rewind(f);
+
+    /* check text representation */
+    memset(contents, 0, sizeof(contents));
+    g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
+    g_assert_cmpstr(contents, ==, 
+            "EVIOCGABS 0 640000003200000096000000020000000500000001000000\n"
+            "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n");
+    rewind(f);
+
+    /* read it back */
+    tree = ioctl_tree_read(f);
+    fclose(f);
+
+    /* execute ioctls */
+    g_assert(ioctl_tree_execute(tree, NULL, EVIOCGABS(ABS_X), &abs_query, &ret));
+    g_assert(ret == 0);
+    g_assert(memcmp(&abs_query, &absinfo_x, sizeof(abs_query)) == 0);
+
+    g_assert(ioctl_tree_execute(tree, NULL, EVIOCGABS(ABS_VOLUME), &abs_query, &ret));
+    g_assert(ret == 8);
+    g_assert(memcmp(&abs_query, &absinfo_volume, sizeof(abs_query)) == 0);
+
+    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGABS(ABS_Y), &abs_query, &ret));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -450,6 +493,8 @@ main(int argc, char **argv)
     g_test_add_func("/umockdev-ioctl-tree/iteration", t_iteration);
     g_test_add_func("/umockdev-ioctl-tree/execute", t_execute);
     g_test_add_func("/umockdev-ioctl-tree/execute_unknown", t_execute_unknown);
+
+    g_test_add_func("/umockdev-ioctl-tree/evdev", t_evdev);
 
     return g_test_run();
 }

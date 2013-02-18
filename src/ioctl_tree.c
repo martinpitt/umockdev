@@ -128,6 +128,8 @@ ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
 {
     ioctl_tree *existing;
 
+    assert(node != NULL);
+
     /* creating the root element? */
     if (tree == NULL) {
 	node->last_added = ioctl_node_list_new();
@@ -228,7 +230,15 @@ ioctl_tree_write(FILE * f, const ioctl_tree * tree)
     /* write indent */
     for (i = 0; i < tree->depth; ++i)
 	fputc(' ', f);
-    fprintf(f, "%s %i ", tree->type->name, tree->ret);
+    if (tree->id != tree->type->id) {
+        unsigned long offset;
+        assert(tree->id >= tree->type->id);
+        offset = _IOC_NR(tree->id) - _IOC_NR(tree->type->id);
+        assert(offset <= tree->type->nr_range);
+        fprintf(f, "%s(%lu) %i ", tree->type->name, offset, tree->ret);
+    } else {
+        fprintf(f, "%s %i ", tree->type->name, tree->ret);
+    }
     tree->type->write(tree, f);
     assert(fputc('\n', f) == '\n');
 
@@ -241,7 +251,7 @@ ioctl_tree_find_equal(ioctl_tree * tree, ioctl_tree * node)
 {
     ioctl_tree *t;
 
-    if (node->type == tree->type && node->type->equal(node, tree))
+    if (node->id == tree->id && node->type->equal(node, tree))
 	return tree;
     if (tree->child) {
 	t = ioctl_tree_find_equal(tree->child, node);
@@ -337,7 +347,7 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void 
      * ioctls as much as possible (i. e. maintain it while the requests come in
      * at the same order as originally recorded) */
     for (;;) {
-	DBG("   ioctl_tree_execute: checking node %s(%lX) ", i->type->name, i->type->id);
+	DBG("   ioctl_tree_execute: checking node %s(%lX, base id %lX) ", i->type->name, i->id, i->type->id);
 	IFDBG(i->type->write(i, stdout));
 	DBG("\n");
 	handled = i->type->execute(i, id, arg, &r);
@@ -431,6 +441,15 @@ write_hex(FILE * file, const char *buf, size_t len)
 
 #define NSIZE(node) _IOC_SIZE(node->type->id)
 
+static inline int
+id_matches_type(unsigned long id, const ioctl_type *type)
+{
+    return _IOC_TYPE(id) == _IOC_TYPE(type->id) &&
+           _IOC_DIR(id) == _IOC_DIR(type->id) &&
+           _IOC_NR(id) >= _IOC_NR(type->id) &&
+           _IOC_NR(id) <= _IOC_NR(type->id) + type->nr_range;
+}
+
 static void
 ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
@@ -467,8 +486,8 @@ ioctl_simplestruct_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 static int
 ioctl_simplestruct_in_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
-    if (node->type->id == id) {
-	memcpy(arg, node->data, sizeof(struct usbdevfs_connectinfo));
+    if (id == node->id) {
+	memcpy(arg, node->data, NSIZE(node));
 	*ret = node->ret;
 	return 1;
     }
@@ -676,28 +695,33 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
  ***********************************/
 
 #define I_NOSTATE(name, execute_result) \
-    {name, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
+    {name, 0, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
 
-#define I_SIMPLE_STRUCT_IN(name, insertion_parent_fn) \
-    {name, #name,                                                           \
+#define I_SIMPLE_STRUCT_IN(name, nr_range, insertion_parent_fn) \
+    {name, nr_range, #name,                                                 \
      ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,   \
      ioctl_simplestruct_write, ioctl_simplestruct_equal,                    \
      ioctl_simplestruct_in_execute, insertion_parent_fn}
 
-#define I_CUSTOM(name, fn_prefix) \
-    {name, #name,                                               \
+#define I_NAMED_SIMPLE_STRUCT_IN(name, namestr, nr_range, insertion_parent_fn) \
+    {name, nr_range, namestr,                                                  \
+     ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,      \
+     ioctl_simplestruct_write, ioctl_simplestruct_equal,                       \
+     ioctl_simplestruct_in_execute, insertion_parent_fn}
+
+#define I_CUSTOM(name, nr_range, fn_prefix) \
+    {name, nr_range, #name,                                     \
      fn_prefix ## _init_from_bin, fn_prefix ## _init_from_text, \
-     fn_prefix ## _write, fn_prefix ## _equal,                    \
+     fn_prefix ## _write, fn_prefix ## _equal,                  \
      fn_prefix ## _execute, fn_prefix ## _insertion_parent}
 
-
 ioctl_type ioctl_db[] = {
-    I_SIMPLE_STRUCT_IN(USBDEVFS_CONNECTINFO, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(USBDEVFS_CONNECTINFO, 0, ioctl_insertion_parent_stateless),
 
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
-    I_CUSTOM(USBDEVFS_REAPURB, usbdevfs_reapurb),
-    I_CUSTOM(USBDEVFS_REAPURBNDELAY, usbdevfs_reapurb),
+    I_CUSTOM(USBDEVFS_REAPURB, 0, usbdevfs_reapurb),
+    I_CUSTOM(USBDEVFS_REAPURBNDELAY, 0, usbdevfs_reapurb),
 
     /* hardware/state independent ioctls */
     I_NOSTATE(USBDEVFS_CLAIMINTERFACE, success),
@@ -710,8 +734,11 @@ ioctl_type ioctl_db[] = {
 
     I_NOSTATE(EVIOCGRAB, success),
 
+    /* evdev */
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGABS(0), "EVIOCGABS", ABS_MAX, ioctl_insertion_parent_stateless),
+
     /* terminator */
-    {0, "", NULL, NULL, NULL, NULL, NULL}
+    {0, 0, "", NULL, NULL, NULL, NULL, NULL}
 };
 
 const ioctl_type *
@@ -719,7 +746,7 @@ ioctl_type_get_by_id(unsigned long id)
 {
     ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
-	if (cur->id == id)
+        if (id_matches_type(id, cur))
 	    return cur;
     return NULL;
 }
@@ -728,11 +755,27 @@ const ioctl_type *
 ioctl_type_get_by_name(const char *name, unsigned long* out_id)
 {
     ioctl_type *cur;
+    char *parens;
+    char *real_name;
+    const ioctl_type *result = NULL;
+    long offset = 0;
+
+    /* chop off real name from offset */
+    real_name = strdup(name);
+    parens = strchr(real_name, '(');
+    if (parens != NULL) {
+        *parens = '\0';
+        offset = atol(parens + 1);
+    }
+
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
-	if (strcmp(cur->name, name) == 0) {
+	if (strcmp(cur->name, real_name) == 0) {
             if (out_id != NULL)
-                *out_id = cur->id;
-	    return cur;
+                *out_id = cur->id + offset;
+            result = cur;
+            break;
         }
-    return NULL;
+
+    free(real_name);
+    return result;
 }

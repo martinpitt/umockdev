@@ -24,6 +24,7 @@ typedef struct ioctl_tree ioctl_tree;
 
 typedef struct {
     unsigned long id;
+    unsigned long nr_range;
     const char name[100];
     void (*init_from_bin) (ioctl_tree *, const void *);
     int (*init_from_text) (ioctl_tree *, const char *);
