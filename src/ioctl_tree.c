@@ -421,48 +421,47 @@ write_hex(FILE * file, const char *buf, size_t len)
 
 /***********************************
  *
- * USBDEVFS_CONNECTINFO
+ * ioctls with simple struct data (i. e. no pointers)
  *
  ***********************************/
 
+#define NSIZE(node) _IOC_SIZE(node->type->id)
+
 static void
-usbdevfs_connectinfo_init_from_bin(ioctl_tree * node, const void *data)
+ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
-    node->data = malloc(sizeof(struct usbdevfs_connectinfo));
-    memcpy(node->data, data, sizeof(struct usbdevfs_connectinfo));
+    node->data = malloc(NSIZE(node));
+    memcpy(node->data, data, NSIZE(node));
 }
 
 static int
-usbdevfs_connectinfo_init_from_text(ioctl_tree * node, const char *data)
+ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
 {
-    int slow;
-    struct usbdevfs_connectinfo *info = malloc(sizeof(struct usbdevfs_connectinfo));
-    if (sscanf(data, "%u %i\n", &info->devnum, &slow) != 2) {
-	DBG("usbdevfs_connectinfo_init_from_text: failed to parse '%s'\n", data);
-	free(info);
+    node->data = malloc(NSIZE(node));
+
+    if (!read_hex(data, node->data, NSIZE(node))) {
+	DBG("ioctl_simplestruct_init_from_text: failed to parse '%s'\n", data);
+	free(node->data);
 	return FALSE;
     }
-    info->slow = (char)slow;
-    node->data = info;
     return TRUE;
 }
 
 static void
-usbdevfs_connectinfo_write(const ioctl_tree * node, FILE * f)
+ioctl_simplestruct_write(const ioctl_tree * node, FILE * f)
 {
-    const struct usbdevfs_connectinfo *info = node->data;
     assert(node->data != NULL);
-    fprintf(f, "%u %i", info->devnum, info->slow);
+    write_hex(f, node->data, NSIZE(node));
 }
 
 static int
-usbdevfs_connectinfo_equal(const ioctl_tree * n1, const ioctl_tree * n2)
+ioctl_simplestruct_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 {
-    return memcmp(n1->data, n2->data, sizeof(struct usbdevfs_connectinfo)) == 0;
+    return n1->type == n2->type && memcmp(n1->data, n2->data, NSIZE(n1)) == 0;
 }
 
 static int
-usbdevfs_connectinfo_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_simplestruct_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
 {
     if (node->type->id == id) {
 	memcpy(arg, node->data, sizeof(struct usbdevfs_connectinfo));
@@ -473,12 +472,6 @@ usbdevfs_connectinfo_execute(const ioctl_tree * node, unsigned long id, void *ar
     return 0;
 }
 
-static ioctl_tree *
-usbdevfs_connectinfo_insertion_parent(ioctl_tree * tree, ioctl_tree * node)
-{
-    /* stateless, always new top level item */
-    return tree;
-}
 
 /***********************************
  *
@@ -667,6 +660,12 @@ ioctl_execute_enotty(const ioctl_tree * node, unsigned long id, void *arg, int *
     return 1;
 }
 
+static ioctl_tree *
+ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
+{
+    return tree;
+}
+
 /***********************************
  *
  * Known ioctls
@@ -675,9 +674,9 @@ ioctl_execute_enotty(const ioctl_tree * node, unsigned long id, void *arg, int *
 
 ioctl_type ioctl_db[] = {
     {USBDEVFS_CONNECTINFO, "USBDEVFS_CONNECTINFO",
-     usbdevfs_connectinfo_init_from_bin, usbdevfs_connectinfo_init_from_text,
-     usbdevfs_connectinfo_write, usbdevfs_connectinfo_equal,
-     usbdevfs_connectinfo_execute, usbdevfs_connectinfo_insertion_parent}
+     ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,
+     ioctl_simplestruct_write, ioctl_simplestruct_equal,
+     ioctl_simplestruct_execute, ioctl_insertion_parent_stateless}
     ,
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */

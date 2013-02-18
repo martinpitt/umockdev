@@ -47,7 +47,7 @@ const struct usbdevfs_urb s_in3 = { 1, 129, -5, 0, "file2\0\0\0\0\0\0\0\0\0\0", 
 const struct usbdevfs_urb *out1 = &s_out1, *in1a = &s_in1a, *in1b = &s_in1b,
     *out2 = &s_out2, *in2a = &s_in2a, *in2b = &s_in2b, *in2c = &s_in2c, *in3 = &s_in3;
 
-const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 11 0\n"
+const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 0B00000000000000\n"
     "USBDEVFS_REAPURB 1 2 0 0 4 4 0 77686174\n"
     " USBDEVFS_REAPURB 1 129 0 0 10 4 0 74686973\n"
     "  USBDEVFS_REAPURB 1 129 0 0 10 9 0 616E6474686174FFC0\n"
@@ -55,7 +55,7 @@ const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 11 0\n"
     " USBDEVFS_REAPURB 1 129 0 0 15 6 0 66696C653161\n"
     "  USBDEVFS_REAPURB 1 129 0 0 15 7 0 66696C65316262\n"
     "   USBDEVFS_REAPURB 1 129 0 0 15 8 0 66696C6531636363\n"
-    " USBDEVFS_REAPURB 1 129 -5 0 15 5 0 66696C6532\n" "USBDEVFS_CONNECTINFO 12 0\n";
+    " USBDEVFS_REAPURB 1 129 -5 0 15 5 0 66696C6532\n" "USBDEVFS_CONNECTINFO 0C00000000000000\n";
 
 static ioctl_tree *
 get_test_tree(void)
