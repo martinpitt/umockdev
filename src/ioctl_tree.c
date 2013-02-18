@@ -62,6 +62,7 @@ ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret)
     t = calloc(sizeof(ioctl_tree), 1);
     t->type = type;
     t->ret = ret;
+    t->id = id;
     type->init_from_bin(t, data);
     return t;
 }
@@ -72,6 +73,7 @@ ioctl_tree_new_from_text(const char *line)
     static char lead_ws[1000];
     static char ioctl_name[100];
     int ret, offset;
+    unsigned long id;
     const ioctl_type *type;
     ioctl_tree *t;
 
@@ -88,7 +90,7 @@ ioctl_tree_new_from_text(const char *line)
 	lead_ws[0] = '\0';
     }
 
-    type = ioctl_type_get_by_name(ioctl_name);
+    type = ioctl_type_get_by_name(ioctl_name, &id);
     if (type == NULL) {
 	DBG("ioctl_tree_new_from_text: unknown ioctl %s\n", ioctl_name);
 	return NULL;
@@ -98,6 +100,7 @@ ioctl_tree_new_from_text(const char *line)
     t->type = type;
     t->depth = strlen(lead_ws);
     t->ret = ret;
+    t->id = id;
     if (!type->init_from_text(t, line + offset)) {
 	DBG("ioctl_tree_new_from_text: ioctl %s failed to initialize from data '%s'\n", ioctl_name, line + offset);
 	free(t);
@@ -722,11 +725,14 @@ ioctl_type_get_by_id(unsigned long id)
 }
 
 const ioctl_type *
-ioctl_type_get_by_name(const char *name)
+ioctl_type_get_by_name(const char *name, unsigned long* out_id)
 {
     ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
-	if (strcmp(cur->name, name) == 0)
+	if (strcmp(cur->name, name) == 0) {
+            if (out_id != NULL)
+                *out_id = cur->id;
 	    return cur;
+        }
     return NULL;
 }

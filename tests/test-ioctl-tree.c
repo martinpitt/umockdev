@@ -77,13 +77,16 @@ get_test_tree(void)
 static void
 t_type_get_by(void)
 {
+    unsigned long id;
+
     g_assert(ioctl_type_get_by_id(-1) == NULL);
     g_assert_cmpstr(ioctl_type_get_by_id(USBDEVFS_CONNECTINFO)->name, ==, "USBDEVFS_CONNECTINFO");
     g_assert_cmpstr(ioctl_type_get_by_id(USBDEVFS_REAPURBNDELAY)->name, ==, "USBDEVFS_REAPURBNDELAY");
 
-    g_assert(ioctl_type_get_by_name("no_such_ioctl") == NULL);
-    g_assert_cmpint(ioctl_type_get_by_name("USBDEVFS_CONNECTINFO")->id, ==, USBDEVFS_CONNECTINFO);
-    g_assert_cmpint(ioctl_type_get_by_name("USBDEVFS_REAPURBNDELAY")->id, ==, USBDEVFS_REAPURBNDELAY);
+    g_assert(ioctl_type_get_by_name("no_such_ioctl", NULL) == NULL);
+    g_assert_cmpint(ioctl_type_get_by_name("USBDEVFS_CONNECTINFO", &id)->id, ==, USBDEVFS_CONNECTINFO);
+    g_assert_cmpint(id, ==, USBDEVFS_CONNECTINFO);
+    g_assert_cmpint(ioctl_type_get_by_name("USBDEVFS_REAPURBNDELAY", NULL)->id, ==, USBDEVFS_REAPURBNDELAY);
 }
 
 #if 0
