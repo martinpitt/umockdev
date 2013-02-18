@@ -44,6 +44,7 @@ struct ioctl_tree {
     const ioctl_type *type;
     int depth;
     void *data;
+    int ret;
     ioctl_tree *child;
     ioctl_tree *next;		/* sibling */
     ioctl_tree *parent;
@@ -52,7 +53,7 @@ struct ioctl_tree {
     ioctl_node_list *last_added;
 };
 
-ioctl_tree *ioctl_tree_new_from_bin(unsigned long id, const void *data);
+ioctl_tree *ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret);
 ioctl_tree *ioctl_tree_new_from_text(const char *line);
 ioctl_tree *ioctl_tree_read(FILE * f);
 void ioctl_tree_write(FILE * f, const ioctl_tree * tree);

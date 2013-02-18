@@ -1,5 +1,8 @@
 0.2 (UNRELEASED)
-------------------
+----------------
+Compatibility break: This does not work any more with recorded ioctl files from
+version 0.1.
+
 - umockdev-run: Fix running of child program to keep stdin.
 - preload: Fix resolution of "/dev" and "/sys"
 - ioctl_tree: Fix endless loop when the first encountered ioctl was unknown
@@ -12,8 +15,9 @@
 - Fix building with automake 1.11.3 and Vala 0.16.
 - Generalize ioctl recording and emulation for ioctls with simple structs, i.
   e. no pointer fields. This makes it much easier to add more ioctls in the
-  future. COMPATIBILITY BREAK: This does not work any more with recorded
-  USBDEVFS_CONNECTINFO ioctls from version 0.1.
+  future. 
+- Store return values of ioctls in records, as they are not always 0
+  (like EVIOCGBIT)
 
 0.1 (2013-02-12)
 ----------------

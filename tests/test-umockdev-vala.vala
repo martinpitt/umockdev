@@ -100,9 +100,9 @@ E: SUBSYSTEM=usb
 """);
 
   // add simple ioctl tree
-  string test_tree = """USBDEVFS_CONNECTINFO 0B00000000000000
-USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
-USBDEVFS_CONNECTINFO 0C00000001000000
+  string test_tree = """USBDEVFS_CONNECTINFO 0 0B00000000000000
+USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
+USBDEVFS_CONNECTINFO 42 0C00000001000000
 """;
 
   string tmppath;
@@ -165,7 +165,7 @@ USBDEVFS_CONNECTINFO 0C00000001000000
   // should still work on first fd, and continue with original tree state
   ci.devnum = 99;
   ci.slow = 99;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
   assert_cmpint (Posix.errno, Op.EQ, 0);
   assert_cmpuint (ci.devnum, Op.EQ, 12);
   assert_cmpuint (ci.slow, Op.EQ, 1);
@@ -174,7 +174,7 @@ USBDEVFS_CONNECTINFO 0C00000001000000
   Posix.close (fd);
   ci.devnum = 99;
   ci.slow = 99;
-  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
   assert_cmpint (Posix.errno, Op.EQ, 0);
   assert_cmpuint (ci.devnum, Op.EQ, 12);
   assert_cmpuint (ci.slow, Op.EQ, 1);
@@ -191,9 +191,9 @@ E: SUBSYSTEM=usb
 """);
 
   // add simple ioctl tree
-  string test_tree = """USBDEVFS_CONNECTINFO 0B00000000000000
-USBDEVFS_REAPURB 1 129 -1 0 4 4 0 9902AAFF
-USBDEVFS_CONNECTINFO 0C00000001000000
+  string test_tree = """USBDEVFS_CONNECTINFO 0 0B00000000000000
+USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
+USBDEVFS_CONNECTINFO 42 0C00000001000000
 """;
 
   string tmppath;
@@ -215,6 +215,11 @@ USBDEVFS_CONNECTINFO 0C00000001000000
   assert_cmpint (Posix.errno, Op.EQ, 0);
   assert_cmpuint (ci.devnum, Op.EQ, 11);
   assert_cmpuint (ci.slow, Op.EQ, 0);
+
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 12);
+  assert_cmpuint (ci.slow, Op.EQ, 1);
 
   Posix.close (fd);
 }

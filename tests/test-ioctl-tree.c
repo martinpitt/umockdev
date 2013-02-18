@@ -47,15 +47,16 @@ const struct usbdevfs_urb s_in3 = { 1, 129, -5, 0, "file2\0\0\0\0\0\0\0\0\0\0", 
 const struct usbdevfs_urb *out1 = &s_out1, *in1a = &s_in1a, *in1b = &s_in1b,
     *out2 = &s_out2, *in2a = &s_in2a, *in2b = &s_in2b, *in2c = &s_in2c, *in3 = &s_in3;
 
-const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 0B00000000000000\n"
-    "USBDEVFS_REAPURB 1 2 0 0 4 4 0 77686174\n"
-    " USBDEVFS_REAPURB 1 129 0 0 10 4 0 74686973\n"
-    "  USBDEVFS_REAPURB 1 129 0 0 10 9 0 616E6474686174FFC0\n"
-    "USBDEVFS_REAPURB 1 2 0 0 8 8 0 7265616466696C65\n"
-    " USBDEVFS_REAPURB 1 129 0 0 15 6 0 66696C653161\n"
-    "  USBDEVFS_REAPURB 1 129 0 0 15 7 0 66696C65316262\n"
-    "   USBDEVFS_REAPURB 1 129 0 0 15 8 0 66696C6531636363\n"
-    " USBDEVFS_REAPURB 1 129 -5 0 15 5 0 66696C6532\n" "USBDEVFS_CONNECTINFO 0C00000000000000\n";
+const gchar test_tree_str[] = "USBDEVFS_CONNECTINFO 0 0B00000000000000\n"
+    "USBDEVFS_REAPURB 0 1 2 0 0 4 4 0 77686174\n"
+    " USBDEVFS_REAPURB 0 1 129 0 0 10 4 0 74686973\n"
+    "  USBDEVFS_REAPURB 0 1 129 0 0 10 9 0 616E6474686174FFC0\n"
+    "USBDEVFS_REAPURB 0 1 2 0 0 8 8 0 7265616466696C65\n"
+    " USBDEVFS_REAPURB 0 1 129 0 0 15 6 0 66696C653161\n"
+    "  USBDEVFS_REAPURB 0 1 129 0 0 15 7 0 66696C65316262\n"
+    "   USBDEVFS_REAPURB 0 1 129 0 0 15 8 0 66696C6531636363\n"
+    " USBDEVFS_REAPURB 0 1 129 -5 0 15 5 0 66696C6532\n"
+    "USBDEVFS_CONNECTINFO 42 0C00000000000000\n";
 
 static ioctl_tree *
 get_test_tree(void)
@@ -137,55 +138,55 @@ t_create_from_bin(void)
      */
 
     /* add ci */
-    tree = n_ci = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci);
+    tree = n_ci = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci, 0);
     g_assert(ioctl_tree_insert(NULL, n_ci) == NULL);
     g_assert(n_ci->data != &ci);	/* data should get copied */
     assert_node(n_ci, NULL, NULL, NULL);
 
     /* add out1, in1a, in1b */
-    n_out1 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out1);
+    n_out1 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out1, 0);
     g_assert(ioctl_tree_insert(tree, n_out1) == NULL);
     g_assert(n_out1->data != &out1);	/* data should get copied */
     assert_node(n_out1, tree, NULL, NULL);
     g_assert(n_ci->next == n_out1);
 
-    n_in1a = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1a);
+    n_in1a = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1a, 0);
     g_assert(ioctl_tree_insert(tree, n_in1a) == NULL);
     assert_node(n_in1a, n_out1, NULL, NULL);
     assert_node(n_out1, tree, n_in1a, NULL);
 
-    n_in1b = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1b);
+    n_in1b = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1b, 0);
     g_assert(ioctl_tree_insert(tree, n_in1b) == NULL);
 
     /* add CI again, should not change anything */
-    n_ci2 = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci);
+    n_ci2 = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci, 0);
     g_assert(ioctl_tree_insert(tree, n_ci2) == n_ci);
     g_assert(n_ci2->parent == NULL);
     g_assert(tree == n_ci);
 
     /* add out2, should become a new top-level node */
-    n_out2 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2);
+    n_out2 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0);
     g_assert(ioctl_tree_insert(tree, n_out2) == NULL);
     assert_node(n_out2, tree, NULL, NULL);
 
     /* add in2a and in2b */
-    n_in2a = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2a);
+    n_in2a = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2a, 0);
     g_assert(ioctl_tree_insert(tree, n_in2a) == NULL);
-    n_in2b = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2b);
+    n_in2b = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2b, 0);
     g_assert(ioctl_tree_insert(tree, n_in2b) == NULL);
 
     /* and append in2c, with an interjected ci */
-    n_ci2 = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci2);
+    n_ci2 = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci2, 42);
     g_assert(ioctl_tree_insert(tree, n_ci2) == NULL);
-    n_in2c = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2c);
+    n_in2c = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2c, 0);
     g_assert(ioctl_tree_insert(tree, n_in2c) == NULL);
 
     /* add out2 again, should not get added but should become "last added" */
-    n_out2_2 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2);
+    n_out2_2 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0);
     g_assert(ioctl_tree_insert(tree, n_out2_2) == n_out2);
 
     /* add in3, should become alternative of out2 */
-    n_in3 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in3);
+    n_in3 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in3, 0);
     g_assert(ioctl_tree_insert(tree, n_in3) == NULL);
 
     /* check tree structure */
@@ -210,18 +211,18 @@ t_write(void)
     char contents[1000];
 
     /* same tree as in t_create_from_bin() */
-    tree = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci);
+    tree = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci, 0);
     ioctl_tree_insert(NULL, tree);
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out1));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1a));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1b));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2a));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2b));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci2));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2c));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in3));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out1, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1a, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in1b, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2a, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2b, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci2, 42));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2c, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0));
+    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in3, 0));
 
     f = tmpfile();
     g_assert(f != NULL);
@@ -391,7 +392,7 @@ t_execute(void)
 
     last = ioctl_tree_execute(tree, last, USBDEVFS_CONNECTINFO, &ci, &ret);
     g_assert(last != NULL);
-    g_assert(ret == 0);
+    g_assert(ret == 42);
     g_assert_cmpint(ci.devnum, ==, 12);
     g_assert_cmpint(ci.slow, ==, 0);
 

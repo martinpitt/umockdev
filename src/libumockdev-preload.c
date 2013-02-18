@@ -305,13 +305,13 @@ ioctl_record_close(void)
 }
 
 static void
-record_ioctl(unsigned long request, void *arg)
+record_ioctl(unsigned long request, void *arg, int result)
 {
     ioctl_tree *node;
 
     assert(ioctl_record_log != NULL);
 
-    node = ioctl_tree_new_from_bin(request, arg);
+    node = ioctl_tree_new_from_bin(request, arg, result);
     if (node == NULL)
 	return;
     ioctl_tree_insert(ioctl_record, node);
@@ -403,7 +403,7 @@ ioctl(int d, unsigned long request, void *arg)
     DBG("ioctl fd %i request %lX: original, result %i\n", d, request, result);
 
     if (result != -1 && ioctl_record_fd == d)
-	record_ioctl(request, arg);
+	record_ioctl(request, arg, result);
 
     return result;
 }

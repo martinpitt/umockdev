@@ -45,7 +45,7 @@
  ***********************************/
 
 ioctl_tree *
-ioctl_tree_new_from_bin(unsigned long id, const void *data)
+ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret)
 {
     const ioctl_type *type;
     ioctl_tree *t;
@@ -61,6 +61,7 @@ ioctl_tree_new_from_bin(unsigned long id, const void *data)
 
     t = calloc(sizeof(ioctl_tree), 1);
     t->type = type;
+    t->ret = ret;
     type->init_from_bin(t, data);
     return t;
 }
@@ -70,18 +71,18 @@ ioctl_tree_new_from_text(const char *line)
 {
     static char lead_ws[1000];
     static char ioctl_name[100];
-    int offset;
+    int ret, offset;
     const ioctl_type *type;
     ioctl_tree *t;
 
     if (line[0] == ' ') {
-	if (sscanf(line, "%1000[ ]%100s %n", lead_ws, ioctl_name, &offset) < 2) {
-	    DBG("ioctl_tree_new_from_text: failed to parse indent and ioctl name from '%s'\n", line);
+	if (sscanf(line, "%1000[ ]%100s %i %n", lead_ws, ioctl_name, &ret, &offset) < 2) {
+	    DBG("ioctl_tree_new_from_text: failed to parse indent, ioctl name, and return value from '%s'\n", line);
 	    return NULL;
 	}
     } else {
-	if (sscanf(line, "%100s %n", ioctl_name, &offset) < 1) {
-	    DBG("ioctl_tree_new_from_text: failed to parse ioctl name from '%s'\n", line);
+	if (sscanf(line, "%100s %i %n", ioctl_name, &ret, &offset) < 1) {
+	    DBG("ioctl_tree_new_from_text: failed to parse ioctl name and return value from '%s'\n", line);
 	    return NULL;
 	}
 	lead_ws[0] = '\0';
@@ -96,6 +97,7 @@ ioctl_tree_new_from_text(const char *line)
     t = calloc(sizeof(ioctl_tree), 1);
     t->type = type;
     t->depth = strlen(lead_ws);
+    t->ret = ret;
     if (!type->init_from_text(t, line + offset)) {
 	DBG("ioctl_tree_new_from_text: ioctl %s failed to initialize from data '%s'\n", ioctl_name, line + offset);
 	free(t);
@@ -223,8 +225,7 @@ ioctl_tree_write(FILE * f, const ioctl_tree * tree)
     /* write indent */
     for (i = 0; i < tree->depth; ++i)
 	fputc(' ', f);
-    fputs(tree->type->name, f);
-    fputc(' ', f);
+    fprintf(f, "%s %i ", tree->type->name, tree->ret);
     tree->type->write(tree, f);
     assert(fputc('\n', f) == '\n');
 
@@ -465,7 +466,7 @@ ioctl_simplestruct_execute(const ioctl_tree * node, unsigned long id, void *arg,
 {
     if (node->type->id == id) {
 	memcpy(arg, node->data, sizeof(struct usbdevfs_connectinfo));
-	*ret = 0;
+	*ret = node->ret;
 	return 1;
     }
 
