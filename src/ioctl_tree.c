@@ -231,11 +231,11 @@ ioctl_tree_write(FILE * f, const ioctl_tree * tree)
     for (i = 0; i < tree->depth; ++i)
 	fputc(' ', f);
     if (tree->id != tree->type->id) {
-        unsigned long offset;
-        assert(tree->id >= tree->type->id);
+        long offset;
         offset = _IOC_NR(tree->id) - _IOC_NR(tree->type->id);
+        assert(offset >= 0);
         assert(offset <= tree->type->nr_range);
-        fprintf(f, "%s(%lu) %i ", tree->type->name, offset, tree->ret);
+        fprintf(f, "%s(%li) %i ", tree->type->name, offset, tree->ret);
     } else {
         fprintf(f, "%s %i ", tree->type->name, tree->ret);
     }
@@ -439,7 +439,7 @@ write_hex(FILE * file, const char *buf, size_t len)
  *
  ***********************************/
 
-#define NSIZE(node) _IOC_SIZE(node->type->id)
+#define NSIZE(node) _IOC_SIZE(node->id)
 
 static inline int
 id_matches_type(unsigned long id, const ioctl_type *type)
@@ -453,6 +453,7 @@ id_matches_type(unsigned long id, const ioctl_type *type)
 static void
 ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
+    DBG("ioctl_simplestruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, NSIZE(node));
     node->data = malloc(NSIZE(node));
     memcpy(node->data, data, NSIZE(node));
 }
@@ -460,7 +461,17 @@ ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 static int
 ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
 {
-    node->data = malloc(NSIZE(node));
+    /* node->id is initialized at this point, but does not necessarily have the
+     * correct length for data; this happens for variable length ioctls such as
+     * EVIOCGBIT */
+    size_t data_len = strlen(data) / 2;
+    node->data = malloc(data_len);
+
+    if (NSIZE(node) != data_len) {
+        DBG("ioctl_simplestruct_init_from_text: adjusting ioctl ID %lX (size %lu) to actual data length %zu\n",
+            node->id, NSIZE(node), data_len);
+        node->id = _IOC(_IOC_DIR(node->id), _IOC_TYPE(node->id), _IOC_NR(node->id), data_len);
+    }
 
     if (!read_hex(data, node->data, NSIZE(node))) {
 	DBG("ioctl_simplestruct_init_from_text: failed to parse '%s'\n", data);
@@ -736,6 +747,8 @@ ioctl_type ioctl_db[] = {
 
     /* evdev */
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGABS(0), "EVIOCGABS", ABS_MAX, ioctl_insertion_parent_stateless),
+    /* we define that with len==32, but it applies to any len */
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGBIT(0, 32), "EVIOCGBIT", EV_MAX, ioctl_insertion_parent_stateless),
 
     /* terminator */
     {0, 0, "", NULL, NULL, NULL, NULL, NULL}

@@ -18,6 +18,8 @@ version 0.1.
   future. 
 - Store return values of ioctls in records, as they are not always 0
   (like EVIOCGBIT)
+- Add support for ioctl ranges (like EVIOCGABS) and ioctls with variable length
+  (like EVIOCGBIT), and add these two as recognized ioctls.
 
 0.1 (2013-02-12)
 ----------------

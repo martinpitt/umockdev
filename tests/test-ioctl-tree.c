@@ -102,6 +102,13 @@ t_type_get_by(void)
     g_assert_cmpuint(id, ==, EVIOCGABS(ABS_X));
     g_assert(ioctl_type_get_by_name("EVIOCGABS(8)", &id) == t);
     g_assert_cmpuint(id, ==, EVIOCGABS(ABS_WHEEL));
+
+    t = ioctl_type_get_by_id(EVIOCGBIT(EV_SYN, 10));
+    g_assert(t != NULL);
+    g_assert_cmpuint(t->id, ==, EVIOCGBIT(EV_SYN, 32));
+    g_assert_cmpstr(t->name, ==, "EVIOCGBIT");
+    g_assert(ioctl_type_get_by_id(EVIOCGBIT(EV_KEY, 20)) == t);
+    g_assert(ioctl_type_get_by_id(EVIOCGBIT(EV_PWR, 1000)) == t);
 }
 
 #define assert_node(n,p,c,nx) \
@@ -439,6 +446,10 @@ t_evdev(void)
     struct input_absinfo absinfo_x = {100, 50, 150, 2, 5, 1};
     struct input_absinfo absinfo_volume = {30, 0, 100, 0, 9, 10};
     struct input_absinfo abs_query;
+    char synbits[4] = "\x01\x02\x03\x04";
+    char keybits[48] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    char pwrbits[4] = "\x00\x00\x00\x00";
+    char bits_query[48];
     int ret;
 
     /* create a tree from ioctls */
@@ -448,6 +459,10 @@ t_evdev(void)
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_VOLUME), &absinfo_volume, 8)) == NULL);
     /* duplicate */
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_X), &absinfo_x, 0)) != NULL);
+
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_SYN, sizeof(synbits)), synbits, 0x81)) == NULL);
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits, 0x82)) == NULL);
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_PWR, sizeof(pwrbits)), pwrbits, 0x83)) == NULL);
 
     /* write it into file */
     f = tmpfile();
@@ -459,14 +474,17 @@ t_evdev(void)
     g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
     g_assert_cmpstr(contents, ==, 
             "EVIOCGABS 0 640000003200000096000000020000000500000001000000\n"
-            "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n");
+            "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n"
+            "EVIOCGBIT(0) 129 01020304\n"
+            "EVIOCGBIT(1) 130 616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161\n"
+            "EVIOCGBIT(22) 131 00000000\n");
     rewind(f);
 
     /* read it back */
     tree = ioctl_tree_read(f);
     fclose(f);
 
-    /* execute ioctls */
+    /* execute EVIOCGABS ioctls */
     g_assert(ioctl_tree_execute(tree, NULL, EVIOCGABS(ABS_X), &abs_query, &ret));
     g_assert(ret == 0);
     g_assert(memcmp(&abs_query, &absinfo_x, sizeof(abs_query)) == 0);
@@ -476,6 +494,28 @@ t_evdev(void)
     g_assert(memcmp(&abs_query, &absinfo_volume, sizeof(abs_query)) == 0);
 
     g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGABS(ABS_Y), &abs_query, &ret));
+
+    /* execute EVIOCGBIT ioctls */
+    /* ensure that it doesn't write beyond specified length */
+    memset(bits_query, 0xAA, sizeof(bits_query));
+    g_assert(ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_SYN, sizeof(synbits)), &bits_query, &ret));
+    g_assert(ret == 0x81);
+    g_assert(memcmp(&bits_query, "\x01\x02\x03\x04\xAA\xAA\xAA\xAA", 8) == 0);
+
+    memset(bits_query, 0xAA, sizeof(bits_query));
+    g_assert(ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_KEY, sizeof(keybits)), &bits_query, &ret));
+    g_assert(ret == 0x82);
+    g_assert(memcmp(&bits_query, keybits, sizeof(bits_query)) == 0);
+
+    memset(bits_query, 0xAA, sizeof(bits_query));
+    g_assert(ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_PWR, sizeof(pwrbits)), &bits_query, &ret));
+    g_assert(ret == 0x83);
+    g_assert(memcmp(&bits_query, "\0\0\0\0\xAA\xAA\xAA\xAA", 8) == 0);
+
+    /* undefined for other ev type */
+    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_REL, sizeof(synbits)), &bits_query, NULL));
+    /* undefined for other length */
+    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_KEY, 4), &bits_query, NULL));
 }
 
 int
