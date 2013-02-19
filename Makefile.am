@@ -269,6 +269,7 @@ tests_test_integration_LDADD = $(GLIB_LIBS)
 tests_test_integration_VALAFLAGS =	\
 	--vapidir tests			\
 	--pkg glib-2.0			\
+	--pkg posix			\
 	$(NULL)
 
 tests_test_umockdev_record_SOURCES = 	\

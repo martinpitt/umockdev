@@ -20,7 +20,7 @@
 
 using Assertions;
 
-//string run_cmd = "LC_ALL=C LD_LIBRARY_PATH=.libs src/umockdev-run";
+const string umockdev_run_command = "env LC_ALL=C LD_LIBRARY_PATH=.libs src/umockdev-run ";
 
 static bool
 have_program (string program)
@@ -38,6 +38,25 @@ have_program (string program)
     return exit == 0;
 }
 
+static bool
+get_program_out (string program, string command, out string sout,
+                 out string serr, out int exit)
+{
+    if (!have_program (program)) {
+        stderr.printf ("[SKIP: %s not installed] ", program);
+        return false;
+    }
+
+    try {
+        Process.spawn_command_line_sync (command, out sout, out serr, out exit);
+    } catch (SpawnError e) {
+        stderr.printf ("cannot call %s: %s\n", command, e.message);
+        Process.abort();
+    }
+
+    return true;
+}
+
 static void
 check_program_out (string program, string run_command, string expected_out, string expected_err = "")
 {
@@ -45,18 +64,8 @@ check_program_out (string program, string run_command, string expected_out, stri
     string serr;
     int exit;
 
-    if (!have_program (program)) {
-        stderr.printf ("[SKIP: %s not installed] ", program);
+    if (!get_program_out (program, umockdev_run_command + run_command, out sout, out serr, out exit))
         return;
-    }
-
-    string cmd = "env LC_ALL=C LD_LIBRARY_PATH=.libs src/umockdev-run " + run_command;
-    try {
-        Process.spawn_command_line_sync (cmd, out sout, out serr, out exit);
-    } catch (SpawnError e) {
-        stderr.printf ("cannot call %s: %s\n", cmd, e.message);
-        Process.abort();
-    }
 
     assert_cmpstr (sout, Op.EQ, expected_out);
     assert_cmpstr (serr, Op.EQ, expected_err);
@@ -110,6 +119,62 @@ There are 9 files in folder '/store_00010001/DCIM/100CANON'.
 """);
 }
 
+static void
+t_input_touchpad ()
+{
+    if (!have_program ("Xorg")) {
+        stderr.printf ("[SKIP: Xorg not installed] ");
+        return;
+    }
+
+    Pid xorg_pid;
+    try {
+        Process.spawn_async (null, {"env", "LD_LIBRARY_PATH=.libs", "src/umockdev-run",
+            "-l", "devices/input/synaptics-touchpad.umockdev",
+            "-i", "/dev/input/event12=devices/input/synaptics-touchpad.ioctl",
+            "--", "Xorg", "-config", "tests/xorg-dummy.conf", "-logfile", "/dev/null", ":5"},
+            null, SpawnFlags.SEARCH_PATH | SpawnFlags.STDERR_TO_DEV_NULL, null, out xorg_pid);
+    } catch (SpawnError e) {
+        stderr.printf ("cannot call Xorg: %s\n", e.message);
+        Process.abort();
+    }
+
+    /* wait until X socket is available */
+    int timeout = 50;
+    while (timeout > 0) {
+        timeout -= 1;
+        Posix.usleep (100000);
+        if (FileUtils.test ("/tmp/.X11-unix/X5", FileTest.EXISTS))
+            break;
+    }
+    if (timeout <= 0) {
+        stderr.printf ("Xorg failed to start up\n");
+        Process.abort();
+    }
+
+    /* call xinput */
+    string sout;
+    string serr;
+    int exit;
+    assert (get_program_out ("xinput", "env DISPLAY=:5 xinput", out sout, out serr, out exit));
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert (sout.contains ("SynPS/2 Synaptics TouchPad"));
+
+    assert (get_program_out ("xinput", "env DISPLAY=:5 xinput --list-props 'SynPS/2 Synaptics TouchPad'",
+            out sout, out serr, out exit));
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert (sout.contains ("Synaptics Two-Finger Scrolling"));
+    assert (sout.contains ("/dev/input/event12"));
+
+    /* shut down X */
+    Posix.kill (xorg_pid, Posix.SIGTERM);
+    int status;
+    Posix.waitpid (xorg_pid, out status, 0);
+    Process.close_pid (xorg_pid);
+}
+
 
 int
 main (string[] args)
@@ -120,6 +185,9 @@ main (string[] args)
   Test.add_func ("/umockdev-integration/gphoto-detect", t_gphoto_detect);
   Test.add_func ("/umockdev-integration/gphoto-folderlist", t_gphoto_folderlist);
   Test.add_func ("/umockdev-integration/gphoto-filelist", t_gphoto_filelist);
+
+  // input devices
+  Test.add_func ("/umockdev-integration/input-touchpad", t_input_touchpad);
 
   return Test.run();
 }
