@@ -746,9 +746,24 @@ ioctl_type ioctl_db[] = {
     I_NOSTATE(EVIOCGRAB, success),
 
     /* evdev */
+    I_SIMPLE_STRUCT_IN(EVIOCGVERSION, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(EVIOCGID, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(EVIOCGREP, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(EVIOCGKEYCODE, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(EVIOCGKEYCODE_V2, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(EVIOCGEFFECTS, 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGABS(0), "EVIOCGABS", ABS_MAX, ioctl_insertion_parent_stateless),
-    /* we define that with len==32, but it applies to any len */
+    /* we define these with len==32, but they apply to any len */
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGBIT(0, 32), "EVIOCGBIT", EV_MAX, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGNAME(32), "EVIOCGNAME", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGPHYS(32), "EVIOCGPHYS", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGUNIQ(32), "EVIOCGUNIQ", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGPROP(32), "EVIOCGPROP", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGMTSLOTS(32), "EVIOCGMTSLOTS", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGKEY(32), "EVIOCGKEY", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGLED(32), "EVIOCGLED", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGSND(32), "EVIOCGSND", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGSW(32), "EVIOCGSW", 0, ioctl_insertion_parent_stateless),
 
     /* terminator */
     {0, 0, "", NULL, NULL, NULL, NULL, NULL}
