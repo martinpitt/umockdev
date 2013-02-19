@@ -20,7 +20,9 @@
 
 using Assertions;
 
-const string umockdev_run_command = "env LC_ALL=C LD_LIBRARY_PATH=.libs src/umockdev-run ";
+const string umockdev_run_command = "env LC_ALL=C src/umockdev-run ";
+
+string rootdir;
 
 static bool
 have_program (string program)
@@ -76,7 +78,8 @@ static void
 t_gphoto_detect ()
 {
     check_program_out ("gphoto2",
-        "-l devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 --auto-detect",
+        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+        rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 --auto-detect",
         """Model                          Port            
 ----------------------------------------------------------
 Canon PowerShot SX200 IS       usb:001,011     
@@ -87,7 +90,8 @@ static void
 t_gphoto_folderlist ()
 {
     check_program_out ("gphoto2",
-        "-l devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -l",
+        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" + 
+            rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -l",
         """There is 1 folder in folder '/'.
  - store_00010001
 There is 1 folder in folder '/store_00010001'.
@@ -102,7 +106,8 @@ static void
 t_gphoto_filelist ()
 {
     check_program_out ("gphoto2",
-        "-l devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -L",
+        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" + 
+            rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -L",
         """There is no file in folder '/'.
 There is no file in folder '/store_00010001'.
 There is no file in folder '/store_00010001/DCIM'.
@@ -129,10 +134,10 @@ t_input_touchpad ()
 
     Pid xorg_pid;
     try {
-        Process.spawn_async (null, {"env", "LD_LIBRARY_PATH=.libs", "src/umockdev-run",
-            "-l", "devices/input/synaptics-touchpad.umockdev",
-            "-i", "/dev/input/event12=devices/input/synaptics-touchpad.ioctl",
-            "--", "Xorg", "-config", "tests/xorg-dummy.conf", "-logfile", "/dev/null", ":5"},
+        Process.spawn_async (null, {"env", "src/umockdev-run",
+            "-l", rootdir + "/devices/input/synaptics-touchpad.umockdev",
+            "-i", "/dev/input/event12=" + rootdir + "/devices/input/synaptics-touchpad.ioctl",
+            "--", "Xorg", "-config", rootdir + "/tests/xorg-dummy.conf", "-logfile", "/dev/null", ":5"},
             null, SpawnFlags.SEARCH_PATH | SpawnFlags.STDERR_TO_DEV_NULL, null, out xorg_pid);
     } catch (SpawnError e) {
         stderr.printf ("cannot call Xorg: %s\n", e.message);
@@ -180,6 +185,12 @@ int
 main (string[] args)
 {
   Test.init (ref args);
+
+  string? top_srcdir = Environment.get_variable ("TOP_SRCDIR");
+  if (top_srcdir != null)
+      rootdir = top_srcdir;
+  else
+      rootdir = ".";
 
   // tests with gphoto2 program for PowerShot
   Test.add_func ("/umockdev-integration/gphoto-detect", t_gphoto_detect);

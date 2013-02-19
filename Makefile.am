@@ -30,12 +30,16 @@ CLEANFILES =
 DISTCLEANFILES =
 TESTS =
 
-EXTRA_DIST = COPYING README.rst NEWS devices/*
+EXTRA_DIST = COPYING README.rst NEWS devices
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
-TESTS_ENVIRONMENT = LD_LIBRARY_PATH=.libs:$$LD_LIBRARY_PATH $(srcdir)/src/umockdev-wrapper
+TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
+		    TOP_SRCDIR=$(top_srcdir) \
+		    LD_LIBRARY_PATH=$(top_builddir)/.libs:$$LD_LIBRARY_PATH \
+		    GI_TYPELIB_PATH=$(builddir) \
+		    $(srcdir)/src/umockdev-wrapper
 
 # use this for running Python tests
-PYTEST = env LD_LIBRARY_PATH=.libs TOP_BUILDDIR=$(top_builddir) GI_TYPELIB_PATH=$(builddir) $(srcdir)/src/umockdev-wrapper $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
+PYTEST = $(TESTS_ENVIRONMENT) $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
 
 AM_CFLAGS = 	\
 	-Werror=missing-prototypes	\
@@ -231,7 +235,7 @@ tests_test_ioctl_tree_LDADD =	\
 
 TESTS += tests/test-umockdev tests/test-ioctl-tree
 
-EXTRA_DIST += tests/test-umockdev.py
+EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
