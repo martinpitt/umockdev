@@ -16,7 +16,7 @@
 
 AC_PREREQ([2.64])
 AC_INIT([umockdev],
-        [0.1],
+        [0.2],
         [https://github.com/martinpitt/umockdev/issues],
         [umockdev],
 	[https://github.com/martinpitt/umockdev])

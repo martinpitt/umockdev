@@ -1,4 +1,4 @@
-0.2 (UNRELEASED)
+0.2 (2013-02-20)
 ----------------
 Compatibility break: This does not work any more with recorded ioctl files from
 version 0.1.
