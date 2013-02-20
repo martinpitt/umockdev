@@ -10,12 +10,13 @@ access to the affected hardware.
 
 The ``UMockdevTestbed`` class builds a temporary sandbox for mock devices.
 Right now this covers sysfs, uevents, basic support for /dev devices, and
-recording/mocking usbdevfs ioctls (for PtP/MTP devices), but other aspects will
-be added in the future. You can add a number of devices including arbitrary
-sysfs attributes and udev properties, and then run your software in that test
-bed that is independent of the actual hardware it is running on.  With this you
-can simulate particular hardware in virtual environments up to some degree,
-without needing any particular privileges or disturbing the whole system.
+recording/mocking usbdevfs (for PtP/MTP devices) and evdev (touch pads, Wacom
+tablets, etc.) ioctls, but other aspects will be added in the future. You can
+add a number of devices including arbitrary sysfs attributes and udev
+properties, and then run your software in that test bed that is independent of
+the actual hardware it is running on.  With this you can simulate particular
+hardware in virtual environments up to some degree, without needing any
+particular privileges or disturbing the whole system.
 
 You can use this from the command line, and a wide range of programming
 languages (C, Vala, and everything which supports gobject-introspection, such
