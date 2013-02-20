@@ -1,5 +1,5 @@
 #!/bin/sh
 # Wrapper program to preload the libumockdev library, so that test programs can
 # set $UMOCKDEV_DIR for redirecting sysfs and other queries to a test bed.
-env LD_PRELOAD=libumockdev-preload.so.0:$LD_PRELOAD "$@"
+exec env LD_PRELOAD=libumockdev-preload.so.0:$LD_PRELOAD "$@"
 

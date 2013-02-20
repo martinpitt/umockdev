@@ -1,3 +1,8 @@
+0.2.1 (UNRELEASED)
+------------------
+- umockdev-wrapper: Use exec to avoid keeping the shell process around and make
+  killing the subprogram from outside work properly.
+
 0.2 (2013-02-20)
 ----------------
 Compatibility break: This does not work any more with recorded ioctl files from
