@@ -231,13 +231,13 @@ ioctl_tree_write(FILE * f, const ioctl_tree * tree)
     for (i = 0; i < tree->depth; ++i)
 	fputc(' ', f);
     if (tree->id != tree->type->id) {
-        long offset;
-        offset = _IOC_NR(tree->id) - _IOC_NR(tree->type->id);
-        assert(offset >= 0);
-        assert(offset <= tree->type->nr_range);
-        fprintf(f, "%s(%li) %i ", tree->type->name, offset, tree->ret);
+	long offset;
+	offset = _IOC_NR(tree->id) - _IOC_NR(tree->type->id);
+	assert(offset >= 0);
+	assert(offset <= tree->type->nr_range);
+	fprintf(f, "%s(%li) %i ", tree->type->name, offset, tree->ret);
     } else {
-        fprintf(f, "%s %i ", tree->type->name, tree->ret);
+	fprintf(f, "%s %i ", tree->type->name, tree->ret);
     }
     tree->type->write(tree, f);
     assert(fputc('\n', f) == '\n');
@@ -468,9 +468,9 @@ ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
     node->data = malloc(data_len);
 
     if (NSIZE(node) != data_len) {
-        DBG("ioctl_simplestruct_init_from_text: adjusting ioctl ID %lX (size %lu) to actual data length %zu\n",
-            node->id, NSIZE(node), data_len);
-        node->id = _IOC(_IOC_DIR(node->id), _IOC_TYPE(node->id), _IOC_NR(node->id), data_len);
+	DBG("ioctl_simplestruct_init_from_text: adjusting ioctl ID %lX (size %lu) to actual data length %zu\n",
+	    node->id, NSIZE(node), data_len);
+	node->id = _IOC(_IOC_DIR(node->id), _IOC_TYPE(node->id), _IOC_NR(node->id), data_len);
     }
 
     if (!read_hex(data, node->data, NSIZE(node))) {
@@ -774,13 +774,13 @@ ioctl_type_get_by_id(unsigned long id)
 {
     ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
-        if (id_matches_type(id, cur))
+	if (id_matches_type(id, cur))
 	    return cur;
     return NULL;
 }
 
 const ioctl_type *
-ioctl_type_get_by_name(const char *name, unsigned long* out_id)
+ioctl_type_get_by_name(const char *name, unsigned long *out_id)
 {
     ioctl_type *cur;
     char *parens;
@@ -792,17 +792,17 @@ ioctl_type_get_by_name(const char *name, unsigned long* out_id)
     real_name = strdup(name);
     parens = strchr(real_name, '(');
     if (parens != NULL) {
-        *parens = '\0';
-        offset = atol(parens + 1);
+	*parens = '\0';
+	offset = atol(parens + 1);
     }
 
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
 	if (strcmp(cur->name, real_name) == 0) {
-            if (out_id != NULL)
-                *out_id = cur->id + offset;
-            result = cur;
-            break;
-        }
+	    if (out_id != NULL)
+		*out_id = cur->id + offset;
+	    result = cur;
+	    break;
+	}
 
     free(real_name);
     return result;

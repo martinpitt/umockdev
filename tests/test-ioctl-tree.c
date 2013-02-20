@@ -443,8 +443,8 @@ t_evdev(void)
     ioctl_tree *tree = NULL;
     FILE *f;
     char contents[1000];
-    struct input_absinfo absinfo_x = {100, 50, 150, 2, 5, 1};
-    struct input_absinfo absinfo_volume = {30, 0, 100, 0, 9, 10};
+    struct input_absinfo absinfo_x = { 100, 50, 150, 2, 5, 1 };
+    struct input_absinfo absinfo_volume = { 30, 0, 100, 0, 9, 10 };
     struct input_absinfo abs_query;
     char synbits[4] = "\x01\x02\x03\x04";
     char keybits[48] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -460,9 +460,12 @@ t_evdev(void)
     /* duplicate */
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_X), &absinfo_x, 0)) != NULL);
 
-    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_SYN, sizeof(synbits)), synbits, 0x81)) == NULL);
-    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits, 0x82)) == NULL);
-    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_PWR, sizeof(pwrbits)), pwrbits, 0x83)) == NULL);
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_SYN, sizeof(synbits)), synbits, 0x81)) ==
+	     NULL);
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits, 0x82)) ==
+	     NULL);
+    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_PWR, sizeof(pwrbits)), pwrbits, 0x83)) ==
+	     NULL);
 
     /* write it into file */
     f = tmpfile();
@@ -472,12 +475,12 @@ t_evdev(void)
     /* check text representation */
     memset(contents, 0, sizeof(contents));
     g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
-    g_assert_cmpstr(contents, ==, 
-            "EVIOCGABS 0 640000003200000096000000020000000500000001000000\n"
-            "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n"
-            "EVIOCGBIT(0) 129 01020304\n"
-            "EVIOCGBIT(1) 130 616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161\n"
-            "EVIOCGBIT(22) 131 00000000\n");
+    g_assert_cmpstr(contents, ==,
+		    "EVIOCGABS 0 640000003200000096000000020000000500000001000000\n"
+		    "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n"
+		    "EVIOCGBIT(0) 129 01020304\n"
+		    "EVIOCGBIT(1) 130 616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161\n"
+		    "EVIOCGBIT(22) 131 00000000\n");
     rewind(f);
 
     /* read it back */

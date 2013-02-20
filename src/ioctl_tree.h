@@ -46,7 +46,7 @@ struct ioctl_tree {
     int depth;
     void *data;
     int ret;
-    unsigned long id;           /* usually type->id, but needed for patterns like EVIOCGABS(abs) */
+    unsigned long id;		/* usually type->id, but needed for patterns like EVIOCGABS(abs) */
     ioctl_tree *child;
     ioctl_tree *next;		/* sibling */
     ioctl_tree *parent;
@@ -87,6 +87,6 @@ ioctl_tree_next_wrap(ioctl_tree * tree, ioctl_tree * node)
 
 /* database of known ioctls; return NULL for unknown ones */
 const ioctl_type *ioctl_type_get_by_id(unsigned long id);
-const ioctl_type *ioctl_type_get_by_name(const char *name, unsigned long* out_id);
+const ioctl_type *ioctl_type_get_by_name(const char *name, unsigned long *out_id);
 
 #endif				/* __IOCTL_TREE_H */
