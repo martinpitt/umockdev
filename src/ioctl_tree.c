@@ -759,11 +759,15 @@ ioctl_type ioctl_db[] = {
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGPHYS(32), "EVIOCGPHYS", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGUNIQ(32), "EVIOCGUNIQ", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGPROP(32), "EVIOCGPROP", 0, ioctl_insertion_parent_stateless),
-    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGMTSLOTS(32), "EVIOCGMTSLOTS", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGKEY(32), "EVIOCGKEY", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGLED(32), "EVIOCGLED", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGSND(32), "EVIOCGSND", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGSW(32), "EVIOCGSW", 0, ioctl_insertion_parent_stateless),
+
+    /* this was introduced not too long ago */
+#ifdef EVIOCGMTSLOTS
+    I_NAMED_SIMPLE_STRUCT_IN(EVIOCGMTSLOTS(32), "EVIOCGMTSLOTS", 0, ioctl_insertion_parent_stateless),
+#endif
 
     /* terminator */
     {0, 0, "", NULL, NULL, NULL, NULL, NULL}

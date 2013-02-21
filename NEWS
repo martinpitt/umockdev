@@ -5,6 +5,7 @@
 - Fix building with automake 1.12, thanks Peter Hutterer.
 - Support opening several netlink sockets (i. e. udev monitors) at the same
   time.
+- Fix building with older kernels which don't have the EVIOCGMTSLOTS ioctl yet.
 
 0.2 (2013-02-20)
 ----------------
