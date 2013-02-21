@@ -27,6 +27,7 @@
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
 
+#include <libudev.h>
 #include <gudev/gudev.h>
 
 #include "umockdev.h"
@@ -447,7 +448,44 @@ on_timeout(gpointer user_data)
 }
 
 static void
-t_testbed_uevent(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    gchar *syspath;
+    struct udev *udev;
+    struct udev_monitor *udev_mon;
+    struct udev_device *device;
+
+    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
+					  /* attributes */
+					  "idVendor", "0815", NULL,
+					  /* properties */
+					  "ID_INPUT", "1", NULL);
+    g_assert(syspath);
+
+    /* set up monitor */
+    udev = udev_new();
+    g_assert(udev != NULL);
+    udev_mon = udev_monitor_new_from_netlink(udev, "udev");
+    g_assert(udev_mon != NULL);
+    g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
+    g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
+
+    /* generate event */
+    umockdev_testbed_uevent(fixture->testbed, syspath, "add");
+
+    /* check that it's on the monitor */
+    device = udev_monitor_receive_device(udev_mon);
+    g_assert(device != NULL);
+    g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
+    g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    udev_device_unref(device);
+
+    udev_monitor_unref(udev_mon);
+    udev_unref(udev);
+}
+
+static void
+t_testbed_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GUdevClient *client;
     GUdevDevice *device;
@@ -806,13 +844,17 @@ main(int argc, char **argv)
 	       t_testbed_set_attribute, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/set_property", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_set_property, t_testbed_fixture_teardown);
-    g_test_add("/umockdev-testbed/uevent", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_errors",
 	       UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
+
+    /* tests for mocking uevents */
+    g_test_add("/umockdev-testbed/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_libudev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_gudev, t_testbed_fixture_teardown);
 
     /* tests for mocking USB devices */
     g_test_add("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

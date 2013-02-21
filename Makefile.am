@@ -208,6 +208,7 @@ tests_test_umockdev_SOURCES = tests/test-umockdev.c
 tests_test_umockdev_CFLAGS =	\
 	$(AM_CFLAGS)		\
 	$(GLIB_CFLAGS)		\
+	$(LIBUDEV_CFLAGS)	\
 	$(GUDEV_CFLAGS)		\
 	-I $(top_srcdir)/src	\
 	$(NULL)
@@ -215,6 +216,7 @@ tests_test_umockdev_CFLAGS =	\
 tests_test_umockdev_LDADD =	\
 	libumockdev.la		\
 	$(GLIB_LIBS)		\
+	$(LIBUDEV_LIBS)		\
 	$(GUDEV_LIBS)		\
 	$(NULL)
 
