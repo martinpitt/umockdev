@@ -58,7 +58,7 @@ AM_CFLAGS = 	\
 	-Wall
 
 # this allows us to use regexp literals without warnings
-VALAFLAGS = --enable-experimental
+AM_VALAFLAGS = --enable-experimental
 
 # -------------------------------------------------------------
 # preload library
