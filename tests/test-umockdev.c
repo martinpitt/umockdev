@@ -452,7 +452,7 @@ t_testbed_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
     struct udev *udev;
-    struct udev_monitor *udev_mon;
+    struct udev_monitor *udev_mon, *kernel_mon;
     struct udev_device *device;
 
     syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
@@ -462,7 +462,7 @@ t_testbed_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 					  "ID_INPUT", "1", NULL);
     g_assert(syspath);
 
-    /* set up monitor */
+    /* set up monitors */
     udev = udev_new();
     g_assert(udev != NULL);
     udev_mon = udev_monitor_new_from_netlink(udev, "udev");
@@ -470,17 +470,30 @@ t_testbed_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
     g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
 
+    kernel_mon = udev_monitor_new_from_netlink(udev, "kernel");
+    g_assert(kernel_mon != NULL);
+    g_assert_cmpint(udev_monitor_get_fd(kernel_mon), >, 0);
+    g_assert_cmpint(udev_monitor_get_fd(kernel_mon), !=, udev_monitor_get_fd(udev_mon));
+    g_assert_cmpint(udev_monitor_enable_receiving(kernel_mon), ==, 0);
+
     /* generate event */
     umockdev_testbed_uevent(fixture->testbed, syspath, "add");
 
-    /* check that it's on the monitor */
+    /* check that it's on the monitors */
     device = udev_monitor_receive_device(udev_mon);
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
     g_assert_cmpstr(udev_device_get_action(device), ==, "add");
     udev_device_unref(device);
 
+    device = udev_monitor_receive_device(kernel_mon);
+    g_assert(device != NULL);
+    g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
+    g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    udev_device_unref(device);
+
     udev_monitor_unref(udev_mon);
+    udev_monitor_unref(kernel_mon);
     udev_unref(udev);
 }
 

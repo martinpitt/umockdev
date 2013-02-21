@@ -3,6 +3,8 @@
 - umockdev-wrapper: Use exec to avoid keeping the shell process around and make
   killing the subprogram from outside work properly.
 - Fix building with automake 1.12, thanks Peter Hutterer.
+- Support opening several netlink sockets (i. e. udev monitors) at the same
+  time.
 
 0.2 (2013-02-20)
 ----------------

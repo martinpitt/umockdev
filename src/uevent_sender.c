@@ -20,6 +20,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <limits.h>
+#include <glob.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <linux/un.h>
@@ -30,8 +33,7 @@
 
 struct _uevent_sender {
     char *rootpath;
-    int event_fd;
-    struct sockaddr_un event_addr;
+    char socket_glob[PATH_MAX];
     struct udev *udev;
 };
 
@@ -43,8 +45,8 @@ uevent_sender_open(const char *rootpath)
     assert(rootpath != NULL);
     s = calloc(1, sizeof(uevent_sender));
     s->rootpath = strdup(rootpath);
-    s->event_fd = -1;
     s->udev = udev_new();
+    snprintf(s->socket_glob, sizeof(s->socket_glob), "%s/event[0-9]*", rootpath);
 
     return s;
 }
@@ -57,31 +59,56 @@ uevent_sender_close(uevent_sender * sender)
     free(sender);
 }
 
-static int
-_get_fd(uevent_sender * sender)
+static void
+sendmsg_one(uevent_sender *sender, struct msghdr *msg, const char* path)
 {
+    struct sockaddr_un event_addr;
+    int fd;
     int ret;
-
-    if (sender->event_fd > 0)
-	return sender->event_fd;
+    ssize_t count;
 
     /* create uevent socket address */
-    ret = snprintf(sender->event_addr.sun_path, sizeof(sender->event_addr.sun_path), "%s/event", sender->rootpath);
-    assert(ret < sizeof(sender->event_addr.sun_path));
-    sender->event_addr.sun_family = AF_UNIX;
+    strncpy(event_addr.sun_path, path, sizeof(event_addr.sun_path) - 1);
+    event_addr.sun_family = AF_UNIX;
 
     /* create uevent socket */
-    sender->event_fd = socket(AF_UNIX, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
-    if (sender->event_fd < 0)
-	return -1;
-
-    ret = connect(sender->event_fd, (struct sockaddr *)&sender->event_addr, sizeof(sender->event_addr));
-    if (ret < 0) {
-	perror("ERROR: cannot connect to client's event socket");
-	return -1;
+    fd = socket(AF_UNIX, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
+    if (fd < 0) {
+	perror("sendmsg_one: cannot create socket");
+        abort();
     }
 
-    return sender->event_fd;
+    ret = connect(fd, (struct sockaddr *)&event_addr, sizeof(event_addr));
+    if (ret < 0) {
+	perror("sendmsg_one: cannot connect to client's event socket");
+	abort();
+    }
+
+    msg->msg_name = &event_addr;
+    count = sendmsg(fd, msg, 0);
+    /* printf("passed %zi bytes to event socket %s\n", count, path); */
+    close(fd);
+}
+
+static void
+sendmsg_all(uevent_sender *sender, struct msghdr *msg)
+{
+    glob_t gl;
+
+    /* find current listeners */
+    if (glob(sender->socket_glob, GLOB_NOSORT, NULL, &gl) == 0) {
+        size_t i;
+        for (i = 0; i < gl.gl_pathc; ++i)
+            sendmsg_one(sender, msg, gl.gl_pathv[i]);
+    } else {
+        /* ensure that we only fail due to that, not due to bad globs */
+        if (errno != GLOB_NOMATCH) {
+            perror("sendmsg_all: cannot run glob");
+            abort();
+        }
+    }
+
+    globfree(&gl);
 }
 
 #define UDEV_MONITOR_MAGIC                0xfeedcafe
@@ -172,8 +199,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     struct udev_device *device;
     struct udev_monitor_netlink_header nlh;
 
-    assert(_get_fd(sender) >= 0);
-
     device = udev_device_new_from_syspath(sender->udev, devpath);
     if (device == NULL) {
 	fprintf(stderr, "ERROR: uevent_sender_send: No such device %s\n", devpath);
@@ -220,8 +245,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     memset(&smsg, 0x00, sizeof(struct msghdr));
     smsg.msg_iov = iov;
     smsg.msg_iovlen = 2;
-    smsg.msg_name = &sender->event_addr;
-    smsg.msg_namelen = sizeof(sender->event_addr);
-    count = sendmsg(sender->event_fd, &smsg, 0);
-    /* printf ("passed %zi bytes to event socket\n", count); */
+
+    sendmsg_all(sender, &smsg);
 }

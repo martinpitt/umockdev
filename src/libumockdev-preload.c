@@ -177,18 +177,18 @@ bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     static int (*_bind) (int, const struct sockaddr *, socklen_t);
     struct sockaddr_un sa;
     const char *path = getenv("UMOCKDEV_DIR");
-    size_t path_len;
 
     _bind = get_libc_func("bind");
     if (fd_map_get(&wrapped_sockets, sockfd, NULL) && path != NULL) {
 	DBG("testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd);
+
+	/* we create one socket per fd, and send emulated uevents to all of
+	 * them; poor man's multicast; this can become more elegant if/when
+	 * AF_UNIX multicast lands */
 	sa.sun_family = AF_UNIX;
-
-	path_len = strlen(path);
-	assert(path_len < UNIX_PATH_MAX - 7);
-	strcpy(sa.sun_path, path);
-	strcat(sa.sun_path, "/event");
-
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/event%i", path, sockfd);
+	/* clean up from previously closed fds, to avoid "already in use" error */
+	unlink(sa.sun_path);
 	return _bind(sockfd, (struct sockaddr *)&sa, sizeof(sa));
     }
 
