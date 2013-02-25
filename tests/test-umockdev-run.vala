@@ -60,7 +60,7 @@ get_program_out (string program, string command, out string sout,
 }
 
 static void
-check_program_out (string program, string run_command, string expected_out, string expected_err = "")
+check_program_out (string program, string run_command, string expected_out)
 {
     string sout;
     string serr;
@@ -70,8 +70,29 @@ check_program_out (string program, string run_command, string expected_out, stri
         return;
 
     assert_cmpstr (sout, Op.EQ, expected_out);
-    assert_cmpstr (serr, Op.EQ, expected_err);
+    assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
+}
+
+static void
+check_program_error (string program, string run_command, string expected_err)
+{
+    string sout;
+    string serr;
+    int exit;
+
+    if (!get_program_out (program, umockdev_run_command + run_command, out sout, out serr, out exit))
+        return;
+
+    if (!serr.contains (expected_err)) {
+        stderr.printf ("Error message does not contain expected '%s':\n------\n%s\n----\n",
+            expected_err, serr);
+        Process.abort ();
+    }
+
+    assert_cmpint (exit, Op.NE, 0);
+    assert (Process.if_exited (exit));
+    assert_cmpstr (sout, Op.EQ, "");
 }
 
 static void
@@ -94,19 +115,40 @@ t_run_invalid_args ()
     int exit;
 
     // missing program to run
-    if (!get_program_out ("true", umockdev_run_command, out sout, out serr, out exit))
-        return;
-    assert (serr.contains ("--help"));
-    assert_cmpint (exit, Op.NE, 0);
-    assert (Process.if_exited (exit));
-    assert_cmpstr (sout, Op.EQ, "");
+    check_program_error ("true", "", "--help");
+}
+
+static void
+t_run_invalid_ioctl ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    // nonexisting ioctl file
+    check_program_error ("gphoto2", "-l " + rootdir +
+        "/devices/cameras/canon-powershot-sx200.umockdev -i " +
+        "/dev/bus/usb/001/011=/non/existing.ioctl -- gphoto2 -l",
+        "/non/existing.ioctl");
+
+    // empty ioctl file
+    check_program_error ("gphoto2", "-l " + rootdir +
+        "/devices/cameras/canon-powershot-sx200.umockdev -i " +
+        "/dev/bus/usb/001/011=/dev/null -- gphoto2 -l",
+        "001/011");
+
+    // invalid ioctl file
+    check_program_error ("gphoto2", "-l " + rootdir +
+        "/devices/cameras/canon-powershot-sx200.umockdev -i " +
+        "/dev/bus/usb/001/011=" + rootdir + "/NEWS -- gphoto2 -l",
+        "001/011");
 }
 
 static void
 t_gphoto_folderlist ()
 {
     check_program_out ("gphoto2",
-        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" + 
+        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -l",
         """There is 1 folder in folder '/'.
  - store_00010001
@@ -122,7 +164,7 @@ static void
 t_gphoto_filelist ()
 {
     check_program_out ("gphoto2",
-        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" + 
+        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -L",
         """There is no file in folder '/'.
 There is no file in folder '/store_00010001'.
@@ -210,6 +252,7 @@ main (string[] args)
 
   // boundary conditions
   Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);
+  Test.add_func ("/umockdev-run/invalid-ioctl", t_run_invalid_ioctl);
 
   // tests with gphoto2 program for PowerShot
   Test.add_func ("/umockdev-run/integration/gphoto-detect", t_gphoto_detect);

@@ -1,6 +1,8 @@
 0.2.2 (UNRELEASED)
 ------------------
 - umockdev-run: Fix segfault if no program is specified. (issue #6)
+- preload: Print proper error message instead of assertion when trying to load
+  an empty or invalid ioctl record. (issue #8)
 
 0.2.1 (2013-02-21)
 ------------------

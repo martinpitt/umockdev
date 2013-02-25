@@ -357,7 +357,10 @@ ioctl_wrap_open(int fd, const char *dev_path)
 
     fdinfo->tree = ioctl_tree_read(f);
     fclose(f);
-    assert(fdinfo->tree != NULL);
+    if (fdinfo->tree == NULL) {
+        fprintf(stderr, "ERROR: libumockdev-preload: failed to load ioctl record file for %s: empty or invalid format?", dev_path);
+	exit(1);
+    }
     DBG("ioctl_wrap_open fd %i (%s): loaded ioctl tree\n", fd, dev_path);
 }
 
