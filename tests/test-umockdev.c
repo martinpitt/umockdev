@@ -448,7 +448,7 @@ on_timeout(gpointer user_data)
 }
 
 static void
-t_testbed_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
     struct udev *udev;
@@ -498,7 +498,7 @@ t_testbed_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GUdevClient *client;
     GUdevDevice *device;
@@ -864,10 +864,10 @@ main(int argc, char **argv)
 	       t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
 
     /* tests for mocking uevents */
-    g_test_add("/umockdev-testbed/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_libudev, t_testbed_fixture_teardown);
-    g_test_add("/umockdev-testbed/gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_gudev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/uevent/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_uevent_libudev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/uevent/gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_uevent_gudev, t_testbed_fixture_teardown);
 
     /* tests for mocking USB devices */
     g_test_add("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
