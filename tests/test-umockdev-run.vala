@@ -1,5 +1,5 @@
 /*
- * test-integration.vala
+ * test-umockdev-run.vala
  *
  * Copyright (C) 2013 Canonical Ltd.
  * Author: Martin Pitt <martin.pitt@ubuntu.com>
@@ -212,12 +212,12 @@ main (string[] args)
   Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);
 
   // tests with gphoto2 program for PowerShot
-  Test.add_func ("/umockdev-integration/gphoto-detect", t_gphoto_detect);
-  Test.add_func ("/umockdev-integration/gphoto-folderlist", t_gphoto_folderlist);
-  Test.add_func ("/umockdev-integration/gphoto-filelist", t_gphoto_filelist);
+  Test.add_func ("/umockdev-run/integration/gphoto-detect", t_gphoto_detect);
+  Test.add_func ("/umockdev-run/integration/gphoto-folderlist", t_gphoto_folderlist);
+  Test.add_func ("/umockdev-run/integration/gphoto-filelist", t_gphoto_filelist);
 
   // input devices
-  Test.add_func ("/umockdev-integration/input-touchpad", t_input_touchpad);
+  Test.add_func ("/umockdev-run/integration/input-touchpad", t_input_touchpad);
 
   return Test.run();
 }

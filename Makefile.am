@@ -247,7 +247,7 @@ check-local: UMockdev-1.0.typelib
 endif
 
 
-noinst_PROGRAMS += tests/test-umockdev-vala tests/test-integration tests/test-umockdev-record
+noinst_PROGRAMS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
 tests_test_umockdev_vala_SOURCES = 	\
 	tests/test-umockdev-vala.vala	\
@@ -265,14 +265,14 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	--pkg gudev-1.0			\
 	$(NULL)
 
-tests_test_integration_SOURCES = 	\
-	tests/test-integration.vala	\
+tests_test_umockdev_run_SOURCES = 	\
+	tests/test-umockdev-run.vala	\
 	tests/assertions.vapi		\
 	$(NULL)
 
-tests_test_integration_CFLAGS = $(GLIB_CFLAGS) -w
-tests_test_integration_LDADD = $(GLIB_LIBS)
-tests_test_integration_VALAFLAGS =	\
+tests_test_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -w
+tests_test_umockdev_run_LDADD = $(GLIB_LIBS)
+tests_test_umockdev_run_VALAFLAGS =	\
 	--vapidir tests			\
 	--pkg glib-2.0			\
 	--pkg posix			\
@@ -296,14 +296,14 @@ tests_test_umockdev_record_VALAFLAGS =	\
 
 DISTCLEANFILES += \
 	tests/test-umockdev-vala.c	\
-	tests/test-integration.c	\
+	tests/test-umockdev-run.c	\
 	tests/test-umockdev-record.c	\
 	$(srcdir)/tests_test_umockdev_vala_vala.stamp	\
 	$(srcdir)/tests_test_integration_vala.stamp	\
 	$(srcdir)/tests_test_umockdev_record_vala.stamp	\
 	$(NULL)
 
-TESTS += tests/test-umockdev-vala tests/test-integration tests/test-umockdev-record
+TESTS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
 endif
 

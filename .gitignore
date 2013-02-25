@@ -37,7 +37,7 @@ tests/test-ioctl-tree
 tests/test-umockdev-vala.c
 tests/test-umockdev
 tests/test-umockdev-vala
-tests/test-integration
-tests/test-integration.c
+tests/test-umockdev-run
+tests/test-umockdev-run.c
 tests/test-umockdev-record
 tests/test-umockdev-record.c
