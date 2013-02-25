@@ -79,6 +79,11 @@ main (string[] args)
         }
     }
 
+    if (opt_program.length == 0) {
+        stderr.printf ("No program specified. See --help for how to use umockdev-run\n");
+        Process.exit (1);
+    }
+
     Posix.execvp(opt_program[0], opt_program);
     stderr.printf ("Cannot run program: %s\n", strerror (errno));
     return 1;

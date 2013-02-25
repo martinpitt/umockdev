@@ -1,3 +1,7 @@
+0.2.2 (UNRELEASED)
+------------------
+- umockdev-run: Fix segfault if no program is specified. (issue #6)
+
 0.2.1 (2013-02-21)
 ------------------
 - umockdev-wrapper: Use exec to avoid keeping the shell process around and make

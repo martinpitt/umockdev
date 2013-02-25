@@ -87,6 +87,22 @@ Canon PowerShot SX200 IS       usb:001,011
 }
 
 static void
+t_run_invalid_args ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    // missing program to run
+    if (!get_program_out ("true", umockdev_run_command, out sout, out serr, out exit))
+        return;
+    assert (serr.contains ("--help"));
+    assert_cmpint (exit, Op.NE, 0);
+    assert (Process.if_exited (exit));
+    assert_cmpstr (sout, Op.EQ, "");
+}
+
+static void
 t_gphoto_folderlist ()
 {
     check_program_out ("gphoto2",
@@ -191,6 +207,9 @@ main (string[] args)
       rootdir = top_srcdir;
   else
       rootdir = ".";
+
+  // boundary conditions
+  Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);
 
   // tests with gphoto2 program for PowerShot
   Test.add_func ("/umockdev-integration/gphoto-detect", t_gphoto_detect);
