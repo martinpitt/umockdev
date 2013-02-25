@@ -32,7 +32,7 @@ static const GLib.OptionEntry[] options = {
     {"ioctl", 'i', 0, OptionArg.FILENAME_ARRAY, ref opt_ioctl,
      "Load an ioctl record file into the testbed. Can be specified multiple times.",
      "devname=ioctlfilename"},
-    {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_program, "", "program [args..]"},
+    {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_program, "", ""},
     { null }
 };
 

@@ -3,6 +3,7 @@
 - umockdev-run: Fix segfault if no program is specified. (issue #6)
 - preload: Print proper error message instead of assertion when trying to load
   an empty or invalid ioctl record. (issue #8)
+- umockdev-run: Fix --help output to not mention the child program twice.
 
 0.2.1 (2013-02-21)
 ------------------
