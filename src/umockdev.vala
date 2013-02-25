@@ -122,6 +122,13 @@ public class Testbed: GLib.Object {
     {
         var uevent_path = Path.build_filename(this.root_dir, devpath, "uevent");
         string props = "";
+        string real_value;
+
+        /* the kernel sets DEVNAME without prefix */
+        if (name == "DEVNAME" && value.has_prefix("/dev/"))
+            real_value = value.substring(5);
+        else
+            real_value = value;
 
          /* read current properties from the uevent file; if name is already set,
           * replace its value with the new one */
@@ -135,7 +142,7 @@ public class Testbed: GLib.Object {
             while ((line = inp.read_line(out len)) != null) {
                 if (line.has_prefix(prefix)) {
                     existing = true;
-                    props += prefix + value + "\n";
+                    props += prefix + real_value + "\n";
                 } else {
                     props += line + "\n";
                 }
@@ -144,7 +151,7 @@ public class Testbed: GLib.Object {
 
             /* if property name does not yet exist, append it */
             if (!existing)
-                props += prefix + value + "\n";
+                props += prefix + real_value + "\n";
 
             /* write it back */
             FileUtils.set_data(uevent_path, props.data);
@@ -252,8 +259,13 @@ public class Testbed: GLib.Object {
 
         /* properties; they go into the "uevent" sysfs attribute */
         string props = "";
-        for (int i = 0; i < properties.length - 1; i += 2)
-            props += properties[i] + "=" + properties[i+1] + "\n";
+        for (int i = 0; i < properties.length - 1; i += 2) {
+            /* the kernel sets DEVNAME without prefix */
+            if (properties[i] == "DEVNAME" && properties[i+1].has_prefix("/dev/"))
+                props += "DEVNAME=" + properties[i+1].substring(5) + "\n";
+            else
+                props += properties[i] + "=" + properties[i+1] + "\n";
+        }
         if (properties.length % 2 != 0)
             warning("add_devicev: Ignoring property key '%s' without value", properties[properties.length-1]);
         this.set_attribute(dev_path, "uevent", props);

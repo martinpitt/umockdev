@@ -4,6 +4,7 @@
 - preload: Print proper error message instead of assertion when trying to load
   an empty or invalid ioctl record. (issue #8)
 - umockdev-run: Fix --help output to not mention the child program twice.
+- Fix DEVNAME property with older libudev versions.
 
 0.2.1 (2013-02-21)
 ------------------
