@@ -62,6 +62,42 @@ t_testbed_add_device ()
 }
 
 void
+t_testbed_gudev_query_list ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  tb.add_from_string ("""P: /devices/myusbhub/cam
+N: bus/usb/001/002
+E: SUBSYSTEM=usb
+E: DEVTYPE=usb_device
+E: DEVNAME=/dev/bus/usb/001/002
+
+P: /devices/myusbhub
+N: bus/usb/001/001
+E: SUBSYSTEM=usb
+E: DEVTYPE=usb_device
+E: DEVNAME=/dev/bus/usb/001/001
+""");
+
+  var client = new GUdev.Client (null);
+  var devices = client.query_by_subsystem (null);
+
+  assert_cmpuint (devices.length (), Op.EQ, 2);
+  foreach (var dev in devices) {
+      assert_cmpstr (dev.get_subsystem(), Op.EQ, "usb");
+      if (dev.get_sysfs_path () == "/sys/devices/myusbhub") {
+          assert_cmpstr (dev.get_name(), Op.EQ, "myusbhub");
+          assert_cmpstr (dev.get_device_file(), Op.EQ, "/dev/bus/usb/001/001");
+      } else {
+          assert_cmpstr (dev.get_sysfs_path (), Op.EQ, "/sys/devices/myusbhub/cam");
+          assert_cmpstr (dev.get_name(), Op.EQ, "cam");
+          assert_cmpstr (dev.get_device_file(), Op.EQ, "/dev/bus/usb/001/002");
+      }
+  }
+
+}
+
+void
 t_usbfs_ioctl_static ()
 {
   var tb = new UMockdev.Testbed ();
@@ -231,6 +267,7 @@ main (string[] args)
   /* tests for mocking /sys */
   Test.add_func ("/umockdev-testbed-vala/empty", t_testbed_empty);
   Test.add_func ("/umockdev-testbed-vala/add_devicev", t_testbed_add_device);
+  Test.add_func ("/umockdev-testbed-vala/gudev-query-list", t_testbed_gudev_query_list);
 
   /* tests for mocking ioctls */
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
