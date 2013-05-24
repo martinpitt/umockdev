@@ -6,6 +6,7 @@
 - umockdev-run: Fix --help output to not mention the child program twice.
 - Fix DEVNAME property with older libudev versions.
 - Handle "L:" (link priority) lines from udevadm for newer udev versions.
+- Fix segfault with gcc 4.8 (due to changed behaviour of sizeof).
 
 0.2.1 (2013-02-21)
 ------------------

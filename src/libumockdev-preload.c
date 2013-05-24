@@ -99,7 +99,7 @@ static void
 fd_map_add(fd_map * map, int fd, const void *data)
 {
     size_t i;
-    for (i = 0; i < sizeof(map->set); ++i) {
+    for (i = 0; i < FD_MAP_MAX; ++i) {
 	if (!map->set[i]) {
 	    map->set[i] = 1;
 	    map->fd[i] = fd;
@@ -116,7 +116,7 @@ static void
 fd_map_remove(fd_map * map, int fd)
 {
     size_t i;
-    for (i = 0; i < sizeof(map->set); ++i) {
+    for (i = 0; i < FD_MAP_MAX; ++i) {
 	if (map->set[i] && map->fd[i] == fd) {
 	    map->set[i] = 0;
 	    return;
@@ -131,7 +131,7 @@ static int
 fd_map_get(fd_map * map, int fd, const void **data_out)
 {
     size_t i;
-    for (i = 0; i < sizeof(map->set); ++i) {
+    for (i = 0; i < FD_MAP_MAX; ++i) {
 	if (map->set[i] && map->fd[i] == fd) {
 	    if (data_out != NULL)
 		*data_out = map->data[i];
