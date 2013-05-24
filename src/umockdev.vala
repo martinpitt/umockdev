@@ -373,7 +373,7 @@ public class Testbed: GLib.Object {
     {
         /* lazily initialize the parsing regexps */
         if (this.re_record_val == null)
-            this.re_record_val = /^([PS]): (.*)(?>\n|$)/;
+            this.re_record_val = /^([PSL]): (.*)(?>\n|$)/;
         if (this.re_record_keyval == null)
             this.re_record_keyval = /^([EAH]): ([a-zA-Z0-9_:+-]+)=(.*)(?>\n|$)/;
         if (this.re_record_optval == null)
@@ -515,11 +515,12 @@ public class Testbed: GLib.Object {
                     break;
 
                 case 'S':
+                case 'L':
                     /* TODO: ignored for now */
                     break;
 
                 default:
-                    assert_not_reached();
+                    throw new UMockdev.Error.PARSE("Unknown line type '%c'\n", type);
             }
         }
 
