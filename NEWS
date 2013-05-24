@@ -1,4 +1,4 @@
-0.2.2 (UNRELEASED)
+0.2.2 (2013-05-24)
 ------------------
 - umockdev-run: Fix segfault if no program is specified. (issue #6)
 - preload: Print proper error message instead of assertion when trying to load
