@@ -66,9 +66,13 @@ class Testbed(unittest.TestCase):
         self.assertEqual(dev.get_sysfs_attr('idProduct'), 'AFFE')
         self.assertEqual(dev.get_sysfs_attr('noSuchAttr'), None)
 
-        self.assertEqual(dev.get_property_keys(), 
-                         ['DEVPATH', 'ID_INPUT', 'ID_INPUT_KEYBOARD',
-                          'SUBSYSTEM', 'UDEV_LOG'])
+        keys = dev.get_property_keys()
+        # older udev versions have this key, newer don't
+        try:
+            keys.remove('UDEV_LOG')
+        except ValueError:
+            pass
+        self.assertEqual(keys, ['DEVPATH', 'ID_INPUT', 'ID_INPUT_KEYBOARD', 'SUBSYSTEM'])
         self.assertEqual(dev.get_property('DEVPATH'), '/devices/extkeyboard1')
         self.assertEqual(dev.get_property('SUBSYSTEM'), 'usb')
         self.assertEqual(dev.get_property('ID_INPUT'), '1')
