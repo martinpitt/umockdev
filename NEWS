@@ -1,3 +1,8 @@
+0.2.3 (UNRELEASED)
+------------------
+- preload: Wrap fopen64() call; fixes operation on 32 bit architectures.
+  (issue #10)
+
 0.2.2 (2013-05-24)
 ------------------
 - umockdev-run: Fix segfault if no program is specified. (issue #6)
