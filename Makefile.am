@@ -39,8 +39,12 @@ TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
 		    PATH=$(top_builddir)/src:$$PATH \
 		    $(srcdir)/src/umockdev-wrapper
 
+INSTALL_TESTS_ENVIRONMENT = umockdev-wrapper
+
 # use this for running Python tests
-PYTEST = $(TESTS_ENVIRONMENT) $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
+PYCMD = $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning
+PYTEST_INSTALL = $(INSTALL_TESTS_ENVIRONMENT) $(PYCMD)
+PYTEST_TREE = $(TESTS_ENVIRONMENT) $(PYCMD)
 
 AM_CFLAGS = 	\
 	-Werror=missing-prototypes	\
@@ -243,8 +247,8 @@ EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
 check-local: UMockdev-1.0.typelib
-	@echo "  Running gobject-introspection test with $(PYTHON)"
-	$(PYTEST) $(srcdir)/tests/test-umockdev.py
+	@echo "  Running gobject-introspection test with $(PYTHON) against build tree"
+	$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py
 endif
 
 
@@ -306,6 +310,21 @@ DISTCLEANFILES += \
 
 TESTS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
+endif
+
+check-installed:
+	@echo "== Running tests against installed system =="
+	@set -e; for f in $(TESTS); do \
+		echo "==  Running `basename $$f` test against installed system =="; \
+		NO_LT=tests/.libs/`basename $$f`; \
+		[ -x $$NO_LT ] && $(INSTALL_TESTS_ENVIRONMENT) $$NO_LT || $(INSTALL_TESTS_ENVIRONMENT) $$f; \
+	done
+
+if HAVE_INTROSPECTION
+if HAVE_PYTHON
+	@echo "== Running GI test with $(PYTHON) against installed system =="
+	$(PYTEST_INSTALL) $(srcdir)/tests/test-umockdev.py
+endif
 endif
 
 # -------------------------------------------------------------

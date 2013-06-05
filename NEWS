@@ -1,6 +1,8 @@
 0.2.4 (UNRELEASED)
 ------------------
 - Fix "make check" for current automake 1.13.
+- Add "make check-installed" target to run tests against the installed umockdev
+  instead of against the build tree.
 
 0.2.3 (2013-05-25)
 ------------------
