@@ -1,3 +1,7 @@
+0.2.4 (UNRELEASED)
+------------------
+- Fix "make check" for current automake 1.13.
+
 0.2.3 (2013-05-25)
 ------------------
 - preload: Wrap fopen64() call; fixes operation on 32 bit architectures.
