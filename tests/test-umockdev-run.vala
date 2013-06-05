@@ -20,7 +20,7 @@
 
 using Assertions;
 
-const string umockdev_run_command = "env LC_ALL=C src/umockdev-run ";
+const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
 
 string rootdir;
 
@@ -192,7 +192,7 @@ t_input_touchpad ()
 
     Pid xorg_pid;
     try {
-        Process.spawn_async (null, {"env", "src/umockdev-run",
+        Process.spawn_async (null, {"umockdev-run",
             "-l", rootdir + "/devices/input/synaptics-touchpad.umockdev",
             "-i", "/dev/input/event12=" + rootdir + "/devices/input/synaptics-touchpad.ioctl",
             "--", "Xorg", "-config", rootdir + "/tests/xorg-dummy.conf", "-logfile", "/dev/null", ":5"},

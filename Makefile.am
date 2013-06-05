@@ -36,6 +36,7 @@ TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
 		    TOP_SRCDIR=$(top_srcdir) \
 		    LD_LIBRARY_PATH=$(top_builddir)/.libs:$$LD_LIBRARY_PATH \
 		    GI_TYPELIB_PATH=$(builddir) \
+		    PATH=$(top_builddir)/src:$$PATH \
 		    $(srcdir)/src/umockdev-wrapper
 
 # use this for running Python tests
