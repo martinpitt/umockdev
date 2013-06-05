@@ -10,6 +10,8 @@
 *.typelib
 *.stamp
 *.stamp-t
+*.log
+*.trs
 stamp-*
 Makefile.in
 Makefile
