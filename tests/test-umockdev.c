@@ -302,30 +302,42 @@ t_testbed_error_catcher(const gchar * log_domain, GLogLevelFlags log_level, cons
     return FALSE;
 }
 
+static void
+ignore_log_handler (const gchar *log_domain, GLogLevelFlags log_level,
+                    const gchar *message, gpointer user_data)
+{
+}
+
 /* UMockdevTestbed add_device() error conditions */
 static void
 t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
     struct TestbedErrorCatcherData errors = { 0, 0, NULL };
+    guint log_handler;
 
     g_test_log_set_fatal_handler(t_testbed_error_catcher, &errors);
 
     /* invalid parent */
+    log_handler = g_log_set_handler(NULL, G_LOG_LEVEL_CRITICAL | G_LOG_FLAG_FATAL, ignore_log_handler, NULL);
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", "/sys/nosuchdevice", NULL, NULL);
+    g_log_remove_handler (NULL, log_handler);
     g_assert(syspath == NULL);
     g_assert_cmpint(errors.counter, ==, 1);
     g_assert_cmpint(errors.last_level, ==, G_LOG_LEVEL_CRITICAL | G_LOG_FLAG_FATAL);
     g_assert(strstr(errors.last_message, "/sys/nosuchdevice") != NULL);
 
     /* key/values do not pair up */
+    log_handler = g_log_set_handler(NULL, G_LOG_LEVEL_WARNING | G_LOG_FLAG_FATAL, ignore_log_handler, NULL);
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL,
 					  /* attributes */
 					  "idVendor", "0815", "idProduct", NULL, NULL);
+    g_log_remove_handler (NULL, log_handler);
     g_assert(syspath);
     g_assert_cmpint(errors.counter, ==, 2);
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
     g_assert(strstr(errors.last_message, "idProduct") != NULL);
+
 }
 
 static void
