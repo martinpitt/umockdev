@@ -1,3 +1,8 @@
+0.2.5 (UNRELEASED)
+------------------
+- Fix test-umockdev lsusb check to work in environments without any
+  /dev/bus/usb.
+
 0.2.4 (2013-06-05)
 ------------------
 - Fix "make check" for current automake 1.13.
