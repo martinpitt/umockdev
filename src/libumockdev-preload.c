@@ -237,6 +237,10 @@ ioctl_record_open(int fd)
 {
     static dev_t record_rdev = (dev_t) - 1;
     struct stat st;
+    int ret, orig_errno;
+
+    if (fd < 0)
+	return;
 
     /* lazily initialize record_rdev */
     if (record_rdev == (dev_t) - 1) {
@@ -254,7 +258,10 @@ ioctl_record_open(int fd)
 	return;
 
     /* check if the opened device is the one we want to record */
-    if (fstat(fd, &st) < 0)
+    orig_errno = errno;
+    ret = fstat(fd, &st);
+    errno = orig_errno;
+    if (ret < 0)
 	return;
     if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != record_rdev)
 	return;

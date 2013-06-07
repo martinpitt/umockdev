@@ -2,6 +2,7 @@
 ------------------
 - Fix test-umockdev lsusb check to work in environments without any
   /dev/bus/usb.
+- preload: Do not destroy errno on wrapping open() under umockdev-record.
 
 0.2.4 (2013-06-05)
 ------------------
