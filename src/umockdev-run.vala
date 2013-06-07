@@ -48,7 +48,7 @@ main (string[] args)
         oc.parse (ref args);
     } catch (OptionError e) {
         stderr.printf("Error: %s\nRun %s --help for how to use this program\n", e.message, args[0]);
-        Process.exit (1);
+        return 1;
     }
 
     if (opt_version) {
@@ -66,13 +66,13 @@ main (string[] args)
             FileUtils.get_contents (path, out record);
         } catch (FileError e) {
             stderr.printf ("Error: Cannot open %s: %s\n", path, e.message);
-            Process.exit (1);
+            return 1;
         }
         try {
             testbed.add_from_string (record);
         } catch (GLib.Error e) {
             stderr.printf ("Error: Invalid record file %s: %s\n", path, e.message);
-            Process.exit (1);
+            return 1;
         }
     }
 
@@ -82,13 +82,13 @@ main (string[] args)
             testbed.load_ioctl (parts[0], parts[1]);
         } catch (FileError e) {
             stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
-            Process.exit (1);
+            return 1;
         }
     }
 
     if (opt_program.length == 0) {
         stderr.printf ("No program specified. See --help for how to use umockdev-run\n");
-        Process.exit (1);
+        return 1;
     }
 
     Posix.execvp(opt_program[0], opt_program);
