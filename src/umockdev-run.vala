@@ -24,6 +24,7 @@ static string[] opt_load;
 static string[] opt_ioctl;
 [CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_program;
+static bool opt_version = false;
 
 static const GLib.OptionEntry[] options = {
     {"load", 'l', 0, OptionArg.FILENAME_ARRAY, ref opt_load,
@@ -33,6 +34,7 @@ static const GLib.OptionEntry[] options = {
      "Load an ioctl record file into the testbed. Can be specified multiple times.",
      "devname=ioctlfilename"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_program, "", ""},
+    {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
 };
 
@@ -47,6 +49,11 @@ main (string[] args)
     } catch (OptionError e) {
         stderr.printf("Error: %s\nRun %s --help for how to use this program\n", e.message, args[0]);
         Process.exit (1);
+    }
+
+    if (opt_version) {
+        stdout.printf("%s\n", Config.VERSION);
+        return 0;
     }
 
     Environment.set_variable ("LD_PRELOAD", "libumockdev-preload.so.0", true); // FIXME

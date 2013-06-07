@@ -177,6 +177,7 @@ bin_PROGRAMS += src/umockdev-run src/umockdev-record
 src_umockdev_run_SOURCES = 		\
 	src/umockdev-run.vala		\
 	src/posix_extra.vapi		\
+	src/config.vapi			\
 	$(NULL)
 
 src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src -w
@@ -188,7 +189,12 @@ src_umockdev_run_VALAFLAGS =		\
 	--pkg posix			\
 	$(NULL)
 
-src_umockdev_record_SOURCES = src/umockdev-record.vala src/posix_extra.vapi
+src_umockdev_record_SOURCES = 		\
+	src/umockdev-record.vala	\
+	src/posix_extra.vapi		\
+	src/config.vapi			\
+	$(NULL)
+
 src_umockdev_record_CFLAGS = $(GLIB_CFLAGS) -w
 src_umockdev_record_LDADD = $(GLIB_LIBS)
 src_umockdev_record_VALAFLAGS =		\

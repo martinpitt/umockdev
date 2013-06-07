@@ -266,12 +266,14 @@ record_ioctl(string dev, string outfile, string[] argv)
 static string[] opt_devices;
 static bool opt_all = false;
 static string? opt_ioctl = null;
+static bool opt_version = false;
 
 static const GLib.OptionEntry[] options = {
     {"all", 'a', 0, OptionArg.NONE, ref opt_all, "Record all devices"},
     {"ioctl", 'i', 0, OptionArg.FILENAME, ref opt_ioctl,
      "Trace ioctls on the device, record into given file. In this case, the first argument specifies the device, and all remaining arguments are a command (and its arguments) to run that gets traced.", "FILE"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_devices, "Path of a device in /dev or /sys.", "DEVICE [...]"},
+    {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
 };
 
@@ -286,6 +288,12 @@ main (string[] args)
     } catch (OptionError e) {
         exit_error("Error: %s\nRun %s --help for how to use this program", e.message, args[0]);
     }
+
+    if (opt_version) {
+        stdout.printf("%s\n", Config.VERSION);
+        return 0;
+    }
+
     if (opt_all && opt_devices.length > 0)
         exit_error("Specifying a device list together with --all is invalid.");
     if (!opt_all && opt_devices.length == 0)
