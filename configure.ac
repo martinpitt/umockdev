@@ -29,7 +29,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_SYS_LARGEFILE
 
 AM_SILENT_RULES([yes])
-AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Werror silent-rules subdir-objects tar-pax no-dist-gzip dist-xz])
+AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Werror silent-rules subdir-objects tar-pax no-dist-gzip dist-xz serial-tests])
 AM_PROG_CC_C_O
 AM_PROG_AR
 

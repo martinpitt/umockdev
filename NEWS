@@ -1,3 +1,9 @@
+0.2.6 (UNRELEASED)
+------------------
+- Go back to using the serial test runner. automake 1.13's parallel test
+  runner does not buy much for this project, and makes it a lot harder to
+  analyse test failures from build logs.
+
 0.2.5 (2013-06-10)
 ------------------
 - Fix test-umockdev lsusb check to work in environments without any
