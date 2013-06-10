@@ -4,6 +4,7 @@
   /dev/bus/usb.
 - preload: Do not destroy errno on wrapping open() under umockdev-record.
 - Add --version option to umockdev-run and umockdev-record.
+- Fix building with Vala 0.20.
 
 0.2.4 (2013-06-05)
 ------------------
