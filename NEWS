@@ -1,4 +1,4 @@
-0.2.5 (UNRELEASED)
+0.2.5 (2013-06-10)
 ------------------
 - Fix test-umockdev lsusb check to work in environments without any
   /dev/bus/usb.
