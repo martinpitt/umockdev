@@ -3,6 +3,9 @@
 - Go back to using the serial test runner. automake 1.13's parallel test
   runner does not buy much for this project, and makes it a lot harder to
   analyse test failures from build logs.
+- Add umockdev_testbed_clear() method to remove all added devices (both sysfs
+  and /dev). This is useful for cleaning up between tests in situations where
+  the UMockdevTestbed object itself needs to be kept.
 
 0.2.5 (2013-06-10)
 ------------------

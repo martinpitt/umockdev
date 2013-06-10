@@ -850,6 +850,38 @@ t_testbed_add_from_string_dev(UMockdevTestbedFixture * fixture, gconstpointer da
     g_free(contents);
 }
 
+
+static void
+t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    GError *error = NULL;
+    gchar *dev_path, *sysdev_path;
+
+    /* create a /dev and a /sys entry */
+    umockdev_testbed_add_from_string(fixture->testbed,
+				     "P: /devices/moo\n"
+				     "N: bus/usb/moo=00FF00\n"
+				     "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/moo\n", &error);
+    g_assert_no_error(error);
+
+    g_assert(g_file_test(umockdev_testbed_get_sys_dir(fixture->testbed), G_FILE_TEST_EXISTS));
+    dev_path = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev", NULL);
+    sysdev_path = g_build_filename(umockdev_testbed_get_sys_dir(fixture->testbed), "devices", NULL);
+    g_assert(g_file_test(dev_path, G_FILE_TEST_EXISTS));
+    g_assert(g_file_test(sysdev_path, G_FILE_TEST_EXISTS));
+
+    /* clear */
+    umockdev_testbed_clear(fixture->testbed);
+
+    /* we only want to keep <root>/sys, but nothing else */
+    g_assert(g_file_test(umockdev_testbed_get_sys_dir(fixture->testbed), G_FILE_TEST_EXISTS));
+    g_assert(!g_file_test(dev_path, G_FILE_TEST_EXISTS));
+    g_assert(!g_file_test(sysdev_path, G_FILE_TEST_EXISTS));
+
+    g_free(dev_path);
+    g_free(sysdev_path);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -894,5 +926,9 @@ main(int argc, char **argv)
 	       t_testbed_dev_access, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_dev, t_testbed_fixture_teardown);
+
+    /* misc */
+    g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_clear, t_testbed_fixture_teardown);
     return g_test_run();
 }

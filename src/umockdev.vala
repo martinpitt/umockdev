@@ -590,6 +590,21 @@ public class Testbed: GLib.Object {
         return data.substring(end_pos);
     }
 
+    /**
+     * umockdev_testbed_clear:
+     * @self: A #UMockdevTestbed.
+     *
+     * Remove all added devices from testbed directory.  After that, the
+     * umockdev root directory will be in the same state as directly after the
+     * constructor.
+     */
+    public void clear()
+    {
+        remove_dir (this.root_dir, false);
+        // /sys should always exist
+        DirUtils.create(this.sys_dir, 0755);
+    }
+
     private string root_dir;
     private string sys_dir;
     private Regex re_record_val;
@@ -601,7 +616,7 @@ public class Testbed: GLib.Object {
 
 // Recursively remove a directory and all its contents.
 private static void
-remove_dir (string path)
+remove_dir (string path, bool remove_toplevel=true)
 {
     if (FileUtils.test(path, FileTest.IS_DIR) && !FileUtils.test(path, FileTest.IS_SYMLINK)) {
         Dir d;
@@ -614,11 +629,12 @@ remove_dir (string path)
 
         string name;
         while ((name = d.read_name()) != null)
-            remove_dir (Path.build_filename(path, name));
+            remove_dir (Path.build_filename(path, name), true);
     }
 
-    if (FileUtils.remove(path) < 0)
-        warning("cannot remove %s: %s", path, strerror(errno));
+    if (remove_toplevel)
+        if (FileUtils.remove(path) < 0)
+            warning("cannot remove %s: %s", path, strerror(errno));
 }
 
 private static string
