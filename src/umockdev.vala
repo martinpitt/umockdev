@@ -375,7 +375,7 @@ public class Testbed: GLib.Object {
         if (this.re_record_val == null)
             this.re_record_val = /^([PSL]): (.*)(?>\n|$)/;
         if (this.re_record_keyval == null)
-            this.re_record_keyval = /^([EAH]): ([a-zA-Z0-9_:+-]+)=(.*)(?>\n|$)/;
+            this.re_record_keyval = /^([EAH]): ([^=\n]+)=(.*)(?>\n|$)/;
         if (this.re_record_optval == null)
             this.re_record_optval = /^([N]): ([^=\n]+)(?>=([0-9A-F]+))?(?>\n|$)/;
 

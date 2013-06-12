@@ -14,6 +14,7 @@
 - Do not read sysfs attributes of any Tegra device (on ARM systems), as these
   often trigger kernel crashes (see https://launchpad.net/bugs/1190225).
   (issue #11)
+- Allow uncommon characters in sysfs attribute names.
 
 0.2.5 (2013-06-10)
 ------------------
