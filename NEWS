@@ -11,6 +11,9 @@
   (issue #12)
 - Fix ioctl file reading on platforms which have unsigned "char" by default,
   such as ARM. (issue #11)
+- Do not read sysfs attributes of any Tegra device (on ARM systems), as these
+  often trigger kernel crashes (see https://launchpad.net/bugs/1190225).
+  (issue #11)
 
 0.2.5 (2013-06-10)
 ------------------

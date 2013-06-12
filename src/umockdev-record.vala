@@ -200,6 +200,12 @@ record_device(string dev)
         stdout.putc('\n');
     }
 
+    // work around kernel crash, skip reading attributes for Tegra stuff (LP #1190225)
+    if (dev.contains("tegra")) {
+        stdout.putc('\n');
+        return;
+    }
+
     // now append all attributes
     Dir d;
     try {
