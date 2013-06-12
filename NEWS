@@ -15,6 +15,8 @@
   often trigger kernel crashes (see https://launchpad.net/bugs/1190225).
   (issue #11)
 - Allow uncommon characters in sysfs attribute names.
+- devices/input/synaptics-touchpad.ioctl: Add ioctl for 32 bit systems.
+  (issue #13)
 
 0.2.5 (2013-06-10)
 ------------------
