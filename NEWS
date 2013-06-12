@@ -6,6 +6,9 @@
 - Add umockdev_testbed_clear() method to remove all added devices (both sysfs
   and /dev). This is useful for cleaning up between tests in situations where
   the UMockdevTestbed object itself needs to be kept.
+- test-umockdev-run: Write X.org log into a file, point to it on X.org startup
+  failure, and also point out that this needs X.org's dummy driver installed.
+  (issue #12)
 
 0.2.5 (2013-06-10)
 ------------------

@@ -191,11 +191,14 @@ t_input_touchpad ()
     }
 
     Pid xorg_pid;
+    string logfile;
+    int fd = FileUtils.open_tmp ("Xorg.log.XXXXXX", out logfile);
+    Posix.close (fd);
     try {
         Process.spawn_async (null, {"umockdev-run",
             "-l", rootdir + "/devices/input/synaptics-touchpad.umockdev",
             "-i", "/dev/input/event12=" + rootdir + "/devices/input/synaptics-touchpad.ioctl",
-            "--", "Xorg", "-config", rootdir + "/tests/xorg-dummy.conf", "-logfile", "/dev/null", ":5"},
+            "--", "Xorg", "-config", rootdir + "/tests/xorg-dummy.conf", "-logfile", logfile, ":5"},
             null, SpawnFlags.SEARCH_PATH | SpawnFlags.STDERR_TO_DEV_NULL, null, out xorg_pid);
     } catch (SpawnError e) {
         stderr.printf ("cannot call Xorg: %s\n", e.message);
@@ -211,7 +214,7 @@ t_input_touchpad ()
             break;
     }
     if (timeout <= 0) {
-        stderr.printf ("Xorg failed to start up\n");
+        stderr.printf ("Xorg failed to start up; please ensure you have the X.org dummy driver installed, and check the log file: %s\n", logfile);
         Process.abort();
     }
 
@@ -236,6 +239,8 @@ t_input_touchpad ()
     int status;
     Posix.waitpid (xorg_pid, out status, 0);
     Process.close_pid (xorg_pid);
+    FileUtils.remove (logfile);
+    FileUtils.remove (logfile + ".old");
 }
 
 
