@@ -385,7 +385,7 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void 
  *
  ***********************************/
 
-static inline char
+static inline signed char
 hexdigit(char c)
 {
     if (c >= '0' && c <= '9')
@@ -402,7 +402,7 @@ read_hex(const char *hex, char *buf, size_t bufsize)
 {
     const char *hexptr = hex;
     size_t written = 0;
-    char upper, lower;
+    signed char upper, lower;
 
     while ((upper = hexdigit(hexptr[0])) >= 0) {
 	if (written >= bufsize) {
