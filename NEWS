@@ -1,4 +1,4 @@
-0.2.6 (UNRELEASED)
+0.2.6 (2013-06-13)
 ------------------
 - Do not use automake 1.13's parallel test runner. It not buy much for this
   project, and makes it a lot harder to analyse test failures from build logs.
