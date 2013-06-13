@@ -139,9 +139,6 @@ libumockdev_la_LDFLAGS =	\
 	-export-symbols-regex '^umockdev_.*' \
 	$(NULL)
 
-typelibdir = $(libdir)/girepository-1.0
-typelib_DATA = UMockdev-1.0.typelib
-
 girdir = $(datadir)/gir-1.0
 gir_DATA = UMockdev-1.0.gir
 
@@ -152,8 +149,13 @@ vapi_DATA = src/umockdev-1.0.vapi
 UMockdev-1.0-hacked.gir: $(srcdir)/UMockdev-1.0.gir
 	sed '/name="add_devicev"/ s/icev">$$/icev" shadows="add_device">/' $< > $@
 
+if HAVE_INTROSPECTION
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = UMockdev-1.0.typelib
+
 UMockdev-1.0.typelib: UMockdev-1.0-hacked.gir
 	g-ir-compiler -l libumockdev.so -o $@ $<
+endif
 
 pkgconfiglib_DATA += src/umockdev-1.0.pc
 EXTRA_DIST += src/umockdev-1.0.pc.in src/umockdev-1.0.vapi UMockdev-1.0.gir
