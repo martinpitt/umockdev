@@ -28,7 +28,7 @@ INSTALL_EXEC_HOOKS =
 UNINSTALL_EXEC_HOOKS =
 CLEANFILES =
 DISTCLEANFILES =
-TESTS =
+CHECKS =
 
 EXTRA_DIST = COPYING README.rst NEWS devices
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
@@ -246,17 +246,9 @@ tests_test_ioctl_tree_LDADD =	\
 	$(GLIB_LIBS)		\
 	$(NULL)
 
-TESTS += tests/test-umockdev tests/test-ioctl-tree
+CHECKS += tests/test-umockdev tests/test-ioctl-tree
 
 EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf
-
-if HAVE_INTROSPECTION
-if HAVE_PYTHON
-check-local: UMockdev-1.0.typelib
-	@echo "  Running gobject-introspection test with $(PYTHON) against build tree"
-	$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py
-endif
-
 
 noinst_PROGRAMS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
@@ -314,13 +306,26 @@ DISTCLEANFILES += \
 	$(srcdir)/tests_test_umockdev_record_vala.stamp	\
 	$(NULL)
 
-TESTS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
+CHECKS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
+# we do not use TESTS to avoid using the parallel test runner which does not
+# give any useful output on failures
+check-local: $(CHECKS)
+	@set -e; for f in $(CHECKS); do \
+		echo "== Running `basename $$f` test against build tree =="; \
+		$(TESTS_ENVIRONMENT) $$f; \
+	done
+
+if HAVE_INTROSPECTION
+if HAVE_PYTHON
+	@echo "== Running GI test with $(PYTHON) against build tree =="
+	$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py
+endif
 endif
 
-check-installed:
+check-installed: $(CHECKS)
 	@echo "== Running tests against installed system =="
-	@set -e; for f in $(TESTS); do \
+	@set -e; for f in $(CHECKS); do \
 		echo "==  Running `basename $$f` test against installed system =="; \
 		NO_LT=tests/.libs/`basename $$f`; \
 		[ -x $$NO_LT ] && $(INSTALL_TESTS_ENVIRONMENT) $$NO_LT || $(INSTALL_TESTS_ENVIRONMENT) $$f; \
