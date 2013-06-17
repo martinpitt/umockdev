@@ -1,4 +1,4 @@
-0.2.8 (UNRELEASED)
+0.2.8 (2013-06-17)
 ------------------
 - Link the typelib to the SONAMEd library, not the version-less development
   symlink.
