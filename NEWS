@@ -1,3 +1,8 @@
+0.2.8 (UNRELEASED)
+------------------
+- Link the typelib to the SONAMEd library, not the version-less development
+  symlink.
+
 0.2.7 (2013-06-17)
 ------------------
 - Slightly relax errno test in /umockdev-testbed-vala/usbfs_ioctl_static, the

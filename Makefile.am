@@ -154,7 +154,7 @@ typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = UMockdev-1.0.typelib
 
 UMockdev-1.0.typelib: UMockdev-1.0-hacked.gir
-	g-ir-compiler -l libumockdev.so -o $@ $<
+	g-ir-compiler -l libumockdev.so.0 -o $@ $<
 endif
 
 pkgconfiglib_DATA += src/umockdev-1.0.pc
