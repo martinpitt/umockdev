@@ -1,4 +1,4 @@
-0.2.7 (UNRELEASED)
+0.2.7 (2013-06-17)
 ------------------
 - Slightly relax errno test in /umockdev-testbed-vala/usbfs_ioctl_static, the
   real call might fail not just with ENOTTY but also with EINVAL.
