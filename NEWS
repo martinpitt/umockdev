@@ -1,3 +1,8 @@
+0.2.7 (UNRELEASED)
+------------------
+- Slightly relax errno test in /umockdev-testbed-vala/usbfs_ioctl_static, the
+  real call might fail not just with ENOTTY but also with EINVAL.
+
 0.2.6 (2013-06-13)
 ------------------
 - Do not use automake 1.13's parallel test runner. It not buy much for this
