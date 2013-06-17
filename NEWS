@@ -2,6 +2,7 @@
 ------------------
 - Slightly relax errno test in /umockdev-testbed-vala/usbfs_ioctl_static, the
   real call might fail not just with ENOTTY but also with EINVAL.
+- Fix tests to work on big-endian machines (tested on powerpc32).
 
 0.2.6 (2013-06-13)
 ------------------
