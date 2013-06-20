@@ -56,13 +56,14 @@ t_testbed_fixture_teardown(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(rootdir);
 }
 
-/* Empty UMockdevTestbed without any devices */
-static void
-t_testbed_empty(UMockdevTestbedFixture * fixture, gconstpointer data)
+/* Return number of devices that libudev can see */
+static guint
+num_udev_devices(void)
 {
     GUdevClient *client;
     GUdevEnumerator *enumerator;
     GList *result;
+    guint num;
 
     client = g_udev_client_new(NULL);
     g_assert(client);
@@ -70,10 +71,20 @@ t_testbed_empty(UMockdevTestbedFixture * fixture, gconstpointer data)
     enumerator = g_udev_enumerator_new(client);
     g_assert(enumerator);
     result = g_udev_enumerator_execute(enumerator);
-    g_assert_cmpuint(g_list_length(result), ==, 0);
+    num = g_list_length(result);
 
+    g_list_free_full(result, g_object_unref);
     g_object_unref(enumerator);
     g_object_unref(client);
+
+    return num;
+}
+
+/* Empty UMockdevTestbed without any devices */
+static void
+t_testbed_empty(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    g_assert_cmpuint(num_udev_devices(), ==, 0);
 }
 
 /* common checks for umockdev_testbed_add_device{,v}() */
@@ -566,8 +577,6 @@ static void
 t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GUdevClient *client;
-    GUdevEnumerator *enumerator;
-    GList *result;
     GUdevDevice *device, *subdev;
     gchar *contents;
     gsize length;
@@ -588,11 +597,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     client = g_udev_client_new(NULL);
 
     /* should have exactly one device */
-    enumerator = g_udev_enumerator_new(client);
-    result = g_udev_enumerator_execute(enumerator);
-    g_assert_cmpuint(g_list_length(result), ==, 1);
-    g_list_free_full(result, g_object_unref);
-    g_object_unref(enumerator);
+    g_assert_cmpuint(num_udev_devices(), ==, 1);
 
     /* check properties and attributes */
     device = g_udev_client_query_by_sysfs_path(client, "/sys/devices/dev1");
@@ -626,11 +631,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_no_error(error);
 
     /* should have three devices now */
-    enumerator = g_udev_enumerator_new(client);
-    result = g_udev_enumerator_execute(enumerator);
-    g_assert_cmpuint(g_list_length(result), ==, 3);
-    g_list_free_full(result, g_object_unref);
-    g_object_unref(enumerator);
+    g_assert_cmpuint(num_udev_devices(), ==, 3);
 
     /* dev1 is still there */
     device = g_udev_client_query_by_sysfs_path(client, "/sys/devices/dev1");
