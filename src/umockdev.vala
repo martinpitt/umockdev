@@ -591,6 +591,31 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_disable:
+     * @self: A #UMockdevTestbed.
+     *
+     * Disable the testbed.  This can be used for temporarily switching back to
+     * the real /sys and /dev without having to destroy or change $UMOCKDEV_DIR
+     * and the #UMockdevTestbed instance. Use @umockdev_testbed_enable() to
+     * re-enable the testbed.
+     */
+    public void disable()
+    {
+        FileStream.open(Path.build_filename(this.root_dir, "disabled"), "w");
+    }
+
+    /**
+     * umockdev_testbed_enable:
+     * @self: A #UMockdevTestbed.
+     *
+     * Re-enable the testbed after @@umockdev_testbed_disable().
+     */
+    public void enable()
+    {
+        FileUtils.remove(Path.build_filename(this.root_dir, "disabled"));
+    }
+
+    /**
      * umockdev_testbed_clear:
      * @self: A #UMockdevTestbed.
      *

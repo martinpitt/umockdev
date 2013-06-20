@@ -462,7 +462,13 @@ trap_path(const char *path)
 	errno = ENAMETOOLONG;
 	return NULL;
     }
+
+    /* test bed disabled? */
     strcpy(buf, prefix);
+    strcpy(buf + prefix_len, "/disabled");
+    if (path_exists(buf) == 0)
+	return path;
+
     strcpy(buf + prefix_len, path);
 
     if (check_exist && path_exists(buf) < 0)

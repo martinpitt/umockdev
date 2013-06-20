@@ -1,6 +1,12 @@
 0.2.9 (UNRELEASED)
 ------------------
 - preload: Do not change errno when calculating wrapped paths.
+- Add umockdev_testbed_disable() and umockdev_testbed_enable() methods for
+  temporarily disabling the emulated /sys and /dev. This can be used for
+  temporarily switching back to the real /sys and /dev without having to
+  destroy or change $UMOCKDEV_DIR and the UMockdevTestbed instance (which is
+  difficult when these get exported to subprocesses like local D-BUS
+  instances).
 
 0.2.8 (2013-06-17)
 ------------------

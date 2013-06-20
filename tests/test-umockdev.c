@@ -32,6 +32,8 @@
 
 #include "umockdev.h"
 
+static gboolean has_real_sysfs;
+
 typedef struct {
     UMockdevTestbed *testbed;
 } UMockdevTestbedFixture;
@@ -883,6 +885,37 @@ t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(sysdev_path);
 }
 
+static void
+t_testbed_disable(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    if (!has_real_sysfs) {
+	g_printf("SKIP: no real /sys on this system. ");
+	return;
+    }
+
+    umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL, NULL, NULL);
+
+    /* only our test device */
+    g_assert_cmpuint(num_udev_devices(), ==, 1);
+
+    /* disable testbed */
+    umockdev_testbed_disable(fixture->testbed);
+    /* we should now have some real devices */
+    g_assert_cmpuint(num_udev_devices(), >, 1);
+
+    /* disable() is idempotent */
+    umockdev_testbed_disable(fixture->testbed);
+    g_assert_cmpuint(num_udev_devices(), >, 1);
+
+    /* turn it back on */
+    umockdev_testbed_enable(fixture->testbed);
+    g_assert_cmpuint(num_udev_devices(), ==, 1);
+
+    /* enable() is idempotent */
+    umockdev_testbed_enable(fixture->testbed);
+    g_assert_cmpuint(num_udev_devices(), ==, 1);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -890,6 +923,9 @@ main(int argc, char **argv)
     g_type_init();
 #endif
     g_test_init(&argc, &argv, NULL);
+
+    /* do we have a real /sys on this test? */
+    has_real_sysfs = g_file_test ("/sys/devices", G_FILE_TEST_IS_DIR);
 
     /* tests for mocking /sys */
     g_test_add("/umockdev-testbed/empty", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
@@ -931,5 +967,7 @@ main(int argc, char **argv)
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_clear, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/disable", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_disable, t_testbed_fixture_teardown);
     return g_test_run();
 }
