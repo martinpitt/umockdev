@@ -424,6 +424,17 @@ ioctl(int d, unsigned long request, void *arg)
  *
  ********************************/
 
+static inline int
+path_exists(const char *path)
+{
+    int orig_errno, res;
+
+    orig_errno = errno;
+    res = access(path, F_OK);
+    errno = orig_errno;
+    return res;
+}
+
 static const char *
 trap_path(const char *path)
 {
@@ -454,15 +465,8 @@ trap_path(const char *path)
     strcpy(buf, prefix);
     strcpy(buf + prefix_len, path);
 
-    if (check_exist) {
-	int orig_errno, res;
-
-	orig_errno = errno;
-	res = access(buf, F_OK);
-	errno = orig_errno;
-	if (res < 0)
-	    return path;
-    }
+    if (check_exist && path_exists(buf) < 0)
+	return path;
 
     return buf;
 }
