@@ -471,81 +471,81 @@ trap_path(const char *path)
 #define WRAP_1ARG(rettype, failret, name) \
 rettype name(const char *path) \
 { \
-	const char *p;				\
-	static rettype (*_fn)(const char*);	\
-	_fn = get_libc_func(#name);		\
-	p = trap_path(path);			\
-	if (p == NULL)				\
-		return failret;			\
-	return (*_fn)(p);			\
+    const char *p;			\
+    static rettype (*_fn)(const char*);	\
+    _fn = get_libc_func(#name);		\
+    p = trap_path(path);		\
+    if (p == NULL)			\
+	return failret;			\
+    return (*_fn)(p);			\
 }
 
 /* wrapper template for a function with "const char* path" and another argument */
 #define WRAP_2ARGS(rettype, failret, name, arg2t) \
 rettype name(const char *path, arg2t arg2) \
 { \
-	const char *p;					\
-	static rettype (*_fn)(const char*, arg2t arg2);	\
-	_fn = get_libc_func(#name);			\
-	p = trap_path(path);				\
-	if (p == NULL)					\
-		return failret;				\
-	return (*_fn)(p, arg2);				\
+    const char *p;					\
+    static rettype (*_fn)(const char*, arg2t arg2);	\
+    _fn = get_libc_func(#name);				\
+    p = trap_path(path);				\
+    if (p == NULL)					\
+	return failret;					\
+    return (*_fn)(p, arg2);				\
 }
 
 /* wrapper template for a function with "const char* path" and two other arguments */
 #define WRAP_3ARGS(rettype, failret, name, arg2t, arg3t) \
 rettype name(const char *path, arg2t arg2, arg3t arg3) \
 { \
-	const char *p;						    \
-	static rettype (*_fn)(const char*, arg2t arg2, arg3t arg3); \
-	_fn = get_libc_func(#name);				    \
-	p = trap_path(path);					    \
-	if (p == NULL)						    \
-		return failret;					    \
-	return (*_fn)(p, arg2, arg3);				    \
+    const char *p;						    \
+    static rettype (*_fn)(const char*, arg2t arg2, arg3t arg3);	    \
+    _fn = get_libc_func(#name);					    \
+    p = trap_path(path);					    \
+    if (p == NULL)						    \
+	return failret;						    \
+    return (*_fn)(p, arg2, arg3);				    \
 }
 
 /* wrapper template for __xstat family */
 #define WRAP_VERSTAT(prefix, suffix) \
 int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *st) \
 { \
-	const char *p;								    \
-	static int (*_fn)(int ver, const char *path, struct stat ## suffix *buf);   \
-	_fn = get_libc_func(#prefix "stat" #suffix);				    \
-	p = trap_path(path);							    \
-	if (p == NULL)								    \
-		return -1;							    \
-        DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	    \
-	return _fn(ver, p, st);							    \
+    const char *p;								\
+    static int (*_fn)(int ver, const char *path, struct stat ## suffix *buf);   \
+    _fn = get_libc_func(#prefix "stat" #suffix);				\
+    p = trap_path(path);							\
+    if (p == NULL)								\
+	return -1;								\
+    DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
+    return _fn(ver, p, st);							\
 }
 
 /* wrapper template for open family */
 #define WRAP_OPEN(prefix, suffix) \
 int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 { \
-	const char *p;						    \
-	static int (*_fn)(const char *path, int flags, ...);	    \
-	int ret;						    \
-	_fn = get_libc_func(#prefix "open" #suffix);		    \
-	p = trap_path(path);					    \
-	if (p == NULL)						    \
-		return -1;					    \
-        DBG("testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p);	    \
-	if (flags & O_CREAT) {					    \
-		mode_t mode;					    \
-		va_list ap;					    \
-		va_start(ap, flags);				    \
-		mode = va_arg(ap, mode_t);			    \
-		va_end(ap);					    \
-		ret = _fn(p, flags, mode);			    \
-	} else							    \
-		ret = _fn(p, flags);				    \
-	if (path != p)						    \
-		ioctl_wrap_open(ret, path);			    \
-	else							    \
-		ioctl_record_open(ret);				    \
-	return ret;						    \
+    const char *p;						    \
+    static int (*_fn)(const char *path, int flags, ...);	    \
+    int ret;							    \
+    _fn = get_libc_func(#prefix "open" #suffix);		    \
+    p = trap_path(path);					    \
+    if (p == NULL)						    \
+	return -1;						    \
+    DBG("testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
+    if (flags & O_CREAT) {					    \
+	mode_t mode;						    \
+	va_list ap;						    \
+	va_start(ap, flags);				    	    \
+	mode = va_arg(ap, mode_t);			    	    \
+	va_end(ap);					    	    \
+	ret = _fn(p, flags, mode);			    	    \
+    } else							    \
+	ret = _fn(p, flags);					    \
+    if (path != p)						    \
+	ioctl_wrap_open(ret, path);				    \
+    else							    \
+	ioctl_record_open(ret);					    \
+    return ret;						    	    \
 }
 
 WRAP_1ARG(DIR *, NULL, opendir);
@@ -594,4 +594,4 @@ close(int fd)
     return _close(fd);
 }
 
-/* vim: set sw=8 noet: */
+/* vim: set sw=4 noet: */
