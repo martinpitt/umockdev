@@ -1,4 +1,4 @@
-0.2.9 (UNRELEASED)
+0.2.9 (2013-06-20)
 ------------------
 - preload: Do not change errno when calculating wrapped paths.
 - Add umockdev_testbed_disable() and umockdev_testbed_enable() methods for
