@@ -1,3 +1,7 @@
+0.2.9 (UNRELEASED)
+------------------
+- preload: Do not change errno when calculating wrapped paths.
+
 0.2.8 (2013-06-17)
 ------------------
 - Link the typelib to the SONAMEd library, not the version-less development

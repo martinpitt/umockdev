@@ -454,8 +454,15 @@ trap_path(const char *path)
     strcpy(buf, prefix);
     strcpy(buf + prefix_len, path);
 
-    if (check_exist && access(buf, F_OK) < 0)
-	return path;
+    if (check_exist) {
+	int orig_errno, res;
+
+	orig_errno = errno;
+	res = access(buf, F_OK);
+	errno = orig_errno;
+	if (res < 0)
+	    return path;
+    }
 
     return buf;
 }
