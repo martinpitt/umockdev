@@ -516,18 +516,33 @@ rettype name(const char *path, arg2t arg2, arg3t arg3) \
     return (*_fn)(p, arg2, arg3);				    \
 }
 
-/* wrapper template for __xstat family */
+/* wrapper template for __xstat family; note that we abuse the sticky bit in
+ * the emulated /dev to indicate a block device (the sticky bit has no
+ * real functionality for device nodes) */
 #define WRAP_VERSTAT(prefix, suffix) \
 int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *st) \
 { \
     const char *p;								\
     static int (*_fn)(int ver, const char *path, struct stat ## suffix *buf);   \
+    int ret;									\
     _fn = get_libc_func(#prefix "stat" #suffix);				\
     p = trap_path(path);							\
     if (p == NULL)								\
 	return -1;								\
     DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
-    return _fn(ver, p, st);							\
+    ret = _fn(ver, p, st);							\
+    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
+	&& S_ISREG(st->st_mode)) {						\
+	st->st_mode &= ~S_IFREG;						\
+	if (st->st_mode &  S_ISVTX) {						\
+	    st->st_mode &= ~S_ISVTX; st->st_mode |= S_IFBLK;			\
+	    DBG("  %s is an emulated block device\n", path);			\
+	} else {								\
+	    st->st_mode |= S_IFCHR;						\
+	    DBG("  %s is an emulated char device\n", path);			\
+	}									\
+    }										\
+    return ret;									\
 }
 
 /* wrapper template for open family */

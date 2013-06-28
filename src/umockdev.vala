@@ -508,6 +508,10 @@ public class Testbed: GLib.Object {
                         contents = decode_hex(val);
                     try {
                         FileUtils.set_data(path, contents);
+                        /* set sticky bit on block devices, to indicate proper
+                         * stat() faking to our preload lib */
+                        if (devpath.contains("/block/"))
+                            FileUtils.chmod(path, 01644);
                     } catch (FileError e) {
                         stderr.printf("Cannot create dev node file: %s\n", e.message);
                         Process.abort();

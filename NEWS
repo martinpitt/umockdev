@@ -1,3 +1,8 @@
+0.2.10 (UNRELEASED)
+-------------------
+- Fix stat()ing of emulated /dev/ nodes to actually be (block/character)
+  devices instead of regular files. (issue #16)
+
 0.2.9 (2013-06-20)
 ------------------
 - preload: Do not change errno when calculating wrapped paths.

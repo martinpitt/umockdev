@@ -780,7 +780,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(g_open("/dev/wishyouwerehere", O_RDONLY, 0), ==, -1);
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(g_stat("/dev/zero", &st), ==, 0);
-    g_assert(S_ISREG(st.st_mode));
+    g_assert(S_ISCHR(st.st_mode));
     fd = g_open("/dev/zero", O_RDONLY, 0);
     g_assert_cmpint(fd, >, 0);
     g_assert_cmpint(read(fd, buf, 20), ==, 12);
@@ -808,11 +808,12 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_add_from_string_dev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GError *error = NULL;
     gchar *contents;
     gsize length;
+    GStatBuf st;
 
     /* N: without value should create an empty dev */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
@@ -825,6 +826,8 @@ t_testbed_add_from_string_dev(UMockdevTestbedFixture * fixture, gconstpointer da
     g_assert_cmpint(length, ==, 0);
     g_assert_cmpstr(contents, ==, "");
     g_free(contents);
+    g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
+    g_assert(S_ISCHR(st.st_mode));
 
     /* N: another N without value whose name looks like hex */
     umockdev_testbed_add_from_string(fixture->testbed,
@@ -851,8 +854,47 @@ t_testbed_add_from_string_dev(UMockdevTestbedFixture * fixture, gconstpointer da
     g_assert_cmpint(length, ==, 5);
     g_assert_cmpint(memcmp(contents, "\x00\377aA\x00", 2), ==, 0);
     g_free(contents);
+    g_assert_cmpint(g_stat("/dev/bus/usb/preset", &st), ==, 0);
+    g_assert(S_ISCHR(st.st_mode));
 }
 
+static void
+t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    GError *error = NULL;
+    gchar *contents;
+    gsize length;
+    GStatBuf st;
+
+    /* N: without value should create an empty dev */
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/block/empty\n"
+					      "N: empty\n" "E: SUBSYSTEM=foo\n" "E: DEVNAME=/dev/empty\n", &error));
+    g_assert_no_error(error);
+
+    g_assert(g_file_get_contents("/dev/empty", &contents, &length, &error));
+    g_assert_no_error(error);
+    g_assert_cmpint(length, ==, 0);
+    g_assert_cmpstr(contents, ==, "");
+    g_free(contents);
+    g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
+    g_assert(S_ISBLK(st.st_mode));
+
+    /* N: with value should set that contents */
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/block/filled\n"
+					      "N: sdf=00FF614100\n"
+					      "E: SUBSYSTEM=block\n" "E: DEVNAME=/dev/sdf\n", &error));
+    g_assert_no_error(error);
+
+    g_assert(g_file_get_contents("/dev/sdf", &contents, &length, &error));
+    g_assert_no_error(error);
+    g_assert_cmpint(length, ==, 5);
+    g_assert_cmpint(memcmp(contents, "\x00\377aA\x00", 2), ==, 0);
+    g_free(contents);
+    g_assert_cmpint(g_stat("/dev/sdf", &st), ==, 0);
+    g_assert(S_ISBLK(st.st_mode));
+}
 
 static void
 t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
@@ -961,8 +1003,10 @@ main(int argc, char **argv)
     /* tests for mocking /dev */
     g_test_add("/umockdev-testbed/dev_access", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_dev_access, t_testbed_fixture_teardown);
-    g_test_add("/umockdev-testbed/add_from_string_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_from_string_dev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_add_from_string_dev_block, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
