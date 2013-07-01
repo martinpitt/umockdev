@@ -4,6 +4,9 @@
   nodes with proper major/minor number, instead of regular files. (issue #16)
 - Add umockdev_testbed_add_from_file() convenience wrapper around
   add_from_string(). (issue #15)
+- Handle USBDEVFS_REAPURB ioctls without a previous SUBMITURB like the real USB
+  stack (return EAGAIN instead of crashing with an assertion). This makes
+  umockdev work with gvfs' mtp backend.
 
 0.2.9 (2013-06-20)
 ------------------
