@@ -2,6 +2,8 @@
 -------------------
 - Make stat()ing of emulated /dev/ nodes appear as actual block/char device
   nodes with proper major/minor number, instead of regular files. (issue #16)
+- Add umockdev_testbed_add_from_file() convenience wrapper around
+  add_from_string(). (issue #15)
 
 0.2.9 (2013-06-20)
 ------------------

@@ -707,6 +707,55 @@ t_testbed_add_from_string_errors(UMockdevTestbedFixture * fixture, gconstpointer
 }
 
 static void
+t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    gboolean success;
+    GError *error = NULL;
+    gchar *path;
+    gchar *contents = NULL;
+
+    success = umockdev_testbed_add_from_file(fixture->testbed, "/non/existing.umockdev", &error);
+    g_assert_error(error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
+    g_clear_error(&error);
+    g_assert(!success);
+
+    /* create umockdev dump file, invalid data*/
+    path = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "test.umockdev", NULL);
+    success = g_file_set_contents(path,
+                                  "P: /devices/dev1\nX: Whatever\n", -1, &error);
+    g_assert_no_error(error);
+    g_assert(success);
+
+    success = umockdev_testbed_add_from_file(fixture->testbed, path, &error);
+    g_assert_error(error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
+    g_clear_error(&error);
+    g_assert(!success);
+
+    /* create umockdev dump file, valid data*/
+    success = g_file_set_contents(path,
+                                  "P: /devices/dev1\n"
+                                  "E: SUBSYSTEM=pci\n"
+                                  "H: binary_attr=41A9FF0005FF00\n"
+                                  "A: simple_attr=1\n", -1, &error);
+    g_assert_no_error(error);
+    g_assert(success);
+
+    success = umockdev_testbed_add_from_file(fixture->testbed, path, &error);
+    g_assert_no_error(error);
+    g_assert(success);
+
+    g_free(path);
+
+    /* verify that device was created */
+    success = g_file_get_contents("/sys/devices/dev1/simple_attr", &contents, NULL, &error);
+    g_assert_no_error(error);
+    g_assert(success);
+    g_assert_cmpstr(contents, ==, "1");
+    g_free(contents);
+
+}
+
+static void
 t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
@@ -1031,6 +1080,8 @@ main(int argc, char **argv)
     g_test_add("/umockdev-testbed/add_from_string_errors",
 	       UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/add_from_file", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_add_from_file, t_testbed_fixture_teardown);
 
     /* tests for mocking uevents */
     g_test_add("/umockdev-testbed/uevent/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
