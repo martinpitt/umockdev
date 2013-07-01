@@ -209,6 +209,7 @@ public class Testbed: GLib.Object {
                                [CCode(array_null_terminated=true, array_length=false)] string[] properties)
     {
         string dev_path;
+        string? dev_node = null;
 
         if (parent != null) {
             if (!FileUtils.test(parent, FileTest.IS_DIR)) {
@@ -251,24 +252,32 @@ public class Testbed: GLib.Object {
                                      Path.build_filename(class_dir, Path.get_basename(name))) == 0);
         }
 
-        /* attributes */
-        for (int i = 0; i < attributes.length - 1; i += 2)
-            this.set_attribute(dev_path, attributes[i], attributes[i+1]);
-        if (attributes.length % 2 != 0)
-            warning("add_devicev: Ignoring attribute key '%s' without value", attributes[attributes.length-1]);
-
         /* properties; they go into the "uevent" sysfs attribute */
         string props = "";
         for (int i = 0; i < properties.length - 1; i += 2) {
             /* the kernel sets DEVNAME without prefix */
-            if (properties[i] == "DEVNAME" && properties[i+1].has_prefix("/dev/"))
-                props += "DEVNAME=" + properties[i+1].substring(5) + "\n";
-            else
+            if (properties[i] == "DEVNAME" && properties[i+1].has_prefix("/dev/")) {
+                dev_node = properties[i+1].substring(5);
+                props += "DEVNAME=" + dev_node + "\n";
+            } else
                 props += properties[i] + "=" + properties[i+1] + "\n";
         }
         if (properties.length % 2 != 0)
             warning("add_devicev: Ignoring property key '%s' without value", properties[properties.length-1]);
         this.set_attribute(dev_path, "uevent", props);
+
+        /* attributes */
+        for (int i = 0; i < attributes.length - 1; i += 2) {
+            this.set_attribute(dev_path, attributes[i], attributes[i+1]);
+            if (attributes[i] == "dev" && dev_node != null) {
+                /* put the major/minor information into /dev for our preload */
+                string infodir = Path.build_filename(this.root_dir, "dev", ".node");
+                DirUtils.create_with_parents(infodir, 0755);
+                FileUtils.symlink(attributes[i+1], Path.build_filename(infodir, dev_node.replace("/", "_")));
+            }
+        }
+        if (attributes.length % 2 != 0)
+            warning("add_devicev: Ignoring attribute key '%s' without value", attributes[attributes.length-1]);
 
         return dev_path;
     }

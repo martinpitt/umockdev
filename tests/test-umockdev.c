@@ -781,6 +781,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(g_stat("/dev/zero", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
+    g_assert_cmpint(st.st_rdev, ==, 0); /* we did not set anything */
     fd = g_open("/dev/zero", O_RDONLY, 0);
     g_assert_cmpint(fd, >, 0);
     g_assert_cmpint(read(fd, buf, 20), ==, 12);
@@ -817,8 +818,9 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
 
     /* N: without value should create an empty dev */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/empty\n"
-					      "N: empty\n" "E: SUBSYSTEM=foo\n" "E: DEVNAME=/dev/empty\n", &error));
+					      "P: /devices/empty\nN: empty\n"
+					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/empty\n"
+					      "A: dev=1:3\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/empty", &contents, &length, &error));
@@ -828,12 +830,13 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
     g_free(contents);
     g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
+    g_assert_cmpint(st.st_rdev, ==, makedev(1, 3));
 
     /* N: another N without value whose name looks like hex */
     umockdev_testbed_add_from_string(fixture->testbed,
-				     "P: /devices/001\n"
-				     "N: bus/usb/001\n"
-				     "E: BUSNUM=001\n" "E: SUBSYSTEM=foo\n" "E: DEVNAME=/dev/bus/usb/001\n", &error);
+				     "P: /devices/001\nN: bus/usb/001\n"
+				     "E: BUSNUM=001\nE: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/001\n"
+				     "A: dev=189:1\n", &error);
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/bus/usb/001", &contents, &length, &error));
@@ -844,9 +847,9 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
 
     /* N: with value should set that contents */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/preset\n"
-					      "N: bus/usb/preset=00FF614100\n"
-					      "E: SUBSYSTEM=foo\n" "E: DEVNAME=/dev/bus/usb/preset\n", &error));
+					      "P: /devices/preset\nN: bus/usb/preset=00FF614100\n"
+					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/preset\n"
+					      "A: dev=189:2\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/bus/usb/preset", &contents, &length, &error));
@@ -856,6 +859,7 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
     g_free(contents);
     g_assert_cmpint(g_stat("/dev/bus/usb/preset", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
+    g_assert_cmpint(st.st_rdev, ==, makedev(189, 2));
 }
 
 static void

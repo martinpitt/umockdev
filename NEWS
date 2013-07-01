@@ -1,7 +1,7 @@
 0.2.10 (UNRELEASED)
 -------------------
-- Fix stat()ing of emulated /dev/ nodes to actually be (block/character)
-  devices instead of regular files. (issue #16)
+- Make stat()ing of emulated /dev/ nodes appear as actual block/char device
+  nodes with proper major/minor number, instead of regular files. (issue #16)
 
 0.2.9 (2013-06-20)
 ------------------

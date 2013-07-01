@@ -516,6 +516,39 @@ rettype name(const char *path, arg2t arg2, arg3t arg3) \
     return (*_fn)(p, arg2, arg3);				    \
 }
 
+static dev_t
+get_rdev (const char* nodename)
+{
+    static char buf[PATH_MAX];
+    static char link[PATH_MAX];
+    int name_offset;
+    int i, major, minor, orig_errno;
+
+    name_offset = snprintf(buf, sizeof(buf), "%s/dev/.node/", getenv("UMOCKDEV_DIR"));
+    buf[sizeof(buf) - 1] = 0;
+
+    /* append nodename and replace / with _ */
+    strncpy(buf + name_offset, nodename, sizeof(buf) - name_offset - 1);
+    for (i = name_offset; i < sizeof(buf); ++i)
+	if (buf[i] == '/')
+	    buf[i] = '_';
+
+    /* read major:minor */
+    orig_errno = errno;
+    if (readlink(buf, link, sizeof(link)) < 0) {
+	DBG("get_rdev %s: cannot read link %s: %m\n", nodename, buf);
+	errno = orig_errno;
+	return (dev_t) 0;
+    }
+    errno = orig_errno;
+    if (sscanf(link, "%i:%i", &major, &minor) != 2) {
+	DBG("get_rdev %s: cannot decode major/minor from '%s'\n", nodename, link);
+	return (dev_t) 0;
+    }
+    DBG("get_rdev %s: got major/minor %i:%i\n", nodename, major, minor);
+    return makedev(major, minor);
+}
+
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes) */
@@ -541,6 +574,7 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
 	    st->st_mode |= S_IFCHR;						\
 	    DBG("  %s is an emulated char device\n", path);			\
 	}									\
+	st->st_rdev = get_rdev(path + 5);					\
     }										\
     return ret;									\
 }
