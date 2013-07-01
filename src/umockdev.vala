@@ -212,6 +212,10 @@ public class Testbed: GLib.Object {
         string? dev_node = null;
 
         if (parent != null) {
+            if (!parent.has_prefix("/sys/")) {
+                critical("add_devicev(): parent device %s does not start with /sys/", parent);
+                return null;
+            }
             if (!FileUtils.test(parent, FileTest.IS_DIR)) {
                 critical("add_devicev(): parent device %s does not exist", parent);
                 return null;
@@ -274,6 +278,14 @@ public class Testbed: GLib.Object {
                 string infodir = Path.build_filename(this.root_dir, "dev", ".node");
                 DirUtils.create_with_parents(infodir, 0755);
                 FileUtils.symlink(attributes[i+1], Path.build_filename(infodir, dev_node.replace("/", "_")));
+
+                /* create a /sys/dev link for it, like in real sysfs */
+                string sysdev_dir = Path.build_filename(this.sys_dir, "dev",
+                    (dev_path.contains("/block/") ? "block" : "char"));
+                if (DirUtils.create_with_parents(sysdev_dir, 0755) != 0)
+                    error("cannot create dir '%s': %s", sysdev_dir, strerror(errno));
+                FileUtils.symlink("../../" + dev_path.substring(5),
+                                  Path.build_filename(sysdev_dir, attributes[i+1]));
             }
         }
         if (attributes.length % 2 != 0)

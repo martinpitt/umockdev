@@ -901,6 +901,44 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, gconstpoin
 }
 
 static void
+t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    GError *error = NULL;
+    GUdevClient *client;
+    GUdevDevice *device;
+
+    /* add fake char and block device */
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/stream\nN: stream\n"
+					      "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/stream\n"
+					      "A: dev=4:1\n", &error));
+    g_assert_no_error(error);
+
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/block/disk\nN: disk\n"
+					      "E: SUBSYSTEM=block\nE: DEVNAME=/dev/disk\n"
+					      "A: dev=8:1\n", &error));
+    g_assert_no_error(error);
+
+    client = g_udev_client_new(NULL);
+    g_assert(client);
+
+    device = g_udev_client_query_by_device_file(client, "/dev/stream");
+    g_assert(device);
+    g_assert_cmpstr(g_udev_device_get_device_file(device), ==, "/dev/stream");
+    g_assert_cmpstr(g_udev_device_get_sysfs_path(device), ==, "/sys/devices/stream");
+    g_object_unref(device);
+
+    device = g_udev_client_query_by_device_file(client, "/dev/disk");
+    g_assert(device);
+    g_assert_cmpstr(g_udev_device_get_device_file(device), ==, "/dev/disk");
+    g_assert_cmpstr(g_udev_device_get_sysfs_path(device), ==, "/sys/devices/block/disk");
+    g_object_unref(device);
+
+    g_object_unref(client);
+}
+
+static void
 t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GError *error = NULL;
@@ -1011,6 +1049,8 @@ main(int argc, char **argv)
 	       t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_dev_block, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/dev_query_gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_dev_query_gudev, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
