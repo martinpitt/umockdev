@@ -615,8 +615,9 @@ usbdevfs_reapurb_execute(const ioctl_tree * node, unsigned long id, void *arg, i
     }
 
     if (id == node->type->id) {
-	struct usbdevfs_urb *orig_node_urb = submit_node->data;
+	struct usbdevfs_urb *orig_node_urb;
 	assert(submit_node != NULL);
+	orig_node_urb = submit_node->data;
 
 	submit_urb->actual_length = orig_node_urb->actual_length;
 	submit_urb->error_count = orig_node_urb->error_count;
