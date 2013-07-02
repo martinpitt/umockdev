@@ -232,6 +232,8 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     iov[0].iov_base = &nlh;
     iov[0].iov_len = sizeof(struct udev_monitor_netlink_header);
 
+    udev_device_unref(device);
+
     /* note, not setting nlh.filter_tag_bloom_{hi,lo} for now; if required, copy
      * from libudev */
 
