@@ -87,9 +87,9 @@ libumockdev_preload_la_LDFLAGS = \
 
 # this is an LD_PRELOAD library, so remove static library and libtool wrappers
 libumockdev-preload-install-hook:
-	rm $(DESTDIR)$(libdir)/libumockdev-preload.a
-	rm $(DESTDIR)$(libdir)/libumockdev-preload.so
-	rm $(DESTDIR)$(libdir)/libumockdev-preload.la
+	rm -f $(DESTDIR)$(libdir)/libumockdev-preload.a
+	rm -f $(DESTDIR)$(libdir)/libumockdev-preload.so
+	rm -f $(DESTDIR)$(libdir)/libumockdev-preload.la
 
 libumockdev-preload-uninstall-hook:
 	rm $(DESTDIR)$(libdir)/libumockdev-preload.so.*
