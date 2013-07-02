@@ -439,7 +439,7 @@ write_hex(FILE * file, const char *buf, size_t len)
  *
  ***********************************/
 
-#define NSIZE(node) _IOC_SIZE(node->id)
+#define NSIZE(node) ((node->type && node->type->real_size >= 0) ? node->type->real_size : _IOC_SIZE(node->id))
 
 static inline int
 id_matches_type(unsigned long id, const ioctl_type *type)
@@ -712,22 +712,25 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
  ***********************************/
 
 #define I_NOSTATE(name, execute_result) \
-    {name, 0, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
+    {name, -1, 0, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
 
-#define I_SIMPLE_STRUCT_IN(name, nr_range, insertion_parent_fn) \
-    {name, nr_range, #name,                                                 \
-     ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,   \
-     ioctl_simplestruct_write, ioctl_simplestruct_equal,                    \
-     ioctl_simplestruct_in_execute, insertion_parent_fn}
-
-#define I_NAMED_SIMPLE_STRUCT_IN(name, namestr, nr_range, insertion_parent_fn) \
-    {name, nr_range, namestr,                                                  \
+#define I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, size, nr_range, insertion_parent_fn) \
+    {name, size, nr_range, namestr,                                            \
      ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,      \
      ioctl_simplestruct_write, ioctl_simplestruct_equal,                       \
      ioctl_simplestruct_in_execute, insertion_parent_fn}
 
-#define I_CUSTOM(name, nr_range, fn_prefix) \
-    {name, nr_range, #name,                                     \
+#define I_NAMED_SIMPLE_STRUCT_IN(name, namestr, nr_range, insertion_parent_fn) \
+    I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, -1, nr_range, insertion_parent_fn)
+
+#define I_SIZED_SIMPLE_STRUCT_IN(name, size, nr_range, insertion_parent_fn) \
+    I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, size, nr_range, insertion_parent_fn)
+
+#define I_SIMPLE_STRUCT_IN(name, nr_range, insertion_parent_fn) \
+    I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, -1, nr_range, insertion_parent_fn)
+
+#define I_CUSTOM(name, nr_range, fn_prefix)                     \
+    {name, -1, nr_range, #name,                                 \
      fn_prefix ## _init_from_bin, fn_prefix ## _init_from_text, \
      fn_prefix ## _write, fn_prefix ## _equal,                  \
      fn_prefix ## _execute, fn_prefix ## _insertion_parent}
@@ -776,7 +779,7 @@ ioctl_type ioctl_db[] = {
 #endif
 
     /* terminator */
-    {0, 0, "", NULL, NULL, NULL, NULL, NULL}
+    {0, 0, 0, "", NULL, NULL, NULL, NULL, NULL}
 };
 
 const ioctl_type *
