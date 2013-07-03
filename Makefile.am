@@ -37,6 +37,9 @@ TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
 		    LD_LIBRARY_PATH=$(top_builddir)/.libs:$$LD_LIBRARY_PATH \
 		    GI_TYPELIB_PATH=$(builddir) \
 		    PATH=$(top_builddir)/src:$$PATH \
+		    G_SLICE=debug-blocks \
+		    MALLOC_PERTURB_=85 \
+		    MALLOC_CHECK_=3 \
 		    $(srcdir)/src/umockdev-wrapper
 
 INSTALL_TESTS_ENVIRONMENT = umockdev-wrapper
@@ -315,7 +318,7 @@ CHECKS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-r
 check-local: $(CHECKS)
 	@set -e; for f in $(CHECKS); do \
 		echo "== Running `basename $$f` test against build tree =="; \
-		$(TESTS_ENVIRONMENT) $$f; \
+		$(TESTS_ENVIRONMENT) $(EXEC_NAME) $$f; \
 	done
 
 if HAVE_INTROSPECTION
@@ -339,6 +342,9 @@ if HAVE_PYTHON
 	$(PYTEST_INSTALL) $(srcdir)/tests/test-umockdev.py
 endif
 endif
+
+check-valgrind:
+	EXEC_NAME="valgrind --leak-check=full --show-possibly-lost=no -q" G_DEBUG=gc-friendly $(MAKE) check
 
 # -------------------------------------------------------------
 # documentation
