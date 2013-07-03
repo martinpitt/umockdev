@@ -2,6 +2,7 @@
 -------------------
 - Do not overwrite an existing $LD_PRELOAD in umockdev-run and umockdev-record.
 - Add "make check-valgrind" target to debug memory leaks.
+- Add recently added API to reference documentation.
 
 0.2.10 (2013-07-01)
 -------------------
