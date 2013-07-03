@@ -1,3 +1,9 @@
+0.3 (UNRELEASED)
+----------------
+- Emulate SUBSYSTEM=tty mocked device nodes as PTYs instead of plain files, so
+  that they behave tty-like and respond to the relevant ioctls.
+  (first part of issue #9)
+
 0.2.11 (2013-07-03)
 -------------------
 - Do not overwrite an existing $LD_PRELOAD in umockdev-run and umockdev-record.

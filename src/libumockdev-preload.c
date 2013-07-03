@@ -549,6 +549,28 @@ get_rdev (const char* nodename)
     return makedev(major, minor);
 }
 
+static int
+is_emulated_device(const char* path, const mode_t st_mode)
+{
+    int orig_errno, res;
+    char dest[10];  /* big enough, we are only interested in the prefix */
+
+    /* we use symlinks to the real /dev/pty/ for mocking tty devices, those
+     * should appear as char device, not as symlink; but other symlinks should
+     * stay symlinks */
+    if (S_ISLNK(st_mode)) {
+	orig_errno = errno;
+	res = readlink(path, dest, sizeof(dest));
+	errno = orig_errno;
+	assert(res > 0);
+
+	return (strncmp(dest, "/dev/", 5) == 0);
+    }
+
+    /* other file types count as emulated for now */
+    return !S_ISDIR(st_mode);
+}
+
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes) */
@@ -565,7 +587,7 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
     DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
     ret = _fn(ver, p, st);							\
     if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
-	&& S_ISREG(st->st_mode)) {						\
+	&& is_emulated_device(p, st->st_mode)) {				\
 	st->st_mode &= ~S_IFREG;						\
 	if (st->st_mode &  S_ISVTX) {						\
 	    st->st_mode &= ~S_ISVTX; st->st_mode |= S_IFBLK;			\

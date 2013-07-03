@@ -276,6 +276,33 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   Posix.close (fd);
 }
 
+void
+t_tty_stty ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb.add_from_string ("""P: /devices/usb/tty/ttyUSB1
+N: ttyUSB1
+E: DEVNAME=/dev/ttyUSB1
+E: SUBSYSTEM=tty
+A: dev=188:1
+""");
+
+  // appears as a proper char device
+  Posix.Stat st;
+  assert_cmpint (Posix.lstat ("/dev/ttyUSB1", out st), Op.EQ, 0);
+  assert (Posix.S_ISCHR (st.st_mode));
+  assert_cmpuint (Posix.major (st.st_rdev), Op.EQ, 188);
+  assert_cmpuint (Posix.minor (st.st_rdev), Op.EQ, 1);
+
+  // stty issues an ioctl; verify that it recognizes the fake device as a real tty
+  string pout, perr;
+  int pexit;
+  Process.spawn_command_line_sync ("stty -F /dev/ttyUSB1", out pout, out perr, out pexit);
+  assert_cmpstr (perr, Op.EQ, "");
+  assert_cmpint (pexit, Op.EQ, 0);
+  assert (pout.contains ("speed 38400 baud"));
+}
+
 int
 main (string[] args)
 {
@@ -289,5 +316,8 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree", t_usbfs_ioctl_tree);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_xz", t_usbfs_ioctl_tree_xz);
+
+  /* tests for mocking TTYs */
+  Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);
   return Test.run();
 }

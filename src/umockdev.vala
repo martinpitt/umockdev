@@ -581,6 +581,8 @@ public class Testbed: GLib.Object {
         string? devpath = null;
         string? subsystem = null;
         string cur_data = data;
+        string? devnode_path = null;
+        uint8[] devnode_contents = {};
 
         cur_data = this.record_parse_line(cur_data, out type, out key, out devpath);
         if (cur_data == null || type != 'P')
@@ -628,21 +630,9 @@ public class Testbed: GLib.Object {
 
                 case 'N':
                     /* create directory of file */
-                    string path = Path.build_filename(this.root_dir, "dev", key);
-                    assert (DirUtils.create_with_parents(Path.get_dirname(path), 0755) == 0);
-                    uint8[] contents = {};
+                    devnode_path = Path.build_filename(this.root_dir, "dev", key);
                     if (val != null)
-                        contents = decode_hex(val);
-                    try {
-                        FileUtils.set_data(path, contents);
-                        /* set sticky bit on block devices, to indicate proper
-                         * stat() faking to our preload lib */
-                        if (devpath.contains("/block/"))
-                            FileUtils.chmod(path, 01644);
-                    } catch (FileError e) {
-                        stderr.printf("Cannot create dev node file: %s\n", e.message);
-                        Process.abort();
-                    }
+                        devnode_contents = decode_hex(val);
                     break;
 
                 case 'S':
@@ -667,12 +657,54 @@ public class Testbed: GLib.Object {
         for (int i = 0; i < binattrs.length; i += 2)
             this.set_attribute_binary (syspath, binattrs[i], decode_hex(binattrs[i+1]));
 
+        /* create fake device node */
+        if (devnode_path != null)
+            this.create_node_for_device(subsystem, devnode_path, devnode_contents);
+
         /* skip over multiple blank lines */
         while (cur_data[0] != '\0' && cur_data[0] == '\n')
             cur_data = cur_data.next_char();
 
         return cur_data;
     }
+
+    private void
+    create_node_for_device (string subsystem, string node_path, uint8[] node_contents)
+        throws UMockdev.Error
+    {
+        assert (DirUtils.create_with_parents(Path.get_dirname(node_path), 0755) == 0);
+
+        // for terminals we create a PTY
+        if (subsystem == "tty") {
+            if (node_contents.length > 0)
+                throw new UMockdev.Error.VALUE ("device %s: SUBSYSTEM=tty devices cannot have a predefined device node contents", node_path);
+
+            int ptym, ptys;
+            char[] ptyname_array = new char[8192];
+            assert (Linux.openpty (out ptym, out ptys, ptyname_array, null, null) == 0);
+            string ptyname = (string) ptyname_array;
+            debug ("create_node_for_device: creating tty device %s: got pty %s", node_path, ptyname);
+            Posix.close (ptys);
+
+            assert (FileUtils.symlink (ptyname, node_path) == 0);
+            // TODO: save ptym
+            return;
+        }
+
+        // for other devices we create normal files
+        try {
+            debug ("create_node_for_device: creating file device %s", node_path);
+            FileUtils.set_data(node_path, node_contents);
+            /* set sticky bit on block devices, to indicate proper
+             * stat() faking to our preload lib */
+            if (subsystem == "block")
+                FileUtils.chmod(node_path, 01644);
+        } catch (FileError e) {
+            stderr.printf("Cannot create dev node file: %s\n", e.message);
+            Process.abort();
+        }
+    }
+
 
     /**
      * umockdev_testbed_record_parse_line:

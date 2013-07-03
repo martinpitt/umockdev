@@ -854,6 +854,13 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(buf[0], ==, 'z');
     memset(buf, 0, sizeof(buf));
 
+    /* directories should appear as actual directories */
+    devpath = g_build_filename(devdir, "usb", NULL);
+    g_assert_cmpint(g_mkdir(devpath, 0755), ==, 0);
+    g_free(devpath);
+    g_assert_cmpint(g_lstat("/dev/usb", &st), ==, 0);
+    g_assert(S_ISDIR(st.st_mode));
+
     g_free(devdir);
 }
 
@@ -921,8 +928,8 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, gconstpoin
 
     /* N: without value should create an empty dev */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/block/empty\n"
-					      "N: empty\n" "E: SUBSYSTEM=foo\n" "E: DEVNAME=/dev/empty\n", &error));
+					      "P: /devices/empty\n"
+					      "N: empty\n" "E: SUBSYSTEM=block\n" "E: DEVNAME=/dev/empty\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/empty", &contents, &length, &error));
@@ -959,7 +966,7 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     /* add fake char and block device */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
 					      "P: /devices/stream\nN: stream\n"
-					      "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/stream\n"
+					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/stream\n"
 					      "A: dev=4:1\n", &error));
     g_assert_no_error(error);
 

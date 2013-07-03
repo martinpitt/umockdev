@@ -118,6 +118,7 @@ libumockdev_la_SOURCES =	\
 
 libumockdev_la_VALAFLAGS =		\
 	--pkg gio-2.0			\
+	--pkg linux			\
 	-H src/umockdev.h		\
 	--library=UMockdev-1.0		\
 	--vapi=src/umockdev-1.0.vapi	\
@@ -132,6 +133,7 @@ libumockdev_la_CFLAGS =		\
 libumockdev_la_LIBADD =		\
 	$(GLIB_LIBS)		\
 	$(LIBUDEV_LIBS)		\
+	-lutil			\
 	$(NULL)
 
 # see http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
