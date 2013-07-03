@@ -139,7 +139,7 @@ libumockdev_la_LIBADD =		\
 # see http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libumockdev_la_LDFLAGS =	\
 	$(AM_LDFLAGS)		\
-	-version-info 1:0:1	\
+	-version-info 2:0:2	\
 	-export-dynamic -no-undefined \
 	-export-symbols-regex '^umockdev_.*' \
 	$(NULL)

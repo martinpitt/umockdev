@@ -303,6 +303,40 @@ A: dev=188:1
   assert (pout.contains ("speed 38400 baud"));
 }
 
+void
+t_tty_data ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb.add_from_string ("""P: /devices/serial/ttyS10
+N: ttyS10
+E: DEVNAME=/dev/ttyS10
+E: SUBSYSTEM=tty
+A: dev=4:74
+""");
+
+  var client_fd = Posix.open ("/dev/ttyS10", Posix.O_RDWR, 0);
+  assert_cmpint (client_fd, Op.GE, 0);
+
+  var master_fd = tb.get_dev_fd ("/dev/ttyS10");
+  assert_cmpint (master_fd, Op.GE, 0);
+
+  char[] buf = new char[100];
+
+  /* client -> master; note that there is some wiggling here due to line ending
+   * conversion */
+  assert_cmpint ((int) Posix.write (client_fd, "hello\n", 6), Op.EQ, 6);
+  assert_cmpint ((int) Posix.read (master_fd, buf, 100), Op.EQ, 7);
+  assert_cmpstr ((string) buf, Op.EQ, "hello\r\n");
+
+  /* master -> client */
+  buf = new char[100];
+  assert_cmpint ((int) Posix.write (master_fd, "world\r\n", 7), Op.EQ, 7);
+  assert_cmpint ((int) Posix.read (client_fd, buf, 100), Op.EQ, 6);
+  assert_cmpstr ((string) buf, Op.EQ, "world\n");
+
+  Posix.close (client_fd);
+}
+
 int
 main (string[] args)
 {
@@ -319,5 +353,6 @@ main (string[] args)
 
   /* tests for mocking TTYs */
   Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);
+  Test.add_func ("/umockdev-testbed-vala/tty_data", t_tty_data);
   return Test.run();
 }

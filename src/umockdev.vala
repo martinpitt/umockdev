@@ -32,9 +32,6 @@ namespace UMockdev {
  * UMockdevTestbed:
  *
  * The #UMockdevTestbed class builds a temporary sandbox for mock devices.
- * Right now this covers sysfs, uevents, basic support for /dev devices, and
- * recording/mocking usbdevfs (for PtP/MTP devices) and evdev (touch pads,
- * Wacom tablets, etc.) ioctls, but other aspects will be added in the future.
  * You can add a number of devices including arbitrary sysfs attributes and
  * udev properties, and then run your software in that test bed that is
  * independent of the actual hardware it is running on.  With this you can
@@ -73,6 +70,8 @@ public class Testbed: GLib.Object {
         this.sys_dir = Path.build_filename(this.root_dir, "sys");
         DirUtils.create(this.sys_dir, 0755);
 
+        this.dev_fd = new HashTable<string, int> (str_hash, str_equal);
+
         Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
         debug("Created udev test bed %s", this.root_dir);
     }
@@ -80,6 +79,12 @@ public class Testbed: GLib.Object {
     ~Testbed()
     {
         debug ("Removing test bed %s", this.root_dir);
+
+        this.dev_fd.foreach ((dev, fd) => {
+            debug ("closing master pty fd %i for dev %s", fd, dev);
+            Posix.close (fd);
+        });
+
         remove_dir (this.root_dir);
         Environment.unset_variable("UMOCKDEV_DIR");
     }
@@ -465,7 +470,8 @@ public class Testbed: GLib.Object {
      *             continuous hex string), it creates a
      *             <filename>/dev/devname</filename> in the mock environment with
      *             the given contents, otherwise the created dev file will be
-     *             empty.</listitem>
+     *             empty. For SUBSYSTEM="tty" devices, the dev file will be a
+     *             pty instead; see #umockdev_testbed_get_dev_fd for details.</listitem>
      *   <listitem><type>S:</type> <emphasis>linkname</emphasis>: device node
      *             symlink (without the <filename>/dev/</filename> prefix); ignored right
      *             now.</listitem>
@@ -687,7 +693,12 @@ public class Testbed: GLib.Object {
             Posix.close (ptys);
 
             assert (FileUtils.symlink (ptyname, node_path) == 0);
-            // TODO: save ptym
+
+            // store ptym for controlling the master end
+            string devname = node_path.substring (this.root_dir.length);
+            assert (!this.dev_fd.contains (devname));
+            this.dev_fd.insert (devname, ptym);
+
             return;
         }
 
@@ -793,12 +804,39 @@ public class Testbed: GLib.Object {
         DirUtils.create(this.sys_dir, 0755);
     }
 
+    /**
+     * umockdev_testbed_get_dev_fd:
+     * @self: A #UMockdevTestbed.
+     * @devnode: Device node name ("/dev/...")
+     *
+     * Some simulated devices are backed by a stream-like node, such as a
+     * PTY for devices with SUBSYSTEM=tty devices. Return the file descriptor
+     * for accessing their "master" side, i. e. the end that gets
+     * controlled by test suites. The tested program opens the "slave" side,
+     * which is just openening the device specified by @devnode, e. g.
+     * /dev/ttyUSB2. Once that happened, your test can directly communicate
+     * with the tested program over that descriptor.
+     *
+     * Returns: File descriptor for communicating with clients that connect to
+     *           @devnode, or -1 if @devnode does not exist or is not a
+     *           simulated stream device. This must not be closed!
+     */
+    public int get_dev_fd(string devnode)
+    {
+        int? fd = this.dev_fd.get (devnode);
+
+        if (fd == null)
+            return -1;
+        return fd;
+    }
+
     private string root_dir;
     private string sys_dir;
     private Regex re_record_val;
     private Regex re_record_keyval;
     private Regex re_record_optval;
     private UeventSender.sender? ev_sender = null;
+    private HashTable<string,int> dev_fd;
 }
 
 
