@@ -186,6 +186,7 @@ ioctl_tree_read(FILE * f)
 	if (node == NULL) {
 	    DBG("ioctl_tree_read: failure to parse line: %s", line);
 	    free(line);
+	    line = NULL;
 	    break;
 	}
 
@@ -216,6 +217,8 @@ ioctl_tree_read(FILE * f)
 	line = NULL;
 	prev = node;
     }
+    if (line != NULL)
+	free(line);
 
     return tree;
 }
