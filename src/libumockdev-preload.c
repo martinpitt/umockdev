@@ -642,7 +642,7 @@ close(int fd)
     if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
 	DBG("testbed wrapped close: closing ioctl socket fd %i\n", fd);
 	fd_map_remove(&ioctl_wrapped_fds, fd);
-	/* TODO: free fdinfo->tree once we can do that */
+	ioctl_tree_free(fdinfo->tree);
 	free(fdinfo);
     }
     if (fd == ioctl_record_fd) {

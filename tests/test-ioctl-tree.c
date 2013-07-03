@@ -177,6 +177,7 @@ t_create_from_bin(void)
     g_assert(ioctl_tree_insert(tree, n_ci2) == n_ci);
     g_assert(n_ci2->parent == NULL);
     g_assert(tree == n_ci);
+    ioctl_tree_free(n_ci2);
 
     /* add out2, should become a new top-level node */
     n_out2 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0);
@@ -198,6 +199,7 @@ t_create_from_bin(void)
     /* add out2 again, should not get added but should become "last added" */
     n_out2_2 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0);
     g_assert(ioctl_tree_insert(tree, n_out2_2) == n_out2);
+    ioctl_tree_free(n_out2_2);
 
     /* add in3, should become alternative of out2 */
     n_in3 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in3, 0);
@@ -215,12 +217,14 @@ t_create_from_bin(void)
     assert_node(n_in2c, n_in2b, NULL, NULL);
     assert_node(n_in3, n_out2, NULL, NULL);
     assert_node(n_ci2, tree, NULL, NULL);
+
+    ioctl_tree_free(tree);
 }
 
 static void
 t_write(void)
 {
-    ioctl_tree *tree = NULL;
+    ioctl_tree *tree = NULL,  *t;
     FILE *f;
     char contents[1000];
 
@@ -235,7 +239,10 @@ t_write(void)
     ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2b, 0));
     ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci2, 42));
     ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in2c, 0));
-    ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0));
+    /* duplicate */
+    t = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out2, 0);
+    g_assert(ioctl_tree_insert(tree, t) != NULL);
+    ioctl_tree_free(t);
     ioctl_tree_insert(tree, ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &in3, 0));
 
     f = tmpfile();
@@ -247,6 +254,7 @@ t_write(void)
     g_assert_cmpstr(contents, ==, test_tree_str);
 
     fclose(f);
+    ioctl_tree_free(tree);
 }
 
 static void
@@ -261,6 +269,7 @@ t_read(void)
      * (easier than comparing nodes) */
     f = tmpfile();
     ioctl_tree_write(f, tree);
+    ioctl_tree_free(tree);
     rewind(f);
     memset(contents, 0, sizeof(contents));
     g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
@@ -318,6 +327,7 @@ t_iteration(void)
     g_assert(ioctl_tree_next(i) == NULL);
     g_assert(ioctl_tree_next_wrap(tree, NULL) == tree);
     g_assert(ioctl_tree_next_wrap(tree, i) == tree);
+    ioctl_tree_free(tree);
 }
 
 static void
@@ -431,6 +441,8 @@ t_execute(void)
     last = NULL;
     t_execute_check_outurb(&s_out1, tree, &last);
     g_assert(last == tree->next);
+
+    ioctl_tree_free(tree);
 }
 
 static void
@@ -444,12 +456,14 @@ t_execute_unknown(void)
     g_assert(ioctl_tree_execute(tree, tree->next, USBDEVFS_SUBMITURB, &unknown_urb, &ret) == NULL);
     /* not found with last == NULL */
     g_assert(ioctl_tree_execute(tree, NULL, USBDEVFS_SUBMITURB, &unknown_urb, &ret) == NULL);
+
+    ioctl_tree_free(tree);
 }
 
 static void
 t_evdev(void)
 {
-    ioctl_tree *tree = NULL;
+    ioctl_tree *tree = NULL, *t;
     FILE *f;
     char contents[1000];
     struct input_absinfo absinfo_x = { 100, 50, 150, 2, 5, 1 };
@@ -467,7 +481,9 @@ t_evdev(void)
     ioctl_tree_insert(NULL, tree);
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_VOLUME), &absinfo_volume, 8)) == NULL);
     /* duplicate */
-    g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGABS(ABS_X), &absinfo_x, 0)) != NULL);
+    t = ioctl_tree_new_from_bin(EVIOCGABS(ABS_X), &absinfo_x, 0);
+    g_assert(ioctl_tree_insert(tree, t) != NULL);
+    ioctl_tree_free(t);
 
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_SYN, sizeof(synbits)), synbits, 0x81)) ==
 	     NULL);
@@ -480,6 +496,7 @@ t_evdev(void)
     f = tmpfile();
     ioctl_tree_write(f, tree);
     rewind(f);
+    ioctl_tree_free(tree);
 
     /* check text representation */
     memset(contents, 0, sizeof(contents));
@@ -533,6 +550,8 @@ t_evdev(void)
     g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_REL, sizeof(synbits)), &bits_query, NULL));
     /* undefined for other length */
     g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_KEY, 4), &bits_query, NULL));
+
+    ioctl_tree_free(tree);
 }
 
 int

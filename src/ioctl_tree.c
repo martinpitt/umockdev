@@ -109,6 +109,22 @@ ioctl_tree_new_from_text(const char *line)
     return t;
 }
 
+void
+ioctl_tree_free(ioctl_tree * tree)
+{
+    if (tree == NULL)
+        return;
+
+    ioctl_tree_free(tree->child);
+    ioctl_tree_free(tree->next);
+    if (tree->type != NULL && tree->type->free_data != NULL)
+        tree->type->free_data(tree);
+    if (tree->last_added != NULL)
+        ioctl_node_list_free(tree->last_added);
+
+    free (tree);
+}
+
 static ioctl_tree *
 ioctl_tree_last_sibling(ioctl_tree * node)
 {
@@ -485,6 +501,13 @@ ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
 }
 
 static void
+ioctl_simplestruct_free_data(ioctl_tree * node)
+{
+    if (node->data != NULL)
+        free(node->data);
+}
+
+static void
 ioctl_simplestruct_write(const ioctl_tree * node, FILE * f)
 {
     assert(node->data != NULL);
@@ -558,6 +581,17 @@ usbdevfs_reapurb_init_from_text(ioctl_tree * node, const char *data)
 
     node->data = info;
     return TRUE;
+}
+
+static void
+usbdevfs_reapurb_free_data(ioctl_tree * node)
+{
+    struct usbdevfs_urb *info = node->data;
+    if (info != NULL) {
+        if (info->buffer != NULL)
+            free(info->buffer);
+        free(info);
+    }
 }
 
 static void
@@ -715,11 +749,12 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
  ***********************************/
 
 #define I_NOSTATE(name, execute_result) \
-    {name, -1, 0, #name, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
+    {name, -1, 0, #name, NULL, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
 
 #define I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, size, nr_range, insertion_parent_fn) \
     {name, size, nr_range, namestr,                                            \
      ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,      \
+     ioctl_simplestruct_free_data,                                             \
      ioctl_simplestruct_write, ioctl_simplestruct_equal,                       \
      ioctl_simplestruct_in_execute, insertion_parent_fn}
 
@@ -735,6 +770,7 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
 #define I_CUSTOM(name, nr_range, fn_prefix)                     \
     {name, -1, nr_range, #name,                                 \
      fn_prefix ## _init_from_bin, fn_prefix ## _init_from_text, \
+     fn_prefix ## _free_data,                                   \
      fn_prefix ## _write, fn_prefix ## _equal,                  \
      fn_prefix ## _execute, fn_prefix ## _insertion_parent}
 

@@ -29,6 +29,7 @@ typedef struct {
     const char name[100];
     void (*init_from_bin) (ioctl_tree *, const void *);
     int (*init_from_text) (ioctl_tree *, const char *);
+    void (*free_data) (ioctl_tree *);
     void (*write) (const ioctl_tree *, FILE *);
     int (*equal) (const ioctl_tree *, const ioctl_tree *);
     /* ret: 0: unhandled, 1: handled, move to next node, 2: handled, keep node */
@@ -58,6 +59,7 @@ struct ioctl_tree {
 
 ioctl_tree *ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret);
 ioctl_tree *ioctl_tree_new_from_text(const char *line);
+void ioctl_tree_free(ioctl_tree * tree);
 ioctl_tree *ioctl_tree_read(FILE * f);
 void ioctl_tree_write(FILE * f, const ioctl_tree * tree);
 ioctl_tree *ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node);
