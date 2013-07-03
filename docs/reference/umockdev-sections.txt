@@ -1,6 +1,7 @@
 <SECTION>
 <FILE>umockdev</FILE>
 <TITLE>UMockdev</TITLE>
+UMockdevTestbed
 umockdev_testbed_new
 umockdev_testbed_add_device
 umockdev_testbed_add_devicev
@@ -20,8 +21,6 @@ umockdev_testbed_load_ioctl
 umockdev_testbed_clear
 umockdev_testbed_disable
 umockdev_testbed_enable
-UMockdevTestbed
-UMockdevTestbedClass
 <SUBSECTION Standard>
 UMOCKDEV_IS_TESTBED
 UMOCKDEV_IS_TESTBED_CLASS
@@ -29,15 +28,16 @@ UMOCKDEV_TESTBED
 UMOCKDEV_TESTBED_CLASS
 UMOCKDEV_TESTBED_GET_CLASS
 UMOCKDEV_TYPE_TESTBED
+UMockdevTestbedClass
 UMockdevTestbedPrivate
 umockdev_testbed_get_type
 </SECTION>
 
 <SECTION>
 <FILE>umockdeverror</FILE>
-UMOCKDEV_ERROR
 UMockdevError
 <SUBSECTION Standard>
+UMOCKDEV_ERROR
 UMOCKDEV_TYPE_ERROR
 umockdev_error_get_type
 umockdev_error_quark

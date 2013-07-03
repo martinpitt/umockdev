@@ -20,8 +20,16 @@ namespace UMockdev {
 
 /**
  * SECTION:umockdev
+ * @title: umockdev
  * @short_description: Build a test bed for testing software that handles Linux
  * hardware devices.
+ *
+ * Please see README.rst about an overview of the parts of umockdev, and how
+ * they fit together.
+ */
+
+/**
+ * UMockdevTestbed:
  *
  * The #UMockdevTestbed class builds a temporary sandbox for mock devices.
  * Right now this covers sysfs, uevents, basic support for /dev devices, and
@@ -45,6 +53,15 @@ namespace UMockdev {
  */
 
 public class Testbed: GLib.Object {
+    /**
+     * umockdev_testbed_new:
+     *
+     * Create a new #UMockdevTestbed object. This is initially empty, call
+     * methods like #umockdev_testbed_add_device or
+     * #umockdev_testbed_add_from_string to fill it.
+     *
+     * Returns: The newly created #UMockdevTestbed object.
+     */
     public Testbed()
     {
         try {
@@ -70,7 +87,7 @@ public class Testbed: GLib.Object {
     /**
      * umockdev_testbed_get_root_dir:
      * @self: A #UMockdevTestbed.
-     * 
+     *
      * Get the root directory for the testbed.
      *
      * Returns: The testbed's root directory.
@@ -83,7 +100,7 @@ public class Testbed: GLib.Object {
     /**
      * umockdev_testbed_get_sys_dir:
      * @self: A #UMockdevTestbed.
-     * 
+     *
      * Get the sysfs directory for the testbed.
      *
      * Returns: The testbed's sysfs directory.
@@ -93,11 +110,30 @@ public class Testbed: GLib.Object {
         return this.sys_dir;
     }
 
+    /**
+     * umockdev_testbed_set_attribute:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Attribute name
+     * @value: Attribute string value
+     *
+     * Set a text sysfs attribute for a device.
+     */
     public void set_attribute(string devpath, string name, string value)
     {
         this.set_attribute_binary(devpath, name, value.data);
     }
 
+    /**
+     * umockdev_testbed_set_attribute_binary:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Attribute name
+     * @value: Attribute binary value
+     * @value_length1: Length of @value in bytes.
+     *
+     * Set a binary sysfs attribute for a device.
+     */
     public void set_attribute_binary(string devpath, string name, uint8[] value)
     {
         try {
@@ -108,16 +144,45 @@ public class Testbed: GLib.Object {
         }
     }
 
+    /**
+     * umockdev_testbed_set_attribute_int:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Attribute name
+     * @value: Attribute integer value
+     *
+     * Set an integer sysfs attribute for a device.
+     */
     public void set_attribute_int(string devpath, string name, int value)
     {
         this.set_attribute(devpath, name, value.to_string());
     }
 
+    /**
+     * umockdev_testbed_set_attribute_hex:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Attribute name
+     * @value: Attribute integer value
+     *
+     * Set an integer sysfs attribute for a device. Set an integer udev
+     * property for a device. @value is interpreted as a hexadecimal number.
+     * For example, for value==31 this sets the attribute contents to "1f".
+     */
     public void set_attribute_hex(string devpath, string name, uint value)
     {
         this.set_attribute(devpath, name, "%x".printf(value));
     }
 
+    /**
+     * umockdev_testbed_set_property:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Property name
+     * @value: Property string value
+     *
+     * Set a string udev property for a device.
+     */
     public new void set_property(string devpath, string name, string value)
     {
         var uevent_path = Path.build_filename(this.root_dir, devpath, "uevent");
@@ -161,16 +226,35 @@ public class Testbed: GLib.Object {
         }
     }
 
+    /**
+     * umockdev_testbed_set_property_int:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Property name
+     * @value: Property integer value
+     *
+     * Set an integer udev property for a device.
+     */
     public void set_property_int(string devpath, string name, int value)
     {
         this.set_property(devpath, name, value.to_string());
     }
 
+    /**
+     * umockdev_testbed_set_property_hex:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Property name
+     * @value: Property integer value
+     *
+     * Set an integer udev property for a device. @value is interpreted as a
+     * hexadecimal number. For example, for value==31 this sets the property's
+     * value to "1f".
+     */
     public void set_property_hex(string devpath, string name, uint value)
     {
         this.set_property(devpath, name, "%x".printf(value));
     }
-
 
     /**
      * umockdev_testbed_add_devicev:
@@ -753,6 +837,25 @@ decode_hex (string data) throws UMockdev.Error
     return bin;
 }
 
+/**
+ * SECTION:umockdeverror
+ * @title: umockdev errors
+ * @short_description: #GError types for parsing umockdev files
+ * hardware devices.
+ *
+ * See #GError for more information on error domains.
+ */
+
+/**
+ * UMockdevError:
+ * @UMOCKDEV_ERROR_PARSE:
+ * There is a malformed or missing line in the device description.
+ * @UMOCKDEV_ERROR_VALUE:
+ * A value in the device description has an invalid value, for example a device
+ * path does not start with "/devices/".
+ *
+ * Error codes for parsing umockdev files.
+ */
 public errordomain Error {
    PARSE,
    VALUE,
