@@ -56,7 +56,12 @@ main (string[] args)
         return 0;
     }
 
-    Environment.set_variable ("LD_PRELOAD", "libumockdev-preload.so.0", true); // FIXME
+    string? preload = Environment.get_variable ("LD_PRELOAD");
+    if (preload == null)
+        preload = "";
+    else
+        preload = preload + ":";
+    Environment.set_variable ("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
 
     var testbed = new UMockdev.Testbed ();
 

@@ -261,7 +261,12 @@ record_ioctl(string dev, string outfile, string[] argv)
     assert(fields.length == 2);
     string devnum = ((int.parse(fields[0]) << 8) | int.parse(fields[1])).to_string();
 
-    Environment.set_variable("LD_PRELOAD", "libumockdev-preload.so.0", true);
+    string? preload = Environment.get_variable("LD_PRELOAD");
+    if (preload == null)
+        preload = "";
+    else
+        preload = preload + ":";
+    Environment.set_variable("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
     Environment.set_variable("UMOCKDEV_IOCTL_RECORD_FILE", outfile, true);
     Environment.set_variable("UMOCKDEV_IOCTL_RECORD_DEV", devnum, true);
     Posix.execvp(argv[0], argv);

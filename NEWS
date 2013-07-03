@@ -1,3 +1,7 @@
+0.2.11 (UNRELEASED)
+-------------------
+- Do not overwrite an existing $LD_PRELOAD in umockdev-run and umockdev-record.
+
 0.2.10 (2013-07-01)
 -------------------
 - Make stat()ing of emulated /dev/ nodes appear as actual block/char device
