@@ -57,7 +57,7 @@ EXTRA_HFILES=
 
 # Header files to ignore when scanning. Use base file name, no paths
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES=uevent_sender.h
+IGNORE_HFILES=uevent_sender.h ioctl_tree.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
@@ -98,7 +98,8 @@ EXTRA_DIST += version.xml.in
 # for --rebuild-sections in $(SCAN_OPTIONS) e.g. $(DOC_MODULE)-sections.txt
 #DISTCLEANFILES +=
 
-# Comment this out if you want your docs-status tested during 'make check'
-#if ENABLE_GTK_DOC
-#TESTS = $(GTKDOC_CHECK)
-#endif
+# use check-local instead of $(TESTS) to also work with automake's parallel test runner
+if ENABLE_GTK_DOC
+check-local:
+	gtkdoc-check
+endif
