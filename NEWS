@@ -1,6 +1,7 @@
 0.3 (UNRELEASED)
 ----------------
-Compatibility break: Changes command line syntax of umockdev-record.
+Compatibility break: Changes command line syntax of umockdev-record and
+umockdev-run.
 
 - Emulate SUBSYSTEM=tty mocked device nodes as PTYs instead of plain files, so
   that they behave tty-like and respond to the relevant ioctls.
@@ -14,6 +15,9 @@ Compatibility break: Changes command line syntax of umockdev-record.
   "devicefile=outputfile" like with umockdev-run, instead of specifying the
   device as the first positional argument. This was inconsistant, and is
   necessary to support other kinds of recording in the future.
+- Rename umockdev-run's -l/--load option to -d/--device. Other kinds of files
+  (ioctl dumps, and soon read/write scripts) also get "loaded" into the
+  testbed, so the previous name does not make sense any more.
 
 0.2.11 (2013-07-03)
 -------------------

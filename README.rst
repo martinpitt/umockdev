@@ -110,8 +110,8 @@ Command line: Record and replay PtP/MTP USB devices
   /dev directory. You can rename that device in the generated ``*.umockdev``
   files and on the command line.
 
-  | $ umockdev-run --load mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
-  | $ umockdev-run --load mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
+  | $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
+  | $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
 
 Note that if your ``*.ioctl`` files get too large for some purpose, you can
 xz-compress them.

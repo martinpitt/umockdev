@@ -102,7 +102,7 @@ static void
 t_gphoto_detect ()
 {
     check_program_out ("gphoto2",
-        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+        "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
         rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 --auto-detect",
         """Model                          Port            
 ----------------------------------------------------------
@@ -121,25 +121,25 @@ static void
 t_run_invalid_ioctl ()
 {
     // nonexisting ioctl file
-    check_program_error ("gphoto2", "-l " + rootdir +
+    check_program_error ("gphoto2", "-d " + rootdir +
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011=/non/existing.ioctl -- gphoto2 -l",
         "/non/existing.ioctl");
 
     // empty ioctl file
-    check_program_error ("gphoto2", "-l " + rootdir +
+    check_program_error ("gphoto2", "-d " + rootdir +
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011=/dev/null -- gphoto2 -l",
         "001/011");
 
     // invalid ioctl file
-    check_program_error ("gphoto2", "-l " + rootdir +
+    check_program_error ("gphoto2", "-d " + rootdir +
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011=" + rootdir + "/NEWS -- gphoto2 -l",
         "001/011");
 
     // unspecified ioctl file
-    check_program_error ("gphoto2", "-l " + rootdir +
+    check_program_error ("gphoto2", "-d " + rootdir +
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011 -- gphoto2 -l",
         "--ioctl");
@@ -149,7 +149,7 @@ static void
 t_gphoto_folderlist ()
 {
     check_program_out ("gphoto2",
-        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+        "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -l",
         """There is 1 folder in folder '/'.
  - store_00010001
@@ -165,7 +165,7 @@ static void
 t_gphoto_filelist ()
 {
     check_program_out ("gphoto2",
-        "-l " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+        "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -L",
         """There is no file in folder '/'.
 There is no file in folder '/store_00010001'.
@@ -202,7 +202,7 @@ t_input_touchpad ()
     }
     try {
         Process.spawn_async (null, {"umockdev-run",
-            "-l", rootdir + "/devices/input/synaptics-touchpad.umockdev",
+            "-d", rootdir + "/devices/input/synaptics-touchpad.umockdev",
             "-i", "/dev/input/event12=" + rootdir + "/devices/input/synaptics-touchpad.ioctl",
             "--", "Xorg", "-config", rootdir + "/tests/xorg-dummy.conf", "-logfile", logfile, ":5"},
             null, SpawnFlags.SEARCH_PATH | SpawnFlags.STDERR_TO_DEV_NULL, null, out xorg_pid);
