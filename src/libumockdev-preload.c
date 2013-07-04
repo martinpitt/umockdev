@@ -78,6 +78,11 @@ get_libc_func(const char *f)
     return fp;
 }
 
+#define libc_func(name, rettype, ...)			\
+    static rettype (*_ ## name) (__VA_ARGS__) = NULL;	\
+    if (_ ## name == NULL)				\
+        _ ## name = get_libc_func(#name);
+
 /* return rdev of a file descriptor */
 static dev_t
 dev_of_fd(int fd)
@@ -170,9 +175,8 @@ static fd_map wrapped_sockets;
 int
 socket(int domain, int type, int protocol)
 {
-    static int (*_socket) (int, int, int);
+    libc_func(socket, int, int, int, int);
     int fd;
-    _socket = get_libc_func("socket");
 
     if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT) {
 	fd = _socket(AF_UNIX, type, 0);
@@ -187,11 +191,10 @@ socket(int domain, int type, int protocol)
 int
 bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-    static int (*_bind) (int, const struct sockaddr *, socklen_t);
+    libc_func(bind, int, int, const struct sockaddr *, socklen_t);
     struct sockaddr_un sa;
     const char *path = getenv("UMOCKDEV_DIR");
 
-    _bind = get_libc_func("bind");
     if (fd_map_get(&wrapped_sockets, sockfd, NULL) && path != NULL) {
 	DBG("testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd);
 
@@ -211,12 +214,11 @@ bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 ssize_t
 recvmsg(int sockfd, struct msghdr * msg, int flags)
 {
-    static int (*_recvmsg) (int, struct msghdr *, int);
+    libc_func(recvmsg, int, int, struct msghdr *, int);
     ssize_t ret;
     struct cmsghdr *cmsg;
     struct sockaddr_nl *sender;
 
-    _recvmsg = get_libc_func("recvmsg");
     ret = _recvmsg(sockfd, msg, flags);
 
     if (fd_map_get(&wrapped_sockets, sockfd, NULL) && ret > 0) {
@@ -409,7 +411,7 @@ int ioctl(int d, unsigned long request, void *arg);
 int
 ioctl(int d, unsigned long request, void *arg)
 {
-    static int (*_fn) (int, unsigned long, void *);
+    libc_func(ioctl, int, int, unsigned long, void *);
     int result;
 
     result = ioctl_emulate(d, request, arg);
@@ -419,8 +421,7 @@ ioctl(int d, unsigned long request, void *arg)
     }
 
     /* call original ioctl */
-    _fn = get_libc_func("ioctl");
-    result = _fn(d, request, arg);
+    result = _ioctl(d, request, arg);
     DBG("ioctl fd %i request %lX: original, result %i\n", d, request, result);
 
     if (result != -1 && ioctl_record_fd == d)
@@ -541,7 +542,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 {
     struct script_record_info *srinfo;
     unsigned long delta;
-    static size_t (*_fwrite) (const void*, size_t, size_t, FILE*);
+    libc_func(fwrite, size_t, const void*, size_t, size_t, FILE*);
     static char header[100];
     const unsigned char *cur;
     int i;
@@ -554,9 +555,6 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 
     delta = update_msec(&srinfo->time);
     DBG("  %lu ms since last operation %c\n", delta, srinfo->op);
-
-    if (_fwrite == NULL)
-	_fwrite = get_libc_func("fwrite");
 
     /* for negligible time deltas, append to the previous stanza, otherwise
      * create a new record */
@@ -642,16 +640,15 @@ trap_path(const char *path)
 }
 
 /* wrapper template for a function with one "const char* path" argument */
-#define WRAP_1ARG(rettype, failret, name) \
-rettype name(const char *path) \
+#define WRAP_1ARG(rettype, failret, name)   \
+rettype name(const char *path)		    \
 { \
-    const char *p;			\
-    static rettype (*_fn)(const char*);	\
-    _fn = get_libc_func(#name);		\
-    p = trap_path(path);		\
-    if (p == NULL)			\
-	return failret;			\
-    return (*_fn)(p);			\
+    const char *p;			    \
+    libc_func(name, rettype, const char*);  \
+    p = trap_path(path);		    \
+    if (p == NULL)			    \
+	return failret;			    \
+    return (*_ ## name)(p);		    \
 }
 
 /* wrapper template for a function with "const char* path" and another argument */
@@ -659,12 +656,11 @@ rettype name(const char *path) \
 rettype name(const char *path, arg2t arg2) \
 { \
     const char *p;					\
-    static rettype (*_fn)(const char*, arg2t arg2);	\
-    _fn = get_libc_func(#name);				\
+    libc_func(name, rettype, const char*, arg2t);	\
     p = trap_path(path);				\
     if (p == NULL)					\
 	return failret;					\
-    return (*_fn)(p, arg2);				\
+    return (*_ ## name)(p, arg2);			\
 }
 
 /* wrapper template for a function with "const char* path" and two other arguments */
@@ -672,12 +668,11 @@ rettype name(const char *path, arg2t arg2) \
 rettype name(const char *path, arg2t arg2, arg3t arg3) \
 { \
     const char *p;						    \
-    static rettype (*_fn)(const char*, arg2t arg2, arg3t arg3);	    \
-    _fn = get_libc_func(#name);					    \
+    libc_func(name, rettype, const char*, arg2t, arg3t);	    \
     p = trap_path(path);					    \
     if (p == NULL)						    \
 	return failret;						    \
-    return (*_fn)(p, arg2, arg3);				    \
+    return (*_ ## name)(p, arg2, arg3);				    \
 }
 
 static dev_t
@@ -742,14 +737,13 @@ is_emulated_device(const char* path, const mode_t st_mode)
 int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *st) \
 { \
     const char *p;								\
-    static int (*_fn)(int ver, const char *path, struct stat ## suffix *buf);   \
+    libc_func(prefix ## stat ## suffix, int, int, const char*, struct stat ## suffix *); \
     int ret;									\
-    _fn = get_libc_func(#prefix "stat" #suffix);				\
     p = trap_path(path);							\
     if (p == NULL)								\
 	return -1;								\
     DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
-    ret = _fn(ver, p, st);							\
+    ret = _ ## prefix ## stat ## suffix(ver, p, st);							\
     if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
 	&& is_emulated_device(p, st->st_mode)) {				\
 	st->st_mode &= ~S_IFREG;						\
@@ -770,9 +764,8 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
 int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 { \
     const char *p;						    \
-    static int (*_fn)(const char *path, int flags, ...);	    \
+    libc_func(prefix ## open ## suffix, int, const char*, int, ...);\
     int ret;							    \
-    _fn = get_libc_func(#prefix "open" #suffix);		    \
     p = trap_path(path);					    \
     if (p == NULL)						    \
 	return -1;						    \
@@ -783,9 +776,9 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 	va_start(ap, flags);				    	    \
 	mode = va_arg(ap, mode_t);			    	    \
 	va_end(ap);					    	    \
-	ret = _fn(p, flags, mode);			    	    \
+	ret = _ ## prefix ## open ## suffix(p, flags, mode);   	    \
     } else							    \
-	ret = _fn(p, flags);					    \
+	ret =  _ ## prefix ## open ## suffix(p, flags);		    \
     if (path != p)						    \
 	ioctl_wrap_open(ret, path);				    \
     else {							    \
@@ -819,10 +812,9 @@ WRAP_OPEN(, 64);
 int
 close(int fd)
 {
-    static int (*_close) (int);
+    libc_func(close, int, int);
     struct ioctl_fd_info *fdinfo;
 
-    _close = get_libc_func("close");
     if (fd_map_get(&wrapped_sockets, fd, NULL)) {
 	DBG("testbed wrapped close: closing netlink socket fd %i\n", fd);
 	fd_map_remove(&wrapped_sockets, fd);
@@ -845,10 +837,9 @@ close(int fd)
 ssize_t
 read(int fd, void *buf, size_t count)
 {
-    static ssize_t (*_read) (int, void*, size_t);
+    libc_func(read, ssize_t, int, void*, size_t);
     ssize_t res;
 
-    _read = get_libc_func("read");
     res = _read(fd, buf, count);
     script_record_op('r', fd, buf, res);
     return res;
@@ -857,10 +848,9 @@ read(int fd, void *buf, size_t count)
 ssize_t
 write(int fd, const void *buf, size_t count)
 {
-    static ssize_t (*_write) (int, const void*, size_t);
+    libc_func(write, ssize_t, int, const void*, size_t);
     ssize_t res;
 
-    _write = get_libc_func("write");
     res = _write(fd, buf, count);
     script_record_op('w', fd, buf, res);
     return res;
@@ -869,10 +859,9 @@ write(int fd, const void *buf, size_t count)
 size_t
 fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-    static size_t (*_fread) (void*, size_t, size_t, FILE*);
+    libc_func(fread, size_t, void*, size_t, size_t, FILE*);
     size_t res;
 
-    _fread = get_libc_func("fread");
     res = _fread(ptr, size, nmemb, stream);
     script_record_op('r', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
     return res;
@@ -881,10 +870,9 @@ fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 size_t
 fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-    static size_t (*_fwrite) (const void*, size_t, size_t, FILE*);
+    libc_func(fwrite, size_t, const void*, size_t, size_t, FILE*);
     size_t res;
 
-    _fwrite = get_libc_func("fwrite");
     res = _fwrite(ptr, size, nmemb, stream);
     script_record_op('w', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
     return res;
@@ -893,11 +881,10 @@ fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 char *
 fgets(char *s, int size, FILE *stream)
 {
-    static char* (*_fgets) (char*, int, FILE*);
+    libc_func(fgets, char*, char*, int, FILE*);
     char* res;
     int len;
 
-    _fgets = get_libc_func("fgets");
     res = _fgets(s, size, stream);
     if (res != NULL) {
 	len = strlen(res);

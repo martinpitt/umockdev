@@ -20,6 +20,7 @@ umockdev-run.
   testbed, so the previous name does not make sense any more.
 - Add recording of read()s and write()s to a device into files, called
   "device scripts". Add umockdev-record option -s/--script for this.
+- Only look up original libc functions once. (issue #21)
 
 0.2.11 (2013-07-03)
 -------------------
