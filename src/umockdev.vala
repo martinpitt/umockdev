@@ -366,15 +366,16 @@ public class Testbed: GLib.Object {
                 /* put the major/minor information into /dev for our preload */
                 string infodir = Path.build_filename(this.root_dir, "dev", ".node");
                 DirUtils.create_with_parents(infodir, 0755);
-                FileUtils.symlink(attributes[i+1], Path.build_filename(infodir, dev_node.replace("/", "_")));
+                assert(FileUtils.symlink(attributes[i+1],
+                                         Path.build_filename(infodir, dev_node.replace("/", "_"))) == 0);
 
                 /* create a /sys/dev link for it, like in real sysfs */
                 string sysdev_dir = Path.build_filename(this.sys_dir, "dev",
                     (dev_path.contains("/block/") ? "block" : "char"));
                 if (DirUtils.create_with_parents(sysdev_dir, 0755) != 0)
                     error("cannot create dir '%s': %s", sysdev_dir, strerror(errno));
-                FileUtils.symlink("../../" + dev_path.substring(5),
-                                  Path.build_filename(sysdev_dir, attributes[i+1]));
+                assert(FileUtils.symlink("../../" + dev_path.substring(5),
+                                         Path.build_filename(sysdev_dir, attributes[i+1])) == 0);
             }
         }
         if (attributes.length % 2 != 0)
@@ -483,12 +484,17 @@ public class Testbed: GLib.Object {
     public bool add_from_string (string data) throws UMockdev.Error
     {
         /* lazily initialize the parsing regexps */
-        if (this.re_record_val == null)
-            this.re_record_val = /^([PSL]): (.*)(?>\n|$)/;
-        if (this.re_record_keyval == null)
-            this.re_record_keyval = /^([EAH]): ([^=\n]+)=(.*)(?>\n|$)/;
-        if (this.re_record_optval == null)
-            this.re_record_optval = /^([N]): ([^=\n]+)(?>=([0-9A-F]+))?(?>\n|$)/;
+        try {
+            if (this.re_record_val == null)
+                this.re_record_val = new Regex("^([PSL]): (.*)(?>\n|$)");
+            if (this.re_record_keyval == null)
+                this.re_record_keyval = new Regex("^([EAH]): ([^=\n]+)=(.*)(?>\n|$)");
+            if (this.re_record_optval == null)
+                this.re_record_optval = new Regex("^([N]): ([^=\n]+)(?>=([0-9A-F]+))?(?>\n|$)");
+        } catch (RegexError e) {
+            stderr.printf("Internal error, cannot create regex: %s\n", e.message);
+            Process.abort();
+        }
 
         string cur_data = data;
         while (cur_data[0] != '\0')

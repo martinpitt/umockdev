@@ -46,6 +46,9 @@ get_program_out (string program, string command, out string sout,
 {
     if (!have_program (program)) {
         stderr.printf ("[SKIP: %s not installed] ", program);
+        sout = "";
+        serr = "";
+        exit = -1;
         return false;
     }
 
@@ -110,10 +113,6 @@ Canon PowerShot SX200 IS       usb:001,011
 static void
 t_run_invalid_args ()
 {
-    string sout;
-    string serr;
-    int exit;
-
     // missing program to run
     check_program_error ("true", "", "--help");
 }
@@ -121,10 +120,6 @@ t_run_invalid_args ()
 static void
 t_run_invalid_ioctl ()
 {
-    string sout;
-    string serr;
-    int exit;
-
     // nonexisting ioctl file
     check_program_error ("gphoto2", "-l " + rootdir +
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
@@ -192,8 +187,13 @@ t_input_touchpad ()
 
     Pid xorg_pid;
     string logfile;
-    int fd = FileUtils.open_tmp ("Xorg.log.XXXXXX", out logfile);
-    Posix.close (fd);
+    try {
+        int fd = FileUtils.open_tmp ("Xorg.log.XXXXXX", out logfile);
+        Posix.close (fd);
+    } catch (FileError e) {
+        stderr.printf ("cannot create temporary file: %s\n", e.message);
+        Process.abort();
+    }
     try {
         Process.spawn_async (null, {"umockdev-run",
             "-l", rootdir + "/devices/input/synaptics-touchpad.umockdev",
