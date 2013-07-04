@@ -80,10 +80,10 @@ public class Testbed: GLib.Object {
     {
         debug ("Removing test bed %s", this.root_dir);
 
-        this.dev_fd.foreach ((dev, fd) => {
-            debug ("closing master pty fd %i for dev %s", fd, dev);
+        foreach (int fd in this.dev_fd.get_values()) {
+            debug ("closing master pty fd %i for emulated device", fd);
             Posix.close (fd);
-        });
+        }
 
         remove_dir (this.root_dir);
         Environment.unset_variable("UMOCKDEV_DIR");
@@ -829,11 +829,12 @@ public class Testbed: GLib.Object {
      */
     public int get_dev_fd(string devnode)
     {
-        int? fd = this.dev_fd.get (devnode);
-
-        if (fd == null)
+        // Note: the more efficient comparison of get() against null doesn't
+        // yet work with vala 0.16
+        if (this.dev_fd.contains (devnode))
+            return this.dev_fd.get (devnode);
+        else
             return -1;
-        return fd;
     }
 
     private string root_dir;

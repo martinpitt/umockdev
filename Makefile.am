@@ -263,6 +263,7 @@ tests_test_umockdev_vala_SOURCES = 	\
 	tests/test-umockdev-vala.vala	\
 	tests/assertions.vapi		\
 	tests/ioctl.vapi		\
+	src/posix_extra.vapi		\
 	$(NULL)
 
 tests_test_umockdev_vala_CFLAGS = $(GLIB_CFLAGS) $(GUDEV_CFLAGS) -I $(srcdir)/src -I src -w
