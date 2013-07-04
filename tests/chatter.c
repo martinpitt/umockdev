@@ -20,28 +20,40 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+#define writestr(s) assert(write(fd, s, strlen(s)) >= 0)
 
 int main (int argc, char** argv)
 {
-    FILE *dev;
+    int fd;
     char buf[100];
+    int len;
 
     if (argc != 2) {
         fprintf(stderr, "Usage: %s device\n", argv[0]);
         return 1;
     }
 
-    dev = fopen(argv[1], "r+");
-    if (dev == NULL) {
-        perror("fopen:");
+    fd = open(argv[1], O_RDWR);
+    if (fd < 0) {
+        perror("open:");
         return 1;
     }
-    fputs("Hello world!\n", dev);
-    fputs("What is your name?\n", dev);
-    assert(fgets(buf, sizeof(buf), dev) > 0);
-    fprintf(dev, "I ♥ %s\n  and\t a tab and a line break in one write\n", buf);
-    assert(fgets(buf, sizeof(buf), dev) > 0);
-    fprintf(dev, "you said '%s'\n", buf);
-    fclose(dev);
+    writestr("Hello world!\n");
+    writestr("What is your name?\n");
+    len = read(fd, buf, sizeof(buf)-1);
+    assert(len >= 0);
+    buf[len] = 0;
+    writestr("I ♥ ");
+    writestr(buf);
+    writestr("a\t tab and a\n   line break in one write\n");
+    len = read(fd, buf, sizeof(buf)-1);
+    assert(len >= 0);
+    buf[len] = 0;
+    writestr("bye!\n");
+    close(fd);
     return 0;
 }

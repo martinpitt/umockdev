@@ -18,6 +18,8 @@ umockdev-run.
 - Rename umockdev-run's -l/--load option to -d/--device. Other kinds of files
   (ioctl dumps, and soon read/write scripts) also get "loaded" into the
   testbed, so the previous name does not make sense any more.
+- Add recording of read()s and write()s to a device into files, called
+  "device scripts". Add umockdev-record option -s/--script for this.
 
 0.2.11 (2013-07-03)
 -------------------

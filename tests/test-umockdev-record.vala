@@ -21,6 +21,7 @@
 using Assertions;
 
 string umockdev_record_path;
+string rootdir;
 
 // --all on empty testbed
 static void
@@ -208,16 +209,137 @@ t_system_ioctl_log ()
     DirUtils.remove (workdir);
 }
 
+/*
+ * umockdev-record --script recording to a file, with simple "head" command
+ */
+static void
+t_system_script_log_simple ()
+{
+    string sout;
+    string serr;
+    int exit;
+    string log;
+
+    FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+
+    // should not log anything as that device is not touched
+    Process.spawn_command_line_sync (
+        umockdev_record_path + " --script=/dev/null=" + log + " -- head -c1 /dev/zero",
+        out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    string contents;
+    FileUtils.get_contents (log, out contents);
+    assert_cmpstr (contents, Op.EQ, "");
+
+    // should log one read
+    Process.spawn_command_line_sync (
+        umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
+        out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    FileUtils.get_contents (log, out contents);
+    assert_cmpstr (contents, Op.EQ, "r 0 ^@");
+
+    FileUtils.remove (log);
+}
+
+static string
+read_line_timeout(FileStream stream)
+{
+    string? line = null;
+    char buffer[1000];
+    int timeout = 50;
+
+    while (timeout > 0) {
+        line = stream.gets(buffer);
+        if (line != null)
+            return line;
+        Thread.usleep(100000);
+        timeout--;
+    }
+
+    assert(timeout > 0);
+    return "<timeout>";
+}
+
+/*
+ * umockdev-record --script recording to a file, with our chatter command
+ */
+static void
+t_system_script_log_chatter ()
+{
+    string log;
+
+    FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+
+    char[] ptyname = new char[8192];
+    int ptym, ptys;
+    assert (Linux.openpty (out ptym, out ptys, ptyname, null, null) == 0);
+    Posix.close (ptys);
+
+    // start chatter
+    Pid chatter_pid;
+    assert (Process.spawn_async_with_pipes (null,
+        {umockdev_record_path, "--script", (string) ptyname + "=" + log, "--",
+         Path.build_filename (rootdir, "tests", "chatter"), (string) ptyname},
+        null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD,
+        null, out chatter_pid, null, null, null));
+
+    var chatter_stream = FileStream.fdopen (ptym, "r+");
+    assert (chatter_stream != null);
+
+    // expect the first two lines
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "Hello world!\r\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "What is your name?\r\n");
+
+    // type name and second string after some delay
+    Thread.usleep (500000);
+    chatter_stream.puts ("John\n");
+
+    while (!read_line_timeout (chatter_stream).contains ("line break in one write"));
+
+    Thread.usleep (300000);
+    chatter_stream.puts ("foo ☹ bar !\n");
+
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "foo ☹ bar !\r\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "bye!\r\n");
+
+    int status;
+    assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), Op.EQ, (int) chatter_pid);
+    assert_cmpint (status, Op.EQ, 0);
+
+    // evaluate log
+    var log_stream = FileStream.open (log, "r");
+    int time = 0;
+    assert_cmpint (log_stream.scanf ("w %d Hello world!^JWhat is your name?^J\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.GE, 450);
+    assert_cmpint (time, Op.LE, 800);
+    assert_cmpint (log_stream.scanf ("w %d I ♥ John^Ja^I tab and a^J line break in one write^J\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar!^J\n", &time), Op.EQ, 1);;
+    assert_cmpint (time, Op.GE, 250);
+    assert_cmpint (time, Op.LE, 450);
+
+    FileUtils.remove (log);
+}
+
 int
 main (string[] args)
 {
     Test.init (ref args);
 
     // determine path of umockdev-record
-    string? rootdir = Environment.get_variable ("TOP_BUILDDIR");
-    if (rootdir == null) {
+    string? r = Environment.get_variable ("TOP_BUILDDIR");
+    if (r == null)
         rootdir = Path.get_dirname (Path.get_dirname (Path.get_dirname (Posix.fixed_realpath (args[0]))));
-    }
+    else
+        rootdir = r;
+
     umockdev_record_path = Path.build_filename (rootdir, "src", "umockdev-record");
 
     Test.add_func ("/umockdev-record/testbed-all-empty", t_testbed_all_empty);
@@ -227,6 +349,8 @@ main (string[] args)
 
     Test.add_func ("/umockdev-record/system-all", t_system_all);
     Test.add_func ("/umockdev-record/ioctl-log", t_system_ioctl_log);
+    Test.add_func ("/umockdev-record/script-log-simple", t_system_script_log_simple);
+    Test.add_func ("/umockdev-record/script-log-chatter", t_system_script_log_chatter);
 
     return Test.run();
 }

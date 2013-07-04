@@ -35,6 +35,7 @@ src/umockdev-run
 src/umockdev-run.c
 src/umockdev-record
 src/umockdev-record.c
+tests/chatter
 tests/test-ioctl-tree
 tests/test-umockdev-vala.c
 tests/test-umockdev

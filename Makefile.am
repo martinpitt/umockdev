@@ -219,6 +219,14 @@ DISTCLEANFILES += \
 # -------------------------------------------------------------
 # tests
 
+noinst_PROGRAMS += tests/chatter
+
+tests_chatter_SOURCES = tests/chatter.c
+
+tests_chatter_CFLAGS =		\
+	$(AM_CFLAGS)		\
+	$(NULL)
+
 noinst_PROGRAMS += tests/test-umockdev tests/test-ioctl-tree
 
 tests_test_umockdev_SOURCES = tests/test-umockdev.c
@@ -296,12 +304,13 @@ tests_test_umockdev_record_SOURCES = 	\
 	$(NULL)
 
 tests_test_umockdev_record_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src -w
-tests_test_umockdev_record_LDADD = $(GLIB_LIBS) libumockdev.la
+tests_test_umockdev_record_LDADD = $(GLIB_LIBS) libumockdev.la -lutil
 tests_test_umockdev_record_VALAFLAGS =	\
 	--vapidir src			\
 	--vapidir tests			\
 	--pkg glib-2.0			\
 	--pkg posix			\
+	--pkg linux			\
 	--pkg umockdev-1.0		\
 	$(NULL)
 

@@ -246,43 +246,93 @@ record_device(string dev)
     stdout.putc('\n');
 }
 
-// Record ioctls for given device into outfile while running a command
 static void
-record_ioctl(string dev, string outfile, string[] argv)
+dump_devices(string[] devices)
 {
-    // build device major/minor
-    string contents;
-    try {
-        FileUtils.get_contents(Path.build_filename(dev, "dev"), out contents);
-    } catch (FileError e) {
-        exit_error("Cannot open %s/dev: %s", dev, e.message);
+    // process arguments parentwards first
+    var seen = new HashTable<string,unowned string>(str_hash, str_equal);
+    foreach (string device in devices) {
+        while (device != null) {
+            if (!seen.contains(device)) {
+                seen.add(device.dup());
+                record_device(device);
+            }
+            device = parent(device);
+        }
     }
-    string[] fields = contents.strip().split(":");
-    assert(fields.length == 2);
-    string devnum = ((int.parse(fields[0]) << 8) | int.parse(fields[1])).to_string();
+}
 
-    string? preload = Environment.get_variable("LD_PRELOAD");
-    if (preload == null)
-        preload = "";
-    else
-        preload = preload + ":";
-    Environment.set_variable("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
+// split a devname=filename argument into a device number and a file name
+static void
+split_devfile_arg(string arg, out string devnum, out string fname)
+{
+    string[] parts = arg.split ("=", 2); // devname, ioctlfilename
+    if (parts.length != 2)
+        exit_error("--ioctl argument must be devname=filename");
+    string dev = parts[0];
+    fname = parts[1];
+
+    // build device major/minor
+    Posix.Stat st;
+    if (Posix.stat(dev, out st) != 0)
+        exit_error("Cannot access device %s: %s", dev, strerror(errno));
+
+    if (Posix.S_ISCHR(st.st_mode) || Posix.S_ISBLK(st.st_mode)) {
+        // if we have a device node, get devnum from stat
+        devnum = ((Posix.major(st.st_rdev) << 8) + Posix.minor(st.st_rdev)).to_string();
+    } else {
+        // otherwise we assume that we have a sysfs device, resolve via dev attribute
+        string contents;
+        try {
+            FileUtils.get_contents(Path.build_filename(dev, "dev"), out contents);
+        } catch (FileError e) {
+            exit_error("Cannot open %s/dev: %s", dev, e.message);
+        }
+        string[] fields = contents.strip().split(":");
+        assert(fields.length == 2);
+        devnum = ((int.parse(fields[0]) << 8) | int.parse(fields[1])).to_string();
+    }
+}
+
+// Record ioctls for given device into outfile
+static void
+record_ioctl(string arg)
+{
+    string devnum, outfile;
+    split_devfile_arg(arg, out devnum, out outfile);
     Environment.set_variable("UMOCKDEV_IOCTL_RECORD_FILE", outfile, true);
     Environment.set_variable("UMOCKDEV_IOCTL_RECORD_DEV", devnum, true);
-    Posix.execvp(argv[0], argv);
-    exit_error("Cannot run program %s: %s", argv[0], strerror(errno));
+}
+
+// Record reads/writes for given device into outfile
+static uint record_script_counter = 0;
+static void
+record_script(string arg)
+{
+    string devnum, outfile;
+    split_devfile_arg(arg, out devnum, out outfile);
+    string c = record_script_counter.to_string();
+
+    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile, true);
+    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEV_" + c, devnum, true);
+
+    record_script_counter++;
 }
 
 [CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_devices;
 static bool opt_all = false;
 static string? opt_ioctl = null;
+[CCode (array_length=false, array_null_terminated=true)]
+static string[] opt_script;
 static bool opt_version = false;
 
 static const GLib.OptionEntry[] options = {
     {"all", 'a', 0, OptionArg.NONE, ref opt_all, "Record all devices"},
     {"ioctl", 'i', 0, OptionArg.FILENAME, ref opt_ioctl,
      "Trace ioctls on the device, record into given file. In this case, all positional arguments are a command (and its arguments) to run that gets traced.", "devname=FILE"},
+    {"script", 's', 0, OptionArg.FILENAME_ARRAY, ref opt_script,
+     "Trace reads and writes on the device, record into given file. In this case, all positional arguments are a command (and its arguments) to run that gets traced. Can be specified multiple times.", "devname=FILE"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_devices, "Path of a device in /dev or /sys, or command and arguments with --ioctl.", "DEVICE [...]"},
     {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
@@ -309,35 +359,38 @@ main (string[] args)
         exit_error("Specifying a device list together with --all is invalid.");
     if (!opt_all && opt_devices.length == 0)
         exit_error("Need to specify at least one device or --all.");
-    if (opt_ioctl != null && (opt_all || opt_devices.length < 1))
-        exit_error("For tracing ioctls you have to specify a command to run");
+    if ((opt_ioctl != null || opt_script.length > 0) && (opt_all || opt_devices.length < 1))
+        exit_error("For recording ioctls or scripts you have to specify a command to run");
 
-    // Evaluate --all and resolve devices
-    if (opt_all)
-        opt_devices = all_devices();
-    else if (opt_ioctl == null) {
-        for (int i = 0; i < opt_devices.length; ++i)
-            opt_devices[i] = resolve(opt_devices[i]);
-    }
-
-    if (opt_ioctl != null) {
-        string[] parts = opt_ioctl.split ("=", 2); // devname, ioctlfilename
-        if (parts.length != 2)
-            exit_error("--ioctl argument must be devname=filename");
-        record_ioctl(resolve(parts[0]), parts[1], opt_devices);
-    } else {
-        // process arguments parentwards first
-        var seen = new HashTable<string,unowned string>(str_hash, str_equal);
-        foreach (string device in opt_devices) {
-            while (device != null) {
-                if (!seen.contains(device)) {
-                    seen.add(device.dup());
-                    record_device(device);
-                }
-                device = parent(device);
-            }
+    // device dump mode
+    if (opt_ioctl == null && opt_script.length == 0) {
+        // Evaluate --all and resolve devices
+        if (opt_all)
+            opt_devices = all_devices();
+        else {
+            for (int i = 0; i < opt_devices.length; ++i)
+                opt_devices[i] = resolve(opt_devices[i]);
         }
+        dump_devices(opt_devices);
+        return 0;
     }
 
+    // in ioctl/script recording mode opt_devices is the command to run
+
+    string? preload = Environment.get_variable("LD_PRELOAD");
+    if (preload == null)
+        preload = "";
+    else
+        preload = preload + ":";
+    Environment.set_variable("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
+
+    // set up environment to tell our preload what to record
+    if (opt_ioctl != null)
+        record_ioctl(opt_ioctl);
+    foreach (string s in opt_script)
+        record_script(s);
+
+    Posix.execvp(opt_devices[0], opt_devices);
+    exit_error("Cannot run program %s: %s", opt_devices[0], strerror(errno));
     return 0;
 }

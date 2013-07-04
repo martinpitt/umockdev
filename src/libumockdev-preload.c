@@ -34,6 +34,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -50,11 +51,6 @@
 #    define DBG(...) {}
 #    define IFDBG(x) {}
 #endif
-
-/* global state for recording ioctls */
-int ioctl_record_fd = -1;
-FILE *ioctl_record_log;
-ioctl_tree *ioctl_record;
 
 /********************************
  *
@@ -80,6 +76,23 @@ get_libc_func(const char *f)
     assert(fp);
 
     return fp;
+}
+
+/* return rdev of a file descriptor */
+static dev_t
+dev_of_fd(int fd)
+{
+    struct stat st;
+    int ret, orig_errno;
+
+    orig_errno = errno;
+    ret = fstat(fd, &st);
+    errno = orig_errno;
+    if (ret < 0)
+	return 0;
+    if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
+	return st.st_rdev;
+    return 0;
 }
 
 /********************************
@@ -232,12 +245,15 @@ recvmsg(int sockfd, struct msghdr * msg, int flags)
  *
  ********************************/
 
+/* global state for recording ioctls */
+int ioctl_record_fd = -1;
+FILE *ioctl_record_log;
+ioctl_tree *ioctl_record;
+
 static void
 ioctl_record_open(int fd)
 {
     static dev_t record_rdev = (dev_t) - 1;
-    struct stat st;
-    int ret, orig_errno;
 
     if (fd < 0)
 	return;
@@ -258,12 +274,7 @@ ioctl_record_open(int fd)
 	return;
 
     /* check if the opened device is the one we want to record */
-    orig_errno = errno;
-    ret = fstat(fd, &st);
-    errno = orig_errno;
-    if (ret < 0)
-	return;
-    if (!(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) || st.st_rdev != record_rdev)
+    if (dev_of_fd(fd) != record_rdev)
 	return;
 
     /* recording is already in progress? e. g. libmtp opens the device
@@ -416,6 +427,159 @@ ioctl(int d, unsigned long request, void *arg)
 	record_ioctl(request, arg, result);
 
     return result;
+}
+
+/********************************
+ *
+ * device script (read/write) recording
+ *
+ ********************************/
+
+static fd_map script_dev_logfile_map; /* maps a st_rdev to a log file name */
+static int script_dev_logfile_map_inited = 0;
+static fd_map script_recorded_fds;
+
+struct script_record_info {
+    FILE *log;            /* output file */
+    struct timespec time; /* time of last operation */
+    char op;              /* last operation: 0: none, 'r': read, 'w': write */
+};
+
+/* read UMOCKDEV_SCRIPT_* environment variables and set up dev_logfile_map
+ * according to it */
+static void
+init_script_dev_logfile_map(void)
+{
+    int i, dev;
+    char varname[100];
+    const char *devname, *logname;
+
+    script_dev_logfile_map_inited = 1;
+
+    for (i = 0; 1; ++i) {
+	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEV_%i", i);
+	devname = getenv(varname);
+	if (devname == NULL)
+	    break;
+	dev = atoi(devname);
+	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_FILE_%i", i);
+	logname = getenv(varname);
+	if (logname == NULL) {
+	    fprintf(stderr, "umockdev: $%s not set\n", varname);
+	    exit(1);
+	}
+
+	DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev), logname);
+	fd_map_add(&script_dev_logfile_map, dev, logname);
+    }
+}
+
+static void
+script_record_open(int fd)
+{
+    dev_t fd_dev;
+    const char *logname;
+    FILE *log;
+    struct script_record_info *srinfo;
+
+    if (!script_dev_logfile_map_inited)
+	init_script_dev_logfile_map();
+
+    /* check if the opened device is one we want to record */
+    fd_dev = dev_of_fd(fd);
+    if (!fd_map_get(&script_dev_logfile_map, fd_dev, (const void**) &logname)) {
+	DBG("script_record_open: fd %i on device %i:%i is not recorded\n", fd, major(fd_dev), minor(fd_dev));
+	return;
+    }
+    if (fd_map_get(&script_recorded_fds, fd, NULL)) {
+	fprintf(stderr, "script_record_open: internal error: fd %i is already being recorded\n", fd);
+	abort();
+    }
+
+    log = fopen(logname, "w");
+    if (log == NULL) {
+	perror("umockdev: failed to open script record file");
+	exit(1);
+    }
+
+    DBG("script_record_open: start recording fd %i on device %i:%i into %s\n",
+	fd, major(fd_dev), minor(fd_dev), logname);
+    srinfo = malloc(sizeof(struct script_record_info));
+    srinfo->log = log;
+    assert(clock_gettime(CLOCK_MONOTONIC, &srinfo->time) == 0);
+    srinfo->op = 0;
+    fd_map_add(&script_recorded_fds, fd, srinfo);
+}
+
+static void
+script_record_close(int fd)
+{
+    struct script_record_info *srinfo;
+
+    if (!fd_map_get(&script_recorded_fds, fd, (const void**) &srinfo))
+	return;
+    DBG("script_record_close: stop recording fd %i\n", fd);
+    fclose(srinfo->log);
+    free(srinfo);
+}
+
+static unsigned long
+update_msec(struct timespec* tm)
+{
+    struct timespec now;
+    long delta;
+    assert(clock_gettime(CLOCK_MONOTONIC, &now) == 0);
+    delta = (now.tv_sec - tm->tv_sec)*1000 + now.tv_nsec/1000000 - tm->tv_nsec/1000000;
+    assert(delta >= 0);
+    *tm = now;
+
+    return (unsigned long) delta;
+}
+
+static void
+script_record_op(char op, int fd, const void *buf, ssize_t size)
+{
+    struct script_record_info *srinfo;
+    unsigned long delta;
+    static size_t (*_fwrite) (const void*, size_t, size_t, FILE*);
+    static char header[100];
+    const unsigned char *cur;
+    int i;
+
+    if (!fd_map_get(&script_recorded_fds, fd, (const void**) &srinfo))
+	return;
+    if (size <= 0)
+	return;
+    DBG("script_record_op %c: got %zi bytes on fd %i\n", op, size, fd);
+
+    delta = update_msec(&srinfo->time);
+    DBG("  %lu ms since last operation %c\n", delta, srinfo->op);
+
+    if (_fwrite == NULL)
+	_fwrite = get_libc_func("fwrite");
+
+    /* for negligible time deltas, append to the previous stanza, otherwise
+     * create a new record */
+    if (delta > 0 || srinfo->op != op) {
+	if (srinfo->op != 0)
+	    putc('\n', srinfo->log);
+	snprintf(header, sizeof(header), "%c %lu ", op, delta);
+	assert(_fwrite(header, strlen(header), 1, srinfo->log) == 1);
+    }
+
+    /* escape ASCII control chars */
+    for (i = 0, cur = buf; i < size; ++i, ++cur) {
+	if (*cur < 32) {
+	    putc('^', srinfo->log);
+	    putc(*cur + 64, srinfo->log);
+	    continue;
+	}
+	if (*cur == '^')
+	    putc('^', srinfo->log);
+	putc(*cur, srinfo->log);
+    }
+
+    srinfo->op = op;
 }
 
 /********************************
@@ -624,8 +788,10 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 	ret = _fn(p, flags);					    \
     if (path != p)						    \
 	ioctl_wrap_open(ret, path);				    \
-    else							    \
+    else {							    \
 	ioctl_record_open(ret);					    \
+	script_record_open(ret);				    \
+    }								    \
     return ret;						    	    \
 }
 
@@ -671,8 +837,73 @@ close(int fd)
 	ioctl_record_close();
 	ioctl_record_fd = -1;
     }
+    script_record_close(fd);
 
     return _close(fd);
+}
+
+ssize_t
+read(int fd, void *buf, size_t count)
+{
+    static ssize_t (*_read) (int, void*, size_t);
+    ssize_t res;
+
+    _read = get_libc_func("read");
+    res = _read(fd, buf, count);
+    script_record_op('r', fd, buf, res);
+    return res;
+}
+
+ssize_t
+write(int fd, const void *buf, size_t count)
+{
+    static ssize_t (*_write) (int, const void*, size_t);
+    ssize_t res;
+
+    _write = get_libc_func("write");
+    res = _write(fd, buf, count);
+    script_record_op('w', fd, buf, res);
+    return res;
+}
+
+size_t
+fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    static size_t (*_fread) (void*, size_t, size_t, FILE*);
+    size_t res;
+
+    _fread = get_libc_func("fread");
+    res = _fread(ptr, size, nmemb, stream);
+    script_record_op('r', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
+    return res;
+}
+
+size_t
+fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    static size_t (*_fwrite) (const void*, size_t, size_t, FILE*);
+    size_t res;
+
+    _fwrite = get_libc_func("fwrite");
+    res = _fwrite(ptr, size, nmemb, stream);
+    script_record_op('w', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
+    return res;
+}
+
+char *
+fgets(char *s, int size, FILE *stream)
+{
+    static char* (*_fgets) (char*, int, FILE*);
+    char* res;
+    int len;
+
+    _fgets = get_libc_func("fgets");
+    res = _fgets(s, size, stream);
+    if (res != NULL) {
+	len = strlen(res);
+	script_record_op('r', fileno(stream), s, len);
+    }
+    return res;
 }
 
 /* vim: set sw=4 noet: */
