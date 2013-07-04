@@ -137,6 +137,12 @@ t_run_invalid_ioctl ()
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011=" + rootdir + "/NEWS -- gphoto2 -l",
         "001/011");
+
+    // unspecified ioctl file
+    check_program_error ("gphoto2", "-l " + rootdir +
+        "/devices/cameras/canon-powershot-sx200.umockdev -i " +
+        "/dev/bus/usb/001/011 -- gphoto2 -l",
+        "--ioctl");
 }
 
 static void

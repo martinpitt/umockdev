@@ -83,6 +83,10 @@ main (string[] args)
 
     foreach (var i in opt_ioctl) {
         string[] parts = i.split ("=", 2); // devname, ioctlfilename
+        if (parts.length != 2) {
+            stderr.printf ("Error: --ioctl argument must be devname=filename\n");
+            return 1;
+        }
         try {
             testbed.load_ioctl (parts[0], parts[1]);
         } catch (FileError e) {

@@ -9,6 +9,7 @@ Compatibility break: Changes command line syntax of umockdev-record.
   descriptor for simulated tty devices (and possibly other kinds of devices in
   the future), so that a test suite can communicate with clients that connect
   to the simulated tty device node. (second part of issue #9)
+- umockdev-run: Give proper error message if --ioctl argument is invalid.
 - Change umockdev-record's --ioctl option: The argument is now
   "devicefile=outputfile" like with umockdev-run, instead of specifying the
   device as the first positional argument. This was inconsistant, and is
