@@ -23,6 +23,31 @@ using Assertions;
 string umockdev_record_path;
 string rootdir;
 
+// wrappers to avoid "unhandled error" warnings
+void
+spawn (string command, out string sout, out string serr, out int exit)
+{
+    try {
+        assert (Process.spawn_command_line_sync (command, out sout, out serr, out exit));
+    } catch (SpawnError e) {
+        stderr.printf ("Cannot call '%s': %s\n", command, e.message);
+        Process.abort ();
+    }
+}
+
+string
+file_contents (string filename)
+{
+    string contents;
+    try {
+        assert (FileUtils.get_contents (filename, out contents));
+    } catch (FileError e) {
+        stderr.printf ("Cannot get contents of %s: %s\n", filename, e.message);
+        Process.abort ();
+    }
+    return contents;
+}
+
 // --all on empty testbed
 static void
 t_testbed_all_empty ()
@@ -34,7 +59,7 @@ t_testbed_all_empty ()
     var tb = new UMockdev.Testbed ();
     assert (tb != null);
 
-    Process.spawn_command_line_sync (umockdev_record_path + " --all", out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
 
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpstr (sout, Op.EQ, "");
@@ -55,7 +80,7 @@ t_testbed_one ()
                                   {"SIMPLE_PROP", "1"});
     tb.set_attribute_binary (syspath, "binary_attr", {0x41, 0xFF, 0, 5, 0xFF, 0});
 
-    Process.spawn_command_line_sync (umockdev_record_path + " --all", out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, """P: /devices/dev1
@@ -83,7 +108,7 @@ t_testbed_multiple ()
     tb.add_devicev ("pci", "dev2", null, {"dev2color", "brown"}, {"DEV2COLOR", "BROWN"});
 
     // should grab device and all parents
-    Process.spawn_command_line_sync (umockdev_record_path + " " + subdev1, out sout, out serr, out exit);
+    spawn (umockdev_record_path + " " + subdev1, out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, """P: /devices/dev1/subdev1
@@ -99,7 +124,7 @@ A: dev1color=green
 """);
 
     // only dev1
-    Process.spawn_command_line_sync (umockdev_record_path + " " + dev1, out sout, out serr, out exit);
+    spawn (umockdev_record_path + " " + dev1, out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, """P: /devices/dev1
@@ -110,7 +135,7 @@ A: dev1color=green
 """);
 
     // with --all it should have all three
-    Process.spawn_command_line_sync (umockdev_record_path + " --all", out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert (sout.contains ("P: /devices/dev1/subdev1\n"));
@@ -129,9 +154,8 @@ t_testbed_no_ioctl_record ()
 
     var tb = new UMockdev.Testbed ();
     tb.add_devicev ("mem", "zero", null, {"dev", "1:5"}, {});
-    Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl /sys/devices/zero=/dev/stdout -- head -c1 /dev/zero",
-        out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --ioctl /sys/devices/zero=/dev/stdout -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
     assert_cmpint (exit, Op.NE, 0);
     assert_cmpstr (sout, Op.EQ, "");
     assert (serr.contains ("UMOCKDEV_DIR cannot be used"));
@@ -145,14 +169,19 @@ t_system_all ()
     string serr;
     int exit;
 
-    Process.spawn_command_line_sync (umockdev_record_path + " --all", out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert (sout.has_prefix ("P:"));
     assert_cmpint (sout.length, Op.GE, 100);
 
     var tb = new UMockdev.Testbed ();
-    assert (tb.add_from_string (sout));
+    try {
+        assert (tb.add_from_string (sout));
+    } catch (UMockdev.Error e) {
+        stderr.printf ("Error when adding system dump to testbed: %s\n", e.message);
+        Process.abort ();
+    }
 }
 
 /*
@@ -170,36 +199,34 @@ t_system_ioctl_log ()
     string serr;
     int exit;
 
-    string workdir = DirUtils.make_tmp ("ioctl_log_test.XXXXXX");
+    string workdir;
+    try {
+        workdir = DirUtils.make_tmp ("ioctl_log_test.XXXXXX");
+    } catch (Error e) { Process.abort (); }
     string log = Path.build_filename (workdir, "log");
 
     // should not log anything as that device is not touched
-    Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl=/dev/null=" + log + " -- head -c1 /dev/zero",
-        out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --ioctl=/dev/null=" + log + " -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
     assert (!FileUtils.test (log, FileTest.EXISTS));
 
     // this should create a log
-    Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl /dev/zero=" + log + " -- head -c1 /dev/zero",
-        out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --ioctl /dev/zero=" + log + " -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
     assert (FileUtils.test (log, FileTest.EXISTS));
-    string contents;
-    FileUtils.get_contents (log, out contents);
-    assert_cmpstr (contents, Op.EQ, "");
+    assert_cmpstr (file_contents (log), Op.EQ, "");
 
     FileUtils.remove (log);
 
     // invalid syntax
-    Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl /dev/null -- head -c1 /dev/zero",
-        out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --ioctl /dev/null -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
     assert_cmpint (exit, Op.NE, 1);
     assert_cmpstr (sout, Op.EQ, "");
     assert (serr.contains ("--ioctl"));
@@ -220,28 +247,25 @@ t_system_script_log_simple ()
     int exit;
     string log;
 
-    FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+    try {
+        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+    } catch (Error e) { Process.abort (); }
 
     // should not log anything as that device is not touched
-    Process.spawn_command_line_sync (
-        umockdev_record_path + " --script=/dev/null=" + log + " -- head -c1 /dev/zero",
-        out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --script=/dev/null=" + log + " -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
-    string contents;
-    FileUtils.get_contents (log, out contents);
-    assert_cmpstr (contents, Op.EQ, "");
+    assert_cmpstr (file_contents (log), Op.EQ, "");
 
     // should log one read
-    Process.spawn_command_line_sync (
-        umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
-        out sout, out serr, out exit);
+    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
-    FileUtils.get_contents (log, out contents);
-    assert_cmpstr (contents, Op.EQ, "r 0 ^@");
+    assert_cmpstr (file_contents (log), Op.EQ, "r 0 ^@");
 
     FileUtils.remove (log);
 }
@@ -273,7 +297,9 @@ t_system_script_log_chatter ()
 {
     string log;
 
-    FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+    try {
+        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+    } catch (Error e) { Process.abort (); }
 
     char[] ptyname = new char[8192];
     int ptym, ptys;
@@ -282,11 +308,16 @@ t_system_script_log_chatter ()
 
     // start chatter
     Pid chatter_pid;
-    assert (Process.spawn_async_with_pipes (null,
-        {umockdev_record_path, "--script", (string) ptyname + "=" + log, "--",
-         Path.build_filename (rootdir, "tests", "chatter"), (string) ptyname},
-        null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD,
-        null, out chatter_pid, null, null, null));
+    try {
+        assert (Process.spawn_async_with_pipes (null,
+            {umockdev_record_path, "--script", (string) ptyname + "=" + log, "--",
+             Path.build_filename (rootdir, "tests", "chatter"), (string) ptyname},
+            null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD,
+            null, out chatter_pid, null, null, null));
+    } catch (SpawnError e) {
+        stderr.printf ("Cannot call umockdev-record: %s\n", e.message);
+        Process.abort ();
+    }
 
     var chatter_stream = FileStream.fdopen (ptym, "r+");
     assert (chatter_stream != null);

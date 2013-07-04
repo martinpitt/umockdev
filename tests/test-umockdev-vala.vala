@@ -20,6 +20,16 @@
 
 using Assertions;
 
+static void
+tb_add_from_string (UMockdev.Testbed tb, string s)
+{
+    try {
+        assert (tb.add_from_string (s));
+    } catch (Error e) {
+        stderr.printf ("Failed to call Testbed.add_from_string(): %s\n", e.message);
+        Process.abort ();
+    }
+}
 void
 t_testbed_empty ()
 {
@@ -66,7 +76,7 @@ t_testbed_gudev_query_list ()
 {
   var tb = new UMockdev.Testbed ();
 
-  tb.add_from_string ("""P: /devices/myusbhub/cam
+  tb_add_from_string (tb, """P: /devices/myusbhub/cam
 N: bus/usb/001/002
 E: SUBSYSTEM=usb
 E: DEVTYPE=usb_device
@@ -102,7 +112,7 @@ t_usbfs_ioctl_static ()
 {
   var tb = new UMockdev.Testbed ();
 
-  tb.add_from_string ("""P: /devices/mycam
+  tb_add_from_string (tb, """P: /devices/mycam
 N: 001
 E: SUBSYSTEM=usb
 """);
@@ -131,7 +141,7 @@ void
 t_usbfs_ioctl_tree ()
 {
   var tb = new UMockdev.Testbed ();
-  tb.add_from_string ("""P: /devices/mycam
+  tb_add_from_string (tb, """P: /devices/mycam
 N: 001
 E: SUBSYSTEM=usb
 """);
@@ -150,7 +160,10 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 """;
 
   string tmppath;
-  int fd = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
+  int fd;
+  try {
+      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
+  } catch (Error e) { Process.abort (); }
   assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
 
   // ioctl emulation does not get in the way of non-/dev fds
@@ -160,7 +173,12 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   assert_cmpint (Posix.errno, Op.GE, 22);
 
   Posix.close (fd);
-  tb.load_ioctl ("/dev/001", tmppath);
+  try {
+      tb.load_ioctl ("/dev/001", tmppath);
+  } catch (FileError e) {
+      stderr.printf ("Cannot load ioctls: %s\n", e.message);
+      Process.abort ();
+  }
   FileUtils.unlink (tmppath);
 
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
@@ -230,7 +248,7 @@ void
 t_usbfs_ioctl_tree_xz ()
 {
   var tb = new UMockdev.Testbed ();
-  tb.add_from_string ("""P: /devices/mycam
+  tb_add_from_string (tb, """P: /devices/mycam
 N: 001
 E: SUBSYSTEM=usb
 """);
@@ -249,14 +267,26 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 """;
 
   string tmppath;
-  Posix.close (FileUtils.open_tmp ("test_ioctl_tree.XXXXXX.xz", out tmppath));
+  try {
+      Posix.close (FileUtils.open_tmp ("test_ioctl_tree.XXXXXX.xz", out tmppath));
+  } catch (Error e) { Process.abort (); }
 
   int exit;
-  Process.spawn_command_line_sync (
-        "sh -c 'echo \"" + test_tree + "\" | xz -9c > " + tmppath + "; sync'",
-        null, null, out exit);
+  try {
+      Process.spawn_command_line_sync (
+            "sh -c 'echo \"" + test_tree + "\" | xz -9c > " + tmppath + "; sync'",
+            null, null, out exit);
+  } catch (SpawnError e) {
+      stderr.printf ("Cannot call xz: %s\n", e.message);
+      Process.abort ();
+  }
   assert_cmpint (exit, Op.EQ, 0);
-  tb.load_ioctl ("/dev/001", tmppath);
+  try {
+      tb.load_ioctl ("/dev/001", tmppath);
+  } catch (FileError e) {
+      stderr.printf ("Cannot load ioctls: %s\n", e.message);
+      Process.abort ();
+  }
   FileUtils.unlink (tmppath);
 
   int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
@@ -280,7 +310,7 @@ void
 t_tty_stty ()
 {
   var tb = new UMockdev.Testbed ();
-  tb.add_from_string ("""P: /devices/usb/tty/ttyUSB1
+  tb_add_from_string (tb, """P: /devices/usb/tty/ttyUSB1
 N: ttyUSB1
 E: DEVNAME=/dev/ttyUSB1
 E: SUBSYSTEM=tty
@@ -297,7 +327,12 @@ A: dev=188:1
   // stty issues an ioctl; verify that it recognizes the fake device as a real tty
   string pout, perr;
   int pexit;
-  Process.spawn_command_line_sync ("stty -F /dev/ttyUSB1", out pout, out perr, out pexit);
+  try {
+      Process.spawn_command_line_sync ("stty -F /dev/ttyUSB1", out pout, out perr, out pexit);
+  } catch (SpawnError e) {
+      stderr.printf ("Cannot call stty: %s\n", e.message);
+      Process.abort ();
+  }
   assert_cmpstr (perr, Op.EQ, "");
   assert_cmpint (pexit, Op.EQ, 0);
   assert (pout.contains ("speed 38400 baud"));
@@ -307,7 +342,7 @@ void
 t_tty_data ()
 {
   var tb = new UMockdev.Testbed ();
-  tb.add_from_string ("""P: /devices/serial/ttyS10
+  tb_add_from_string (tb, """P: /devices/serial/ttyS10
 N: ttyS10
 E: DEVNAME=/dev/ttyS10
 E: SUBSYSTEM=tty
