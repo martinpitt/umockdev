@@ -192,6 +192,9 @@ t_system_ioctl_log ()
     string contents;
     FileUtils.get_contents (log, out contents);
     assert_cmpstr (contents, Op.EQ, "");
+
+    FileUtils.remove (log);
+    DirUtils.remove (workdir);
 }
 
 int
