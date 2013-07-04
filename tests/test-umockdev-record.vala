@@ -129,7 +129,7 @@ t_testbed_no_ioctl_record ()
     var tb = new UMockdev.Testbed ();
     tb.add_devicev ("mem", "zero", null, {"dev", "1:5"}, {});
     Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl /dev/stdout /sys/devices/zero -- head -c1 /dev/zero",
+        umockdev_record_path + " --ioctl /sys/devices/zero=/dev/stdout -- head -c1 /dev/zero",
         out sout, out serr, out exit);
     assert_cmpint (exit, Op.NE, 0);
     assert_cmpstr (sout, Op.EQ, "");
@@ -174,7 +174,7 @@ t_system_ioctl_log ()
 
     // should not log anything as that device is not touched
     Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl " + log + " /dev/null -- head -c1 /dev/zero",
+        umockdev_record_path + " --ioctl=/dev/null=" + log + " -- head -c1 /dev/zero",
         out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -183,7 +183,7 @@ t_system_ioctl_log ()
 
     // this should create a log
     Process.spawn_command_line_sync (
-        umockdev_record_path + " --ioctl " + log + " /dev/zero -- head -c1 /dev/zero",
+        umockdev_record_path + " --ioctl /dev/zero=" + log + " -- head -c1 /dev/zero",
         out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -194,6 +194,17 @@ t_system_ioctl_log ()
     assert_cmpstr (contents, Op.EQ, "");
 
     FileUtils.remove (log);
+
+    // invalid syntax
+    Process.spawn_command_line_sync (
+        umockdev_record_path + " --ioctl /dev/null -- head -c1 /dev/zero",
+        out sout, out serr, out exit);
+    assert_cmpint (exit, Op.NE, 1);
+    assert_cmpstr (sout, Op.EQ, "");
+    assert (serr.contains ("--ioctl"));
+    assert (serr.contains ("="));
+    assert (!FileUtils.test (log, FileTest.EXISTS));
+
     DirUtils.remove (workdir);
 }
 

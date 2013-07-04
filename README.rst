@@ -100,8 +100,8 @@ Command line: Record and replay PtP/MTP USB devices
   You can store multiple different operations in the same file, which will
   share the common communication between them. For example:
 
-  | $ umockdev-record --ioctl mobile.ioctl /dev/bus/usb/001/012 mtp-detect
-  | $ umockdev-record --ioctl mobile.ioctl /dev/bus/usb/001/012 mtp-emptyfolders
+  | $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
+  | $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
   |
 
 - Now you can disconnect your device, and run the same operations in a mocked

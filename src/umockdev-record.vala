@@ -282,8 +282,8 @@ static bool opt_version = false;
 static const GLib.OptionEntry[] options = {
     {"all", 'a', 0, OptionArg.NONE, ref opt_all, "Record all devices"},
     {"ioctl", 'i', 0, OptionArg.FILENAME, ref opt_ioctl,
-     "Trace ioctls on the device, record into given file. In this case, the first argument specifies the device, and all remaining arguments are a command (and its arguments) to run that gets traced.", "FILE"},
-    {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_devices, "Path of a device in /dev or /sys.", "DEVICE [...]"},
+     "Trace ioctls on the device, record into given file. In this case, all positional arguments are a command (and its arguments) to run that gets traced.", "devname=FILE"},
+    {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_devices, "Path of a device in /dev or /sys, or command and arguments with --ioctl.", "DEVICE [...]"},
     {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
 };
@@ -291,8 +291,8 @@ static const GLib.OptionEntry[] options = {
 public static int
 main (string[] args)
 {
-    var oc = new OptionContext ("");
-    oc.set_summary ("Record Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.");
+    var oc = new OptionContext("");
+    oc.set_summary("Record Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.");
     oc.add_main_entries (options, null);
     try {
         oc.parse (ref args);
@@ -310,21 +310,22 @@ main (string[] args)
     if (!opt_all && opt_devices.length == 0)
         exit_error("Need to specify at least one device or --all.");
     if (opt_ioctl != null && (opt_all || opt_devices.length < 1))
-        exit_error("For tracing ioctls you have to specify exactly one device and a command to run");
+        exit_error("For tracing ioctls you have to specify a command to run");
 
     // Evaluate --all and resolve devices
     if (opt_all)
         opt_devices = all_devices();
-    else if (opt_ioctl != null)
-        opt_devices[0] = resolve(opt_devices[0]);
-    else {
+    else if (opt_ioctl == null) {
         for (int i = 0; i < opt_devices.length; ++i)
             opt_devices[i] = resolve(opt_devices[i]);
     }
 
-    if (opt_ioctl != null)
-        record_ioctl(opt_devices[0], opt_ioctl, opt_devices[1:opt_devices.length-1]);
-    else {
+    if (opt_ioctl != null) {
+        string[] parts = opt_ioctl.split ("=", 2); // devname, ioctlfilename
+        if (parts.length != 2)
+            exit_error("--ioctl argument must be devname=filename");
+        record_ioctl(resolve(parts[0]), parts[1], opt_devices);
+    } else {
         // process arguments parentwards first
         var seen = new HashTable<string,unowned string>(str_hash, str_equal);
         foreach (string device in opt_devices) {
