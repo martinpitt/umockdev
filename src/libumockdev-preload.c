@@ -372,6 +372,7 @@ struct ioctl_fd_info {
 static void
 ioctl_emulate_open(int fd, const char *dev_path)
 {
+    libc_func(fclose, int, FILE*);
     FILE *f;
     static char ioctl_path[PATH_MAX];
     struct ioctl_fd_info *fdinfo;
@@ -392,7 +393,7 @@ ioctl_emulate_open(int fd, const char *dev_path)
 	return;
 
     fdinfo->tree = ioctl_tree_read(f);
-    fclose(f);
+    _fclose(f);
     if (fdinfo->tree == NULL) {
         fprintf(stderr, "ERROR: libumockdev-preload: failed to load ioctl record file for %s: empty or invalid format?", dev_path);
 	exit(1);
@@ -544,12 +545,13 @@ script_record_open(int fd)
 static void
 script_record_close(int fd)
 {
+    libc_func(fclose, int, FILE*);
     struct script_record_info *srinfo;
 
     if (!fd_map_get(&script_recorded_fds, fd, (const void**) &srinfo))
 	return;
     DBG("script_record_close: stop recording fd %i\n", fd);
-    fclose(srinfo->log);
+    _fclose(srinfo->log);
     free(srinfo);
 }
 
@@ -912,6 +914,21 @@ close(int fd)
     script_record_close(fd);
 
     return _close(fd);
+}
+
+int
+fclose(FILE* stream)
+{
+    libc_func(fclose, int, FILE*);
+    int fd = fileno(stream);
+    if (fd >= 0) {
+	wrapped_sockets_close(fd);
+	ioctl_emulate_close(fd);
+	ioctl_record_close(fd);
+	script_record_close(fd);
+    }
+
+    return _fclose(stream);
 }
 
 /* vim: set sw=4 noet: */
