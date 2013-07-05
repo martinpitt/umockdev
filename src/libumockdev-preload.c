@@ -313,14 +313,21 @@ ioctl_record_open(int fd)
 }
 
 static void
-ioctl_record_close(void)
+ioctl_record_close(int fd)
 {
+    if (fd < 0 || fd != ioctl_record_fd)
+	return;
+
+    ioctl_record_fd = -1;
+
     /* recorded anything? */
     if (ioctl_record != NULL) {
 	rewind(ioctl_record_log);
 	assert(ftruncate(fileno(ioctl_record_log), 0) == 0);
 	ioctl_tree_write(ioctl_record_log, ioctl_record);
 	fflush(ioctl_record_log);
+	ioctl_tree_free(ioctl_record);
+	ioctl_record = NULL;
     }
 }
 
@@ -825,10 +832,7 @@ close(int fd)
 	ioctl_tree_free(fdinfo->tree);
 	free(fdinfo);
     }
-    if (fd == ioctl_record_fd) {
-	ioctl_record_close();
-	ioctl_record_fd = -1;
-    }
+    ioctl_record_close(fd);
     script_record_close(fd);
 
     return _close(fd);
