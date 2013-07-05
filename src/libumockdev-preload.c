@@ -172,6 +172,15 @@ fd_map_get(fd_map * map, int fd, const void **data_out)
  * identify them in the other functions */
 static fd_map wrapped_sockets;
 
+static void
+wrapped_sockets_close(int fd)
+{
+    if (fd_map_get(&wrapped_sockets, fd, NULL)) {
+	DBG("wrapped_sockets_close(): closing netlink socket fd %i\n", fd);
+	fd_map_remove(&wrapped_sockets, fd);
+    }
+}
+
 int
 socket(int domain, int type, int protocol)
 {
@@ -361,7 +370,7 @@ struct ioctl_fd_info {
 };
 
 static void
-ioctl_wrap_open(int fd, const char *dev_path)
+ioctl_emulate_open(int fd, const char *dev_path)
 {
     FILE *f;
     static char ioctl_path[PATH_MAX];
@@ -388,7 +397,20 @@ ioctl_wrap_open(int fd, const char *dev_path)
         fprintf(stderr, "ERROR: libumockdev-preload: failed to load ioctl record file for %s: empty or invalid format?", dev_path);
 	exit(1);
     }
-    DBG("ioctl_wrap_open fd %i (%s): loaded ioctl tree\n", fd, dev_path);
+    DBG("ioctl_emulate_open fd %i (%s): loaded ioctl tree\n", fd, dev_path);
+}
+
+static void
+ioctl_emulate_close(int fd)
+{
+    struct ioctl_fd_info *fdinfo;
+
+    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
+	DBG("ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
+	fd_map_remove(&ioctl_wrapped_fds, fd);
+	ioctl_tree_free(fdinfo->tree);
+	free(fdinfo);
+    }
 }
 
 static int
@@ -850,7 +872,7 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
     } else							    \
 	ret =  _ ## prefix ## open ## suffix(p, flags);		    \
     if (path != p)						    \
-	ioctl_wrap_open(ret, path);				    \
+	ioctl_emulate_open(ret, path);				    \
     else {							    \
 	ioctl_record_open(ret);					    \
 	script_record_open(ret);				    \
@@ -883,18 +905,9 @@ int
 close(int fd)
 {
     libc_func(close, int, int);
-    struct ioctl_fd_info *fdinfo;
 
-    if (fd_map_get(&wrapped_sockets, fd, NULL)) {
-	DBG("testbed wrapped close: closing netlink socket fd %i\n", fd);
-	fd_map_remove(&wrapped_sockets, fd);
-    }
-    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
-	DBG("testbed wrapped close: closing ioctl socket fd %i\n", fd);
-	fd_map_remove(&ioctl_wrapped_fds, fd);
-	ioctl_tree_free(fdinfo->tree);
-	free(fdinfo);
-    }
+    wrapped_sockets_close(fd);
+    ioctl_emulate_close(fd);
     ioctl_record_close(fd);
     script_record_close(fd);
 
