@@ -372,7 +372,7 @@ struct ioctl_fd_info {
 static void
 ioctl_emulate_open(int fd, const char *dev_path)
 {
-    libc_func(fclose, int, FILE*);
+    libc_func(fclose, int, FILE *);
     FILE *f;
     static char ioctl_path[PATH_MAX];
     struct ioctl_fd_info *fdinfo;
@@ -395,7 +395,8 @@ ioctl_emulate_open(int fd, const char *dev_path)
     fdinfo->tree = ioctl_tree_read(f);
     _fclose(f);
     if (fdinfo->tree == NULL) {
-        fprintf(stderr, "ERROR: libumockdev-preload: failed to load ioctl record file for %s: empty or invalid format?", dev_path);
+	fprintf(stderr, "ERROR: libumockdev-preload: failed to load ioctl record file for %s: empty or invalid format?",
+		dev_path);
 	exit(1);
     }
     DBG("ioctl_emulate_open fd %i (%s): loaded ioctl tree\n", fd, dev_path);
@@ -466,14 +467,14 @@ ioctl(int d, unsigned long request, void *arg)
  *
  ********************************/
 
-static fd_map script_dev_logfile_map; /* maps a st_rdev to a log file name */
+static fd_map script_dev_logfile_map;	/* maps a st_rdev to a log file name */
 static int script_dev_logfile_map_inited = 0;
 static fd_map script_recorded_fds;
 
 struct script_record_info {
-    FILE *log;            /* output file */
-    struct timespec time; /* time of last operation */
-    char op;              /* last operation: 0: none, 'r': read, 'w': write */
+    FILE *log;			/* output file */
+    struct timespec time;	/* time of last operation */
+    char op;			/* last operation: 0: none, 'r': read, 'w': write */
 };
 
 /* read UMOCKDEV_SCRIPT_* environment variables and set up dev_logfile_map
@@ -500,7 +501,8 @@ init_script_dev_logfile_map(void)
 	    exit(1);
 	}
 
-	DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev), logname);
+	DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev),
+	    logname);
 	fd_map_add(&script_dev_logfile_map, dev, logname);
     }
 }
@@ -518,7 +520,7 @@ script_record_open(int fd)
 
     /* check if the opened device is one we want to record */
     fd_dev = dev_of_fd(fd);
-    if (!fd_map_get(&script_dev_logfile_map, fd_dev, (const void**) &logname)) {
+    if (!fd_map_get(&script_dev_logfile_map, fd_dev, (const void **)&logname)) {
 	DBG("script_record_open: fd %i on device %i:%i is not recorded\n", fd, major(fd_dev), minor(fd_dev));
 	return;
     }
@@ -545,10 +547,10 @@ script_record_open(int fd)
 static void
 script_record_close(int fd)
 {
-    libc_func(fclose, int, FILE*);
+    libc_func(fclose, int, FILE *);
     struct script_record_info *srinfo;
 
-    if (!fd_map_get(&script_recorded_fds, fd, (const void**) &srinfo))
+    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
 	return;
     DBG("script_record_close: stop recording fd %i\n", fd);
     _fclose(srinfo->log);
@@ -556,16 +558,16 @@ script_record_close(int fd)
 }
 
 static unsigned long
-update_msec(struct timespec* tm)
+update_msec(struct timespec *tm)
 {
     struct timespec now;
     long delta;
     assert(clock_gettime(CLOCK_MONOTONIC, &now) == 0);
-    delta = (now.tv_sec - tm->tv_sec)*1000 + now.tv_nsec/1000000 - tm->tv_nsec/1000000;
+    delta = (now.tv_sec - tm->tv_sec) * 1000 + now.tv_nsec / 1000000 - tm->tv_nsec / 1000000;
     assert(delta >= 0);
     *tm = now;
 
-    return (unsigned long) delta;
+    return (unsigned long)delta;
 }
 
 static void
@@ -573,12 +575,12 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 {
     struct script_record_info *srinfo;
     unsigned long delta;
-    libc_func(fwrite, size_t, const void*, size_t, size_t, FILE*);
+    libc_func(fwrite, size_t, const void *, size_t, size_t, FILE *);
     static char header[100];
     const unsigned char *cur;
     int i;
 
-    if (!fd_map_get(&script_recorded_fds, fd, (const void**) &srinfo))
+    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
 	return;
     if (size <= 0)
 	return;
@@ -618,7 +620,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 ssize_t
 read(int fd, void *buf, size_t count)
 {
-    libc_func(read, ssize_t, int, void*, size_t);
+    libc_func(read, ssize_t, int, void *, size_t);
     ssize_t res;
 
     res = _read(fd, buf, count);
@@ -629,7 +631,7 @@ read(int fd, void *buf, size_t count)
 ssize_t
 write(int fd, const void *buf, size_t count)
 {
-    libc_func(write, ssize_t, int, const void*, size_t);
+    libc_func(write, ssize_t, int, const void *, size_t);
     ssize_t res;
 
     res = _write(fd, buf, count);
@@ -638,9 +640,9 @@ write(int fd, const void *buf, size_t count)
 }
 
 size_t
-fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
 {
-    libc_func(fread, size_t, void*, size_t, size_t, FILE*);
+    libc_func(fread, size_t, void *, size_t, size_t, FILE *);
     size_t res;
 
     res = _fread(ptr, size, nmemb, stream);
@@ -649,9 +651,9 @@ fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 }
 
 size_t
-fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+fwrite(const void *ptr, size_t size, size_t nmemb, FILE * stream)
 {
-    libc_func(fwrite, size_t, const void*, size_t, size_t, FILE*);
+    libc_func(fwrite, size_t, const void *, size_t, size_t, FILE *);
     size_t res;
 
     res = _fwrite(ptr, size, nmemb, stream);
@@ -660,10 +662,10 @@ fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 }
 
 char *
-fgets(char *s, int size, FILE *stream)
+fgets(char *s, int size, FILE * stream)
 {
-    libc_func(fgets, char*, char*, int, FILE*);
-    char* res;
+    libc_func(fgets, char *, char *, int, FILE *);
+    char *res;
     int len;
 
     res = _fgets(s, size, stream);
@@ -770,7 +772,7 @@ rettype name(const char *path, arg2t arg2, arg3t arg3) \
 }
 
 static dev_t
-get_rdev (const char* nodename)
+get_rdev(const char *nodename)
 {
     static char buf[PATH_MAX];
     static char link[PATH_MAX];
@@ -803,10 +805,10 @@ get_rdev (const char* nodename)
 }
 
 static int
-is_emulated_device(const char* path, const mode_t st_mode)
+is_emulated_device(const char *path, const mode_t st_mode)
 {
     int orig_errno, res;
-    char dest[10];  /* big enough, we are only interested in the prefix */
+    char dest[10];		/* big enough, we are only interested in the prefix */
 
     /* we use symlinks to the real /dev/pty/ for mocking tty devices, those
      * should appear as char device, not as symlink; but other symlinks should
@@ -917,9 +919,9 @@ close(int fd)
 }
 
 int
-fclose(FILE* stream)
+fclose(FILE * stream)
 {
-    libc_func(fclose, int, FILE*);
+    libc_func(fclose, int, FILE *);
     int fd = fileno(stream);
     if (fd >= 0) {
 	wrapped_sockets_close(fd);

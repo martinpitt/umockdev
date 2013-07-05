@@ -334,7 +334,7 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     /* invalid parent */
     log_handler = g_log_set_handler(NULL, G_LOG_LEVEL_CRITICAL | G_LOG_FLAG_FATAL, ignore_log_handler, NULL);
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", "/sys/nosuchdevice", NULL, NULL);
-    g_log_remove_handler (NULL, log_handler);
+    g_log_remove_handler(NULL, log_handler);
     g_assert(syspath == NULL);
     g_assert_cmpint(errors.counter, ==, 1);
     g_assert_cmpint(errors.last_level, ==, G_LOG_LEVEL_CRITICAL | G_LOG_FLAG_FATAL);
@@ -345,7 +345,7 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL,
 					  /* attributes */
 					  "idVendor", "0815", "idProduct", NULL, NULL);
-    g_log_remove_handler (NULL, log_handler);
+    g_log_remove_handler(NULL, log_handler);
     g_assert(syspath);
     g_assert_cmpint(errors.counter, ==, 2);
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
@@ -719,10 +719,9 @@ t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_clear_error(&error);
     g_assert(!success);
 
-    /* create umockdev dump file, invalid data*/
+    /* create umockdev dump file, invalid data */
     path = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "test.umockdev", NULL);
-    success = g_file_set_contents(path,
-                                  "P: /devices/dev1\nX: Whatever\n", -1, &error);
+    success = g_file_set_contents(path, "P: /devices/dev1\nX: Whatever\n", -1, &error);
     g_assert_no_error(error);
     g_assert(success);
 
@@ -786,7 +785,7 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
     /* ensure that /dev/bus/usb/ exists, lsusb insists on it */
     dir = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev", "bus", "usb", "002", NULL);
     g_mkdir_with_parents(dir, 0755);
-    g_free (dir);
+    g_free(dir);
 
     g_assert(g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &out, &err, &exit_status, &error));
     g_assert_no_error(error);
@@ -830,7 +829,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(g_stat("/dev/zero", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
-    g_assert_cmpint(st.st_rdev, ==, 0); /* we did not set anything */
+    g_assert_cmpint(st.st_rdev, ==, 0);	/* we did not set anything */
     fd = g_open("/dev/zero", O_RDONLY, 0);
     g_assert_cmpint(fd, >, 0);
     g_assert_cmpint(read(fd, buf, 20), ==, 12);
@@ -1065,7 +1064,7 @@ main(int argc, char **argv)
     g_test_init(&argc, &argv, NULL);
 
     /* do we have a real /sys on this test? */
-    has_real_sysfs = g_file_test ("/sys/devices", G_FILE_TEST_IS_DIR);
+    has_real_sysfs = g_file_test("/sys/devices", G_FILE_TEST_IS_DIR);
 
     /* tests for mocking /sys */
     g_test_add("/umockdev-testbed/empty", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

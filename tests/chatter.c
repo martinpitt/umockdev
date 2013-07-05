@@ -26,31 +26,32 @@
 
 #define writestr(s) assert(write(fd, s, strlen(s)) >= 0)
 
-int main (int argc, char** argv)
+int
+main(int argc, char **argv)
 {
     int fd;
     char buf[100];
     int len;
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s device\n", argv[0]);
-        return 1;
+	fprintf(stderr, "Usage: %s device\n", argv[0]);
+	return 1;
     }
 
     fd = open(argv[1], O_RDWR);
     if (fd < 0) {
-        perror("open:");
-        return 1;
+	perror("open:");
+	return 1;
     }
     writestr("Hello world!\n");
     writestr("What is your name?\n");
-    len = read(fd, buf, sizeof(buf)-1);
+    len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
     writestr("I ♥ ");
     writestr(buf);
     writestr("a\t tab and a\n   line break in one write\n");
-    len = read(fd, buf, sizeof(buf)-1);
+    len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
     writestr("bye!\n");

@@ -60,7 +60,7 @@ uevent_sender_close(uevent_sender * sender)
 }
 
 static void
-sendmsg_one(uevent_sender *sender, struct msghdr *msg, const char* path)
+sendmsg_one(uevent_sender * sender, struct msghdr *msg, const char *path)
 {
     struct sockaddr_un event_addr;
     int fd;
@@ -75,7 +75,7 @@ sendmsg_one(uevent_sender *sender, struct msghdr *msg, const char* path)
     fd = socket(AF_UNIX, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
     if (fd < 0) {
 	perror("sendmsg_one: cannot create socket");
-        abort();
+	abort();
     }
 
     ret = connect(fd, (struct sockaddr *)&event_addr, sizeof(event_addr));
@@ -91,21 +91,21 @@ sendmsg_one(uevent_sender *sender, struct msghdr *msg, const char* path)
 }
 
 static void
-sendmsg_all(uevent_sender *sender, struct msghdr *msg)
+sendmsg_all(uevent_sender * sender, struct msghdr *msg)
 {
     glob_t gl;
 
     /* find current listeners */
     if (glob(sender->socket_glob, GLOB_NOSORT, NULL, &gl) == 0) {
-        size_t i;
-        for (i = 0; i < gl.gl_pathc; ++i)
-            sendmsg_one(sender, msg, gl.gl_pathv[i]);
+	size_t i;
+	for (i = 0; i < gl.gl_pathc; ++i)
+	    sendmsg_one(sender, msg, gl.gl_pathv[i]);
     } else {
-        /* ensure that we only fail due to that, not due to bad globs */
-        if (errno != GLOB_NOMATCH) {
-            perror("sendmsg_all: cannot run glob");
-            abort();
-        }
+	/* ensure that we only fail due to that, not due to bad globs */
+	if (errno != GLOB_NOMATCH) {
+	    perror("sendmsg_all: cannot run glob");
+	    abort();
+	}
     }
 
     globfree(&gl);

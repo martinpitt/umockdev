@@ -113,16 +113,16 @@ void
 ioctl_tree_free(ioctl_tree * tree)
 {
     if (tree == NULL)
-        return;
+	return;
 
     ioctl_tree_free(tree->child);
     ioctl_tree_free(tree->next);
     if (tree->type != NULL && tree->type->free_data != NULL)
-        tree->type->free_data(tree);
+	tree->type->free_data(tree);
     if (tree->last_added != NULL)
-        ioctl_node_list_free(tree->last_added);
+	ioctl_node_list_free(tree->last_added);
 
-    free (tree);
+    free(tree);
 }
 
 static ioctl_tree *
@@ -504,7 +504,7 @@ static void
 ioctl_simplestruct_free_data(ioctl_tree * node)
 {
     if (node->data != NULL)
-        free(node->data);
+	free(node->data);
 }
 
 static void
@@ -588,9 +588,9 @@ usbdevfs_reapurb_free_data(ioctl_tree * node)
 {
     struct usbdevfs_urb *info = node->data;
     if (info != NULL) {
-        if (info->buffer != NULL)
-            free(info->buffer);
-        free(info);
+	if (info->buffer != NULL)
+	    free(info->buffer);
+	free(info);
     }
 }
 

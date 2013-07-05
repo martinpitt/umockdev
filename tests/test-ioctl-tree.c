@@ -224,7 +224,7 @@ t_create_from_bin(void)
 static void
 t_write(void)
 {
-    ioctl_tree *tree = NULL,  *t;
+    ioctl_tree *tree = NULL, *t;
     FILE *f;
     char contents[1000];
 
