@@ -587,9 +587,72 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
     srinfo->op = op;
 }
 
+/*
+ * override glib read/write functions for capturing data
+ */
+
+ssize_t
+read(int fd, void *buf, size_t count)
+{
+    libc_func(read, ssize_t, int, void*, size_t);
+    ssize_t res;
+
+    res = _read(fd, buf, count);
+    script_record_op('r', fd, buf, res);
+    return res;
+}
+
+ssize_t
+write(int fd, const void *buf, size_t count)
+{
+    libc_func(write, ssize_t, int, const void*, size_t);
+    ssize_t res;
+
+    res = _write(fd, buf, count);
+    script_record_op('w', fd, buf, res);
+    return res;
+}
+
+size_t
+fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    libc_func(fread, size_t, void*, size_t, size_t, FILE*);
+    size_t res;
+
+    res = _fread(ptr, size, nmemb, stream);
+    script_record_op('r', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
+    return res;
+}
+
+size_t
+fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    libc_func(fwrite, size_t, const void*, size_t, size_t, FILE*);
+    size_t res;
+
+    res = _fwrite(ptr, size, nmemb, stream);
+    script_record_op('w', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
+    return res;
+}
+
+char *
+fgets(char *s, int size, FILE *stream)
+{
+    libc_func(fgets, char*, char*, int, FILE*);
+    char* res;
+    int len;
+
+    res = _fgets(s, size, stream);
+    if (res != NULL) {
+	len = strlen(res);
+	script_record_op('r', fileno(stream), s, len);
+    }
+    return res;
+}
+
 /********************************
  *
- * Wrappers for accessing files
+ * Wrappers for accessing /dev and /sys files in the testbed
  *
  ********************************/
 
@@ -836,65 +899,6 @@ close(int fd)
     script_record_close(fd);
 
     return _close(fd);
-}
-
-ssize_t
-read(int fd, void *buf, size_t count)
-{
-    libc_func(read, ssize_t, int, void*, size_t);
-    ssize_t res;
-
-    res = _read(fd, buf, count);
-    script_record_op('r', fd, buf, res);
-    return res;
-}
-
-ssize_t
-write(int fd, const void *buf, size_t count)
-{
-    libc_func(write, ssize_t, int, const void*, size_t);
-    ssize_t res;
-
-    res = _write(fd, buf, count);
-    script_record_op('w', fd, buf, res);
-    return res;
-}
-
-size_t
-fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
-{
-    libc_func(fread, size_t, void*, size_t, size_t, FILE*);
-    size_t res;
-
-    res = _fread(ptr, size, nmemb, stream);
-    script_record_op('r', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
-    return res;
-}
-
-size_t
-fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
-{
-    libc_func(fwrite, size_t, const void*, size_t, size_t, FILE*);
-    size_t res;
-
-    res = _fwrite(ptr, size, nmemb, stream);
-    script_record_op('w', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
-    return res;
-}
-
-char *
-fgets(char *s, int size, FILE *stream)
-{
-    libc_func(fgets, char*, char*, int, FILE*);
-    char* res;
-    int len;
-
-    res = _fgets(s, size, stream);
-    if (res != NULL) {
-	len = strlen(res);
-	script_record_op('r', fileno(stream), s, len);
-    }
-    return res;
 }
 
 /* vim: set sw=4 noet: */
