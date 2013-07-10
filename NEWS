@@ -1,16 +1,6 @@
 0.3 (UNRELEASED)
 ----------------
-Compatibility break: Changes command line syntax of umockdev-record and
-umockdev-run.
-
-- Emulate SUBSYSTEM=tty mocked device nodes as PTYs instead of plain files, so
-  that they behave tty-like and respond to the relevant ioctls.
-  (first part of issue #9)
-- Add new method umockdev_testbed_get_dev_fd() to get the master end file
-  descriptor for simulated tty devices (and possibly other kinds of devices in
-  the future), so that a test suite can communicate with clients that connect
-  to the simulated tty device node. (second part of issue #9)
-- umockdev-run: Give proper error message if --ioctl argument is invalid.
+Command line argument changes (not backwards compatible):
 - Change umockdev-record's --ioctl option: The argument is now
   "devicefile=outputfile" like with umockdev-run, instead of specifying the
   device as the first positional argument. This was inconsistant, and is
@@ -18,8 +8,20 @@ umockdev-run.
 - Rename umockdev-run's -l/--load option to -d/--device. Other kinds of files
   (ioctl dumps, and soon read/write scripts) also get "loaded" into the
   testbed, so the previous name does not make sense any more.
+
+New features/API:
+- Emulate SUBSYSTEM=tty mocked device nodes as PTYs instead of plain files, so
+  that they behave tty-like and respond to the relevant ioctls.
+  (first part of issue #9)
+- Add new method umockdev_testbed_get_dev_fd() to get the master end file
+  descriptor for simulated tty devices (and possibly other kinds of devices in
+  the future), so that a test suite can communicate with clients that connect
+  to the simulated tty device node. (second part of issue #9)
 - Add recording of read()s and write()s to a device into files, called
   "device scripts". Add umockdev-record option -s/--script for this.
+
+Bug fixes:
+- umockdev-run: Give proper error message if --ioctl argument is invalid.
 - preload: Only look up original libc functions once. (issue #21)
 - preload: Wrap fclose(). (issue #20)
 
