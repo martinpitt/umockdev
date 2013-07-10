@@ -555,6 +555,7 @@ script_record_close(int fd)
     DBG("script_record_close: stop recording fd %i\n", fd);
     _fclose(srinfo->log);
     free(srinfo);
+    fd_map_remove(&script_recorded_fds, fd);
 }
 
 static unsigned long
