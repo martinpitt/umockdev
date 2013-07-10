@@ -329,14 +329,20 @@ CHECKS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-r
 # give any useful output on failures
 check-local: $(CHECKS)
 	@set -e; for f in $(CHECKS); do \
-		echo "== Running `basename $$f` test against build tree =="; \
-		$(TESTS_ENVIRONMENT) $(EXEC_NAME) $$f; \
+		if [ -n "$(T)" ]; then \
+			$(TESTS_ENVIRONMENT) $(EXEC_NAME) $$f -v -p $(T); \
+		else \
+			echo "== Running `basename $$f` test against build tree =="; \
+			$(TESTS_ENVIRONMENT) $(EXEC_NAME) $$f; \
+		fi; \
 	done
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
-	@echo "== Running GI test with $(PYTHON) against build tree =="
-	$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py
+	@if [ -z "$(T)" ]; then \
+		echo "== Running GI test with $(PYTHON) against build tree =="; \
+		$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py; \
+	fi
 endif
 endif
 
