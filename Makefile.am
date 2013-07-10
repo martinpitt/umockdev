@@ -65,8 +65,7 @@ AM_CFLAGS = 	\
 	-Werror=uninitialized		\
 	-Wall
 
-# this allows us to use regexp literals without warnings
-AM_VALAFLAGS = --enable-experimental
+AM_VALAFLAGS = --target-glib=2.32
 
 # -------------------------------------------------------------
 # preload library
@@ -123,6 +122,7 @@ libumockdev_la_VALAFLAGS =		\
 	--library=UMockdev-1.0		\
 	--vapi=src/umockdev-1.0.vapi	\
 	--gir=UMockdev-1.0.gir		\
+	$(AM_VALAFLAGS)			\
 	$(NULL)
 
 libumockdev_la_CFLAGS =		\
@@ -194,6 +194,7 @@ src_umockdev_run_VALAFLAGS =		\
 	--pkg umockdev-1.0		\
 	--pkg glib-2.0			\
 	--pkg posix			\
+	$(AM_VALAFLAGS)			\
 	$(NULL)
 
 src_umockdev_record_SOURCES = 		\
@@ -207,6 +208,7 @@ src_umockdev_record_LDADD = $(GLIB_LIBS)
 src_umockdev_record_VALAFLAGS =		\
 	--pkg glib-2.0			\
 	--pkg posix			\
+	$(AM_VALAFLAGS)			\
 	$(NULL)
 
 DISTCLEANFILES += \
@@ -282,6 +284,7 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	--pkg umockdev-1.0		\
 	--pkg glib-2.0			\
 	--pkg gudev-1.0			\
+	$(AM_VALAFLAGS)			\
 	$(NULL)
 
 tests_test_umockdev_run_SOURCES = 	\
@@ -295,6 +298,7 @@ tests_test_umockdev_run_VALAFLAGS =	\
 	--vapidir tests			\
 	--pkg glib-2.0			\
 	--pkg posix			\
+	$(AM_VALAFLAGS)			\
 	$(NULL)
 
 tests_test_umockdev_record_SOURCES = 	\
@@ -312,6 +316,7 @@ tests_test_umockdev_record_VALAFLAGS =	\
 	--pkg posix			\
 	--pkg linux			\
 	--pkg umockdev-1.0		\
+	$(AM_VALAFLAGS)			\
 	$(NULL)
 
 DISTCLEANFILES += \
