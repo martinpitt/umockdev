@@ -188,9 +188,10 @@ record_device(string dev)
     }
 
     foreach (string line in u_out.split("\n")) {
-        // filter out redundant/uninteresting properties
+        // filter out redundant/uninteresting properties and link priority
         if (line.length == 0 || line.has_prefix("E: DEVPATH=") ||
-            line.has_prefix("E: UDEV_LOG=") || line.has_prefix("E: USEC_INITIALIZED="))
+            line.has_prefix("E: UDEV_LOG=") || line.has_prefix("E: USEC_INITIALIZED=") ||
+            line.has_prefix("L: "))
             continue;
 
         if (line.has_prefix("N: ")) {
@@ -218,23 +219,20 @@ record_device(string dev)
     string entry;
     // filter out the uninteresting attributes, sort the others
     while ((entry = d.read_name()) != null)
-        if (entry != "subsystem" && entry != "firmware_node" &&
-            entry != "driver" && entry != "uevent")
+        if (entry != "subsystem" && entry != "firmware_node" && entry != "uevent")
             attributes.append(entry);
     attributes.sort(strcmp);
 
     foreach (var attr in attributes) {
         string attr_path = Path.build_filename(dev, attr);
         // only look at files or symlinks
-        if (!FileUtils.test(attr_path, FileTest.IS_REGULAR))
-            continue;
         if (FileUtils.test(attr_path, FileTest.IS_SYMLINK)) {
             try {
                 stdout.printf("L: %s=%s\n", attr, FileUtils.read_link(attr_path));
             } catch (FileError e) {
                 exit_error("Cannot read link %s: %s", attr, e.message);
             }
-        } else {
+        } else if (FileUtils.test(attr_path, FileTest.IS_REGULAR)) {
             uint8[] contents;
             try {
                 FileUtils.get_data(attr_path, out contents);

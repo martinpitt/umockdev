@@ -22,6 +22,7 @@ New features/API:
   attribute. (first part of issue #22)
 - Add recording of read()s and write()s to a device into files, called
   "device scripts". Add umockdev-record option -s/--script for this.
+- umockdev-record: Record the "driver" attribute. (part of issue #22)
 
 Bug fixes:
 - umockdev-run: Give proper error message if --ioctl argument is invalid.

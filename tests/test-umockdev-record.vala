@@ -79,6 +79,7 @@ t_testbed_one ()
                                   {"simple_attr", "1", "multiline_attr", "a\\b\nc\\d\nlast"},
                                   {"SIMPLE_PROP", "1"});
     tb.set_attribute_binary (syspath, "binary_attr", {0x41, 0xFF, 0, 5, 0xFF, 0});
+    tb.set_attribute_link (syspath, "driver", "../../drivers/foo");
 
     spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
@@ -87,6 +88,7 @@ t_testbed_one ()
 E: SIMPLE_PROP=1
 E: SUBSYSTEM=pci
 H: binary_attr=41FF0005FF00
+L: driver=../../drivers/foo
 A: multiline_attr=a\\b\nc\\d\nlast
 A: simple_attr=1
 
