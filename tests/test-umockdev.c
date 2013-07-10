@@ -595,7 +595,8 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 					       "E: SUBSYSTEM=pci\n"
 					       "H: binary_attr=41A9FF0005FF00\n"
 					       "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
-					       "A: simple_attr=1\n", &error);
+					       "A: simple_attr=1\n"
+					       "L: driver=../../foo", &error);
     g_assert_no_error(error);
     g_assert(success);
 
@@ -612,6 +613,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "simple_attr"), ==, "1");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "multiline_attr"), ==, "a\\b\nc\\d\nlast");
     g_assert_cmpstr(g_udev_device_get_property(device, "SIMPLE_PROP"), ==, "1");
+    g_assert_cmpstr(g_udev_device_get_driver(device), ==, "foo");
     g_object_unref(device);
 
     g_assert(g_file_get_contents("/sys/devices/dev1/binary_attr", &contents, &length, NULL));
@@ -623,6 +625,13 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(g_file_test("/sys/devices/dev1/subsystem", G_FILE_TEST_IS_SYMLINK));
     g_assert(g_file_test("/sys/devices/dev1/subsystem/dev1", G_FILE_TEST_IS_SYMLINK));
     g_assert(g_file_test("/sys/devices/dev1/subsystem/dev1/simple_attr", G_FILE_TEST_IS_REGULAR));
+
+    /* driver symlink created */
+    g_assert(g_file_test("/sys/devices/dev1/driver", G_FILE_TEST_IS_SYMLINK));
+    contents = g_file_read_link("/sys/devices/dev1/driver", &error);
+    g_assert_no_error(error);
+    g_assert_cmpstr(contents, ==, "../../foo");
+    g_free(contents);
 
     /* now add two more */
     umockdev_testbed_add_from_string(fixture->testbed,

@@ -505,9 +505,9 @@ public class Testbed: GLib.Object {
         /* lazily initialize the parsing regexps */
         try {
             if (this.re_record_val == null)
-                this.re_record_val = new Regex("^([PSL]): (.*)(?>\n|$)");
+                this.re_record_val = new Regex("^([PS]): (.*)(?>\n|$)");
             if (this.re_record_keyval == null)
-                this.re_record_keyval = new Regex("^([EAH]): ([^=\n]+)=(.*)(?>\n|$)");
+                this.re_record_keyval = new Regex("^([EAHL]): ([^=\n]+)=(.*)(?>\n|$)");
             if (this.re_record_optval == null)
                 this.re_record_optval = new Regex("^([N]): ([^=\n]+)(?>=([0-9A-F]+))?(?>\n|$)");
         } catch (RegexError e) {
@@ -625,6 +625,7 @@ public class Testbed: GLib.Object {
 
         string[] attrs = {};
         string[] binattrs = {}; /* hex encoded values */
+        string[] linkattrs = {};
         string[] props = {};
 
         /* scan until we see an empty line */
@@ -643,6 +644,11 @@ public class Testbed: GLib.Object {
                 case 'A':
                     attrs += key;
                     attrs += val.compress();
+                    break;
+
+                case 'L':
+                    linkattrs += key;
+                    linkattrs += val;
                     break;
 
                 case 'E':
@@ -667,7 +673,6 @@ public class Testbed: GLib.Object {
                     break;
 
                 case 'S':
-                case 'L':
                     /* TODO: ignored for now */
                     break;
 
@@ -687,6 +692,10 @@ public class Testbed: GLib.Object {
         /* add binary attributes */
         for (int i = 0; i < binattrs.length; i += 2)
             this.set_attribute_binary (syspath, binattrs[i], decode_hex(binattrs[i+1]));
+
+        /* add link attributes */
+        for (int i = 0; i < linkattrs.length; i += 2)
+            this.set_attribute_link (syspath, linkattrs[i], linkattrs[i+1]);
 
         /* create fake device node */
         if (devnode_path != null)
