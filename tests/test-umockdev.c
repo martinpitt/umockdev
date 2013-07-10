@@ -378,6 +378,8 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
     /* add a binary attribute */
     umockdev_testbed_set_attribute_binary(fixture->testbed, syspath, "descriptor",
 					  (guint8 *) "\x01\x00\xFF\x00\x05\x40\xA0", 7);
+    /* add a link attribute */
+    umockdev_testbed_set_attribute_link(fixture->testbed, syspath, "driver", "../drivers/hub");
     /* int attributes */
     umockdev_testbed_set_attribute_int(fixture->testbed, syspath, "count", 1000);
     umockdev_testbed_set_attribute_hex(fixture->testbed, syspath, "addr", 0x1a01);
@@ -389,6 +391,7 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "color"), ==, "yellow");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "count"), ==, "1000");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "addr"), ==, "1a01");
+    g_assert_cmpstr(g_udev_device_get_driver(device), ==, "hub");
     g_object_unref(device);
 
     g_object_unref(client);

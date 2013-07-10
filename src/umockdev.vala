@@ -180,6 +180,25 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_set_attribute_link:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Attribute name
+     * @value: Attribute link target value
+     *
+     * Set a symlink sysfs attribute for a device; this is primarily important
+     * for setting "driver" links.
+     */
+    public void set_attribute_link(string devpath, string name, string value)
+    {
+        var path = Path.build_filename(this.root_dir, devpath, name);
+        if (FileUtils.symlink(value, path) < 0) {
+            stderr.printf("Cannot create symlink %s: %s\n", path, strerror(errno));
+            Process.abort();
+        }
+    }
+
+    /**
      * umockdev_testbed_set_property:
      * @self: A #UMockdevTestbed.
      * @devpath: The full device path, as returned by #umockdev_testbed_add_device()

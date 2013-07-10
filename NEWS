@@ -17,6 +17,9 @@ New features/API:
   descriptor for simulated tty devices (and possibly other kinds of devices in
   the future), so that a test suite can communicate with clients that connect
   to the simulated tty device node. (second part of issue #9)
+- Add new method umockdev_testbed_set_attribute_link() to set attributes which
+  are symlinks; most importantly this allows testbeds to set the "driver"
+  attribute. (first part of issue #22)
 - Add recording of read()s and write()s to a device into files, called
   "device scripts". Add umockdev-record option -s/--script for this.
 
