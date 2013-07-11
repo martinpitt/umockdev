@@ -1030,7 +1030,9 @@ w 10 I\n\
 w 10 ^M\n\
 r 20 Bogus Device\n\
 w 10 split write\n\
-r 10 ACK";
+r 10 ACK\n\
+w 0 ^^^`^@\n\
+r 0 ^^^`^@";
 
   umockdev_testbed_add_from_string(fixture->testbed,
           "P: /devices/greeter\nN: greeter\n"
@@ -1101,6 +1103,14 @@ r 10 ACK";
   usleep(20000);
   g_assert_cmpint(read(fd, buf, 20), ==, 3);
   g_assert(strncmp(buf, "ACK", 3) == 0);
+
+  /* corner cases in encoding */
+  g_assert_cmpint(write(fd, "\x1E^\0", 3), ==, 3);
+  usleep(10000);
+  g_assert_cmpint(read(fd, buf, 10), ==, 3);
+  g_assert_cmpint(buf[0], ==, '\x1E');
+  g_assert_cmpint(buf[1], ==, '^');
+  g_assert_cmpint(buf[2], ==, 0);
 
   /* wraps around */
   ASSERT_EOF;

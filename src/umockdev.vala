@@ -1080,7 +1080,8 @@ private class ScriptRunner : Object {
         uint8[] data = {};
         for (int i = 0; i < line.length; ++i) {
             if (line.data[i] == '^') {
-                data += (line.data[i+1] - 64);
+                assert (i + 1 < line.length);
+                data += (line.data[i+1] == '`') ? '^' : (line.data[i+1] - 64);
                 ++i;
             } else
                 data += line.data[i];
@@ -1130,7 +1131,8 @@ private class ScriptRunner : Object {
             }
 
             if (Posix.memcmp (buf, data[offset:blksize], len) != 0) {
-                stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s', expected block '%s'\n",
+                stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s', expected block '%s' (%" +
+                               ssize_t.FORMAT +" bytes)\n",
                                this.device, (string) buf, (string) data[offset:blksize]);
                 Posix.abort ();
             }

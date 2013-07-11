@@ -606,8 +606,13 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 	    putc(*cur + 64, srinfo->log);
 	    continue;
 	}
-	if (*cur == '^')
+	if (*cur == '^') {
+	    /* we cannot encode ^ as ^^, as we need that for 0x1E already; so
+	     * take the next free code which is 0x60 */
 	    putc('^', srinfo->log);
+	    putc('`', srinfo->log);
+	    continue;
+	}
 	putc(*cur, srinfo->log);
     }
 
