@@ -100,7 +100,22 @@ main (string[] args)
         return 1;
     }
 
-    Posix.execvp(opt_program[0], opt_program);
-    stderr.printf ("Cannot run program: %s\n", strerror (errno));
-    return 1;
+    // we want to run opt_program as a subprocess instead of execve()ing, so
+    // that we can run device script threads in the background
+    int status;
+    try {
+        Process.spawn_sync (null, opt_program, null,
+                            SpawnFlags.SEARCH_PATH | SpawnFlags.CHILD_INHERITS_STDIN,
+                            null, null, null, out status);
+    } catch (SpawnError e) {
+            stderr.printf ("Cannot run %s: %s\n", opt_program[0], e.message);
+            Process.exit (1);
+    }
+
+    if (Process.if_exited (status))
+        return Process.exit_status (status);
+    if (Process.if_signaled (status))
+        Process.raise (Process.term_sig (status));
+
+    return status;
 }
