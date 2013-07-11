@@ -35,6 +35,7 @@ Bug fixes:
 - preload: Wrap fclose(). (issue #20)
 - Work around gtk-doc non-POSIX recursive variable expansion with automake >=
   1.13 and gtk-doc >= 1.19, which previously failed autogen.sh.
+- Do not export internal symbols in libumockdev library.
 
 0.2.11 (2013-07-03)
 -------------------
