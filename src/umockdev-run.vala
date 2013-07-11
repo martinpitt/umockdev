@@ -23,6 +23,8 @@ static string[] opt_device;
 [CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_ioctl;
 [CCode (array_length=false, array_null_terminated=true)]
+static string[] opt_script;
+[CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_program;
 static bool opt_version = false;
 
@@ -33,6 +35,9 @@ static const GLib.OptionEntry[] options = {
     {"ioctl", 'i', 0, OptionArg.FILENAME_ARRAY, ref opt_ioctl,
      "Load an umockdev-record ioctl dump into the testbed. Can be specified multiple times.",
      "devname=ioctlfilename"},
+    {"script", 's', 0, OptionArg.FILENAME_ARRAY, ref opt_script,
+     "Load an umockdev-record script into the testbed. Can be specified multiple times.",
+     "devname=scriptfilename"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_program, "", ""},
     {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
@@ -89,6 +94,20 @@ main (string[] args)
         }
         try {
             testbed.load_ioctl (parts[0], parts[1]);
+        } catch (FileError e) {
+            stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
+            return 1;
+        }
+    }
+
+    foreach (var i in opt_script) {
+        string[] parts = i.split ("=", 2); // devname, scriptfilename
+        if (parts.length != 2) {
+            stderr.printf ("Error: --script argument must be devname=filename\n");
+            return 1;
+        }
+        try {
+            testbed.load_script (parts[0], parts[1]);
         } catch (FileError e) {
             stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
             return 1;

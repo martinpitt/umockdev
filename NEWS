@@ -21,6 +21,8 @@ New features/API:
   "device scripts". Add umockdev-record option -s/--script for this.
 - Add new method umockdev_testbed_load_script() to replay read()s and
   write()s of a device from a script. (issue #18)
+- Add new option -s/--script to umockdev-run to load a script into the testbed.
+  (issue #18)
 - Add new method umockdev_testbed_set_attribute_link() to set attributes which
   are symlinks; most importantly this allows testbeds to set the "driver"
   attribute. (first part of issue #22)

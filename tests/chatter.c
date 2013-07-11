@@ -48,12 +48,14 @@ main(int argc, char **argv)
     len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
+    printf("Got input: %s", buf);
     writestr("I ♥ ");
     writestr(buf);
     writestr("a\t tab and a\n   line break in one write\n");
     len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
+    printf("Got input: %s", buf);
     writestr("bye!\n");
     close(fd);
     return 0;

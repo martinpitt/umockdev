@@ -174,6 +174,42 @@ t_run_invalid_ioctl ()
 }
 
 static void
+t_run_script_chatter ()
+{
+    string umockdev_file, script_file;
+
+    // create umockdev and script files
+    try {
+        int fd = FileUtils.open_tmp ("ttyS0.XXXXXX.umockdev", out umockdev_file);
+        Posix.close (fd);
+        fd = FileUtils.open_tmp ("chatter.XXXXXX.script", out script_file);
+        Posix.close (fd);
+
+        FileUtils.set_contents (umockdev_file, """P: /devices/platform/serial8250/tty/ttyS0
+N: ttyS0
+E: DEVNAME=/dev/ttyS0
+E: SUBSYSTEM=tty
+A: dev=4:64""");
+
+        FileUtils.set_contents (script_file, """w 0 Hello world!^JWhat is your name?^J
+r 300 Joe Tester^J
+w 0 I ♥ Joe Tester^Ja^I tab and a^J   line break in one write^J
+r 200 somejunk^J
+w 0 bye!^J""");
+    } catch (FileError e) {
+        stderr.printf ("cannot create temporary file: %s\n", e.message);
+        Process.abort();
+    }
+
+    check_program_out ("true", "-d " + umockdev_file + " -s /dev/ttyS0=" + script_file +
+                       " -- tests/chatter /dev/ttyS0",
+                       "Got input: Joe Tester\nGot input: somejunk\n");
+
+    FileUtils.remove (umockdev_file);
+    FileUtils.remove (script_file);
+}
+
+static void
 t_gphoto_detect ()
 {
     check_program_out ("gphoto2",
@@ -308,6 +344,9 @@ main (string[] args)
   // boundary conditions
   Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);
   Test.add_func ("/umockdev-run/invalid-ioctl", t_run_invalid_ioctl);
+
+  // script replay
+  Test.add_func ("/umockdev-run/script-chatter", t_run_script_chatter);
 
   // tests with gphoto2 program for PowerShot
   Test.add_func ("/umockdev-run/integration/gphoto-detect", t_gphoto_detect);
