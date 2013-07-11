@@ -43,6 +43,17 @@ static const GLib.OptionEntry[] options = {
     { null }
 };
 
+Pid child_pid;
+
+static void
+child_sig_handler (int sig)
+{
+    debug ("umockdev-run: caught signal %i, propagating to child\n", sig);
+    if (Posix.kill (child_pid, sig) != 0)
+        stderr.printf ("umockdev-run: unable to propagate signal %i to child %i: %s\n",
+                       sig, child_pid, strerror (errno));
+}
+
 static int
 main (string[] args)
 {
@@ -123,13 +134,28 @@ main (string[] args)
     // that we can run device script threads in the background
     int status;
     try {
-        Process.spawn_sync (null, opt_program, null,
-                            SpawnFlags.SEARCH_PATH | SpawnFlags.CHILD_INHERITS_STDIN,
-                            null, null, null, out status);
+        Process.spawn_async (null, opt_program, null,
+                            SpawnFlags.SEARCH_PATH | SpawnFlags.CHILD_INHERITS_STDIN | SpawnFlags.DO_NOT_REAP_CHILD ,
+                            null, out child_pid);
     } catch (SpawnError e) {
             stderr.printf ("Cannot run %s: %s\n", opt_program[0], e.message);
             Process.exit (1);
     }
+
+    // propagate signals to the child
+    var act = Posix.sigaction_t() { sa_handler = child_sig_handler, sa_flags = Posix.SA_RESETHAND };
+    Posix.sigemptyset (act.sa_mask);
+    assert (Posix.sigaction (Posix.SIGTERM, act, null) == 0);
+    assert (Posix.sigaction (Posix.SIGHUP, act, null) == 0);
+    assert (Posix.sigaction (Posix.SIGINT, act, null) == 0);
+    assert (Posix.sigaction (Posix.SIGQUIT, act, null) == 0);
+    assert (Posix.sigaction (Posix.SIGABRT, act, null) == 0);
+
+    Posix.waitpid (child_pid, out status, 0);
+    Process.close_pid (child_pid);
+
+    // free the testbed here already, so that it gets cleaned up before raise()
+    testbed = null;
 
     if (Process.if_exited (status))
         return Process.exit_status (status);
