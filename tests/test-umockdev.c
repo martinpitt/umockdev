@@ -1030,9 +1030,10 @@ w 10 I\n\
 w 10 ^M\n\
 r 20 Bogus Device\n\
 w 10 split write\n\
+\n\
 r 10 ACK\n\
 w 0 ^^^`^@\n\
-r 0 ^^^`^@";
+r 0 ^^^`^@\n";
 
   umockdev_testbed_add_from_string(fixture->testbed,
           "P: /devices/greeter\nN: greeter\n"

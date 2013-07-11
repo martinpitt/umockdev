@@ -1051,16 +1051,22 @@ private class ScriptRunner {
 
     private uint8[] next_line (out char op, out uint32 delta)
     {
-        // wrap around at the end
-        if (this.script.eof ()) {
-            debug ("ScriptRunner[%s]: end of script %s, rewinding", this.device, this.script_file);
-            this.script.seek (0, FileSeek.SET);
+        // read operation code; skip empty lines and wrap around at EOF
+        int c;
+        for (;;) {
+            c = this.script.getc ();
+            if (c == FileStream.EOF) {
+                debug ("ScriptRunner[%s]: end of script %s, rewinding", this.device, this.script_file);
+                       this.script.seek (0, FileSeek.SET);
+            } else if (c != '\n') {
+                op = (char) c;
+                break;
+            }
         }
 
-        // read operation code
         var cur_pos = this.script.tell ();
-        if (this.script.scanf ("%c ", out op) != 1) {
-            stderr.printf ("Cannot parse operation in %s at position %li\n", this.script_file, cur_pos);
+        if (this.script.getc () != ' ') {
+            stderr.printf ("Missing space after operation code in %s at position %li\n", this.script_file, cur_pos);
             Posix.abort ();
         }
 
