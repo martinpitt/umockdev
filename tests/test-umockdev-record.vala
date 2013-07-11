@@ -308,6 +308,14 @@ t_system_script_log_chatter ()
     assert (Linux.openpty (out ptym, out ptys, ptyname, null, null) == 0);
     Posix.close (ptys);
 
+    // disable echo, canonical mode, and line ending translation
+    Posix.termios ios;
+    assert (Posix.tcgetattr (ptym, out ios) == 0);
+    ios.c_iflag &= ~(Posix.IGNCR | Posix.INLCR | Posix.ICRNL);
+    ios.c_oflag &= ~(Posix.ONLCR | Posix.OCRNL);
+    ios.c_lflag &= ~(Posix.ICANON | Posix.ECHO);
+    assert (Posix.tcsetattr (ptym, Posix.TCSANOW, ios) == 0);
+
     // start chatter
     Pid chatter_pid;
     try {
@@ -325,8 +333,8 @@ t_system_script_log_chatter ()
     assert (chatter_stream != null);
 
     // expect the first two lines
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "Hello world!\r\n");
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "What is your name?\r\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "Hello world!\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "What is your name?\n");
 
     // type name and second string after some delay
     Thread.usleep (500000);
@@ -337,8 +345,7 @@ t_system_script_log_chatter ()
     Thread.usleep (300000);
     chatter_stream.puts ("foo ☹ bar !\n");
 
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "foo ☹ bar !\r\n");
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "bye!\r\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "bye!\n");
 
     int status;
     assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), Op.EQ, (int) chatter_pid);

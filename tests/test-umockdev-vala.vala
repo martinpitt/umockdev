@@ -357,15 +357,14 @@ A: dev=4:74
 
   char[] buf = new char[100];
 
-  /* client -> master; note that there is some wiggling here due to line ending
-   * conversion */
+  /* client -> master */
   assert_cmpint ((int) Posix.write (client_fd, "hello\n", 6), Op.EQ, 6);
-  assert_cmpint ((int) Posix.read (master_fd, buf, 100), Op.EQ, 7);
-  assert_cmpstr ((string) buf, Op.EQ, "hello\r\n");
+  assert_cmpint ((int) Posix.read (master_fd, buf, 100), Op.EQ, 6);
+  assert_cmpstr ((string) buf, Op.EQ, "hello\n");
 
   /* master -> client */
   buf = new char[100];
-  assert_cmpint ((int) Posix.write (master_fd, "world\r\n", 7), Op.EQ, 7);
+  assert_cmpint ((int) Posix.write (master_fd, "world\n", 6), Op.EQ, 6);
   assert_cmpint ((int) Posix.read (client_fd, buf, 100), Op.EQ, 6);
   assert_cmpstr ((string) buf, Op.EQ, "world\n");
 

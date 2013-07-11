@@ -726,6 +726,15 @@ public class Testbed: GLib.Object {
             debug ("create_node_for_device: creating tty device %s: got pty %s", node_path, ptyname);
             Posix.close (ptys);
 
+            // disable echo, canonical mode, and line ending translation by
+            // default, as that's usually what we want
+            Posix.termios ios;
+            assert (Posix.tcgetattr (ptym, out ios) == 0);
+            ios.c_iflag &= ~(Posix.IGNCR | Posix.INLCR | Posix.ICRNL);
+            ios.c_oflag &= ~(Posix.ONLCR | Posix.OCRNL);
+            ios.c_lflag &= ~(Posix.ICANON | Posix.ECHO);
+            assert (Posix.tcsetattr (ptym, Posix.TCSANOW, ios) == 0);
+
             assert (FileUtils.symlink (ptyname, node_path) == 0);
 
             // store ptym for controlling the master end
