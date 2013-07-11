@@ -31,6 +31,9 @@ Right now umockdev supports the following features:
    (for everything else) by default. You can manually create other kinds of
    fake devices in your tests, too.
 
+ * Recording and replay of read()s and write()s to a (character) device (e. g.
+   for emulating modems)
+
  * Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
    Wacom tablets, etc.) ioctls
 
@@ -42,9 +45,10 @@ umockdev consists of the following parts:
 
 - The ``umockdev-record`` program generates text dumps (conventionally called
   ``*.umockdev``) of some specified, or all of the system's devices and their
-  sysfs attributes and udev properties. It can also record ioctls that a
-  particular program sends and receives to/from a device, and store them into
-  a text file (conventionally called ``*.ioctl``).
+  sysfs attributes and udev properties. It can also record ioctls and
+  reads/writes that a particular program sends and receives to/from a device,
+  and store them into a text file (conventionally called ``*.ioctl`` for ioctl
+  records, and ``*.script`` for read/write records).
 
 - The libumockdev library provides the ``UMockdevTestbed`` GObject class which
   builds sysfs and /dev testbeds, provides API to generate devices,

@@ -71,6 +71,7 @@ public class Testbed: GLib.Object {
         DirUtils.create(this.sys_dir, 0755);
 
         this.dev_fd = new HashTable<string, int> (str_hash, str_equal);
+        this.dev_script_runner = new HashTable<string, ScriptRunner> (str_hash, str_equal);
 
         Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
         debug("Created udev test bed %s", this.root_dir);
@@ -78,13 +79,17 @@ public class Testbed: GLib.Object {
 
     ~Testbed()
     {
-        debug ("Removing test bed %s", this.root_dir);
+        // merely calling remove_all() does not invoke ScriptRunner dtor, so stop manually
+        foreach (ScriptRunner r in this.dev_script_runner.get_values())
+            r.stop ();
+        this.dev_script_runner.remove_all();
 
         foreach (int fd in this.dev_fd.get_values()) {
             debug ("closing master pty fd %i for emulated device", fd);
             Posix.close (fd);
         }
 
+        debug ("Removing test bed %s", this.root_dir);
         remove_dir (this.root_dir);
         Environment.unset_variable("UMOCKDEV_DIR");
     }
@@ -604,6 +609,33 @@ public class Testbed: GLib.Object {
         return FileUtils.set_contents(dest, contents);
     }
 
+    /**
+     * umockdev_testbed_load_script:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) for which to load the script record.
+     * @recordfile: Path of the script record file.
+     * @error: return location for a GError, or %NULL
+     *
+     * Load a script record file for a particular device into the testbed.
+     * script records can be created with umockdev-record --script.
+     *
+     * Returns: %TRUE on success, %FALSE if @recordfile is invalid and an error
+     *          occurred.
+     */
+    public bool load_script (string dev, string recordfile)
+        throws FileError
+    {
+        assert (!this.dev_script_runner.contains (dev));
+
+        int fd = this.get_dev_fd (dev);
+        if (fd < 0)
+            throw new FileError.INVAL (dev + " is not a device suitable for scripts");
+
+        var s = new ScriptRunner (dev, recordfile, fd);
+        this.dev_script_runner.insert (dev, s);
+        return true;
+    }
+
     private string add_dev_from_string(string data) throws UMockdev.Error
     {
         char type;
@@ -881,6 +913,7 @@ public class Testbed: GLib.Object {
     private Regex re_record_optval;
     private UeventSender.sender? ev_sender = null;
     private HashTable<string,int> dev_fd;
+    private HashTable<string,ScriptRunner> dev_script_runner;
 }
 
 
@@ -949,6 +982,167 @@ decode_hex (string data) throws UMockdev.Error
         bin[i] = (hexdigit (data[i*2]) << 4) | hexdigit (data[i*2+1]);
 
     return bin;
+}
+
+private class ScriptRunner : Object {
+
+    public ScriptRunner (string device, string script_file, int fd) throws FileError
+    {
+        this.script = FileStream.open (script_file, "r");
+        if (this.script == null)
+            throw new FileError.FAILED ("Cannot open script record file " + script_file);
+
+        this.device = device;
+        this.script_file = script_file;
+        this.fd = fd;
+        this.running = true;
+
+        this.thread = new Thread<void*> (device, this.run);
+    }
+
+    ~ScriptRunner ()
+    {
+        this.stop();
+    }
+
+    public void stop ()
+    {
+        if (!this.running)
+            return;
+
+        debug ("Stopping script runner for %s: joining thread", this.device);
+        this.running = false;
+        this.thread.join ();
+    }
+
+    private void* run ()
+    {
+        char op;
+        uint32 delta;
+        uint8[] data;
+
+        while (this.running) {
+            data = this.next_line (out op, out delta);
+
+            switch (op) {
+                case 'r':
+                    debug ("ScriptRunner[%s]: read op; sleeping %" + uint32.FORMAT + " ms",
+                           this.device, delta);
+                    Thread.usleep (delta * 1000);
+                    debug ("ScriptRunner[%s]: read op after sleep; writing data '%s'", this.device, (string) data);
+                    assert (Posix.write (this.fd, data, data.length - 1) == data.length - 1);
+                    break;
+
+                case 'w':
+                    debug ("ScriptRunner[%s]: write op, data '%s'", this.device, (string) data);
+                    this.op_write (data, delta);
+                    break;
+
+                default:
+                    debug ("ScriptRunner[%s]: got unknown line op %c, ignoring", this.device, op);
+                    break;
+            }
+        }
+
+        return null;
+    }
+
+    private uint8[] next_line (out char op, out uint32 delta)
+    {
+        // wrap around at the end
+        if (this.script.eof ())
+            this.script.seek (0, FileSeek.SET);
+
+        // read operation code
+        var cur_pos = this.script.tell ();
+        if (this.script.scanf ("%c ", out op) != 1) {
+            stderr.printf ("Cannot parse operation in %s at position %li\n", this.script_file, cur_pos);
+            Posix.abort ();
+        }
+
+        // read time delta
+        cur_pos = this.script.tell ();
+        if (this.script.scanf ("%" + uint32.FORMAT + " ", out delta) != 1) {
+            stderr.printf ("Cannot parse time in %s at position %li\n", this.script_file, cur_pos);
+            Posix.abort ();
+        }
+
+        // remainder of the line is the data
+        string? line = this.script.read_line ();
+        assert (line != null);
+
+        // unquote
+        uint8[] data = {};
+        for (int i = 0; i < line.length; ++i) {
+            if (line.data[i] == '^') {
+                data += (line.data[i+1] - 64);
+                ++i;
+            } else
+                data += line.data[i];
+        }
+
+        // null terminator for string conversion (only for debug() messages)
+        data += 0;
+
+        return data;
+    }
+
+    private void op_write (uint8[] data, uint32 delta)
+    {
+        Posix.fd_set fds;
+        Posix.timeval timeout = {0, 200000};
+        size_t blksize = data.length - 1;  /* skip null terminator */
+        size_t offset = 0;
+        uint8[] buf = new uint8 [blksize];
+
+        // a recorded block might be actually written in multiple smaller
+        // chunks
+        while (this.running && offset < blksize) {
+            Posix.FD_ZERO (out fds);
+            Posix.FD_SET (this.fd, ref fds);
+            int res = Posix.select (this.fd + 1, &fds, null, null, timeout);
+            if (res < 0) {
+                if (errno == Posix.EINTR)
+                    continue;
+                stderr.printf ("ScriptRunner op_write[%s]: select() failed: %s\n",
+                               this.device, strerror (errno));
+                Posix.abort ();
+            }
+
+            if (res == 0) {
+                debug ("ScriptRunner[%s]: timed out on read operation on expected block '%s', trying again",
+                       this.device, (string) data[offset:blksize]);
+                continue;
+            }
+
+            ssize_t len = Posix.read (this.fd, buf, blksize - offset);
+            // if the client closes the fd, we'll get EIO
+            if (len <= 0) {
+                debug ("ScriptRunner[%s]: got failure or EOF on read operation on expected block '%s', resetting",
+                       this.device, (string) data[offset:blksize]);
+                this.script.seek (0, FileSeek.SET);
+                return;
+            }
+
+            if (Posix.memcmp (buf, data[offset:blksize], len) != 0) {
+                stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s', expected block '%s'\n",
+                               this.device, (string) buf, (string) data[offset:blksize]);
+                Posix.abort ();
+            }
+
+            offset += len;
+            debug ("ScriptRunner[%s]: op_write, got %" + ssize_t.FORMAT + " bytes; offset: %" +
+                   size_t.FORMAT + ", full block size %" + size_t.FORMAT,
+                   this.device, len, offset, blksize);
+        }
+    }
+
+    public string device { get; private set; }
+    private string script_file;
+    private Thread<void*> thread;
+    private FileStream script;
+    private int fd;
+    private bool running;
 }
 
 /**

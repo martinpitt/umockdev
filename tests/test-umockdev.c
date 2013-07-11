@@ -1005,6 +1005,117 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_object_unref(client);
 }
 
+#define ASSERT_EOF \
+  g_assert_cmpint(read(fd, buf, 5), ==, -1);    \
+  g_assert_cmpint(errno, ==, EAGAIN);           \
+  errno = 0;
+
+static void
+t_testbed_script_replay_simple(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  char *tmppath;
+  int fd;
+  char buf[1024];
+
+  static const char* test_script = "r 200 ready\n\
+w 0 abc\n\
+w 2 defgh\n\
+r 10 response^I1^J\n\
+r 2  hello world ☺\n\
+w 10 A\n\
+w 10 T\n\
+w 10 I\n\
+w 10 ^M\n\
+r 20 Bogus Device\n\
+w 10 split write\n\
+r 10 ACK";
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/greeter\nN: greeter\n"
+          "E: DEVNAME=/dev/greeter\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
+  g_assert_no_error(error);
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_simple.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_script(fixture->testbed, "/dev/greeter", tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* start communication */
+  fd = g_open("/dev/greeter", O_RDWR | O_NONBLOCK, 0);
+  g_assert_cmpint(fd, >=, 0);
+
+  /* should get initial greeting after 200 ms */
+  ASSERT_EOF;
+  usleep(220000);
+  g_assert_cmpint(read(fd, buf, 5), ==, 5);
+  g_assert(strncmp(buf, "ready", 5) == 0);
+  g_assert_cmpint(errno, ==, 0);
+
+  /* do the two write blocks in two matching calls; check that nothing is
+   * readable before */
+  ASSERT_EOF;
+  g_assert_cmpint(write(fd, "abc", 3), ==, 3);
+  ASSERT_EOF;
+  g_assert_cmpint(write(fd, "defgh", 5), ==, 5);
+
+  /* now we should get the response after 10 ms */
+  ASSERT_EOF;
+  usleep(15000);
+  g_assert_cmpint(read(fd, buf, 11), ==, 11);
+  g_assert(strncmp(buf, "response\t1\n", 11) == 0);
+  g_assert_cmpint(errno, ==, 0);
+  usleep(2000);
+  g_assert_cmpint(read(fd, buf, 15), ==, 15);
+  g_assert(strncmp(buf, "hello world ☺\n", 15) == 0);
+  g_assert_cmpint(errno, ==, 0);
+  ASSERT_EOF;
+
+  /* joined write: write the ATI^M in one block;
+     wait 2.5 times the original total write delay */
+  usleep(100000);
+  g_assert_cmpint(write(fd, "ATI\r", 4), ==, 4);
+
+  /* response after 20 ms */
+  usleep(30000);
+  g_assert_cmpint(read(fd, buf, 13), ==, 12);
+  g_assert(strncmp(buf, "Bogus Device", 12) == 0);
+  ASSERT_EOF;
+
+  /* split write: write original block in two blocks */
+  usleep(5000);
+  g_assert_cmpint(write(fd, "split ", 6), ==, 6);
+  usleep(5000);
+  g_assert_cmpint(write(fd, "write", 5), ==, 5);
+
+  /* response after 10 ms */
+  ASSERT_EOF;
+  usleep(20000);
+  g_assert_cmpint(read(fd, buf, 20), ==, 3);
+  g_assert(strncmp(buf, "ACK", 3) == 0);
+
+  /* wraps around */
+  ASSERT_EOF;
+  usleep(220000);
+  g_assert_cmpint(read(fd, buf, 5), ==, 5);
+  g_assert(strncmp(buf, "ready", 5) == 0);
+
+  /* the following read() will fail on the server side as we close the fd now
+   * instead of doing the expected write; this should not abort the program */
+
+  close(fd);
+}
+
+
+
 static void
 t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
@@ -1120,6 +1231,10 @@ main(int argc, char **argv)
 	       t_testbed_add_from_string_dev_block, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dev_query_gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_dev_query_gudev, t_testbed_fixture_teardown);
+
+    /* tests for script replay */
+    g_test_add("/umockdev-testbed/script_replay_simple", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_script_replay_simple, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
