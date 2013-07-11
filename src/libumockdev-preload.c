@@ -592,7 +592,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 
     /* for negligible time deltas, append to the previous stanza, otherwise
      * create a new record */
-    if (delta > 0 || srinfo->op != op) {
+    if (delta >= 10 || srinfo->op != op) {
 	if (srinfo->op != 0)
 	    putc('\n', srinfo->log);
 	snprintf(header, sizeof(header), "%c %lu ", op, delta);
