@@ -99,6 +99,46 @@ check_program_error (string program, string run_command, string expected_err)
 }
 
 static void
+t_run_exit_code ()
+{
+    string sout, serr;
+    int exit;
+
+    // normal exit, zero
+    check_program_out ("true", umockdev_run_command + "true", "");
+
+    // normal exit, nonzero
+    get_program_out ("ls", umockdev_run_command + "ls /nonexisting", out sout, out serr, out exit);
+    assert (Process.if_exited (exit));
+    assert_cmpint (Process.exit_status (exit), Op.EQ, 2);
+    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpstr (serr, Op.NE, "");
+
+    // signal exit
+    get_program_out ("sh", umockdev_run_command + "-- sh -c 'kill -SEGV $$'", out sout, out serr, out exit);
+    assert (Process.if_signaled (exit));
+    assert_cmpint (Process.term_sig (exit), Op.EQ, ProcessSignal.SEGV);
+    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpstr (serr, Op.EQ, "");
+}
+
+static void
+t_run_pipes ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    // child program gets stdin, and we get proper stdout
+    assert(get_program_out ("echo", "sh -c 'echo hello | " + umockdev_run_command + "cat'",
+                            out sout, out serr, out exit));
+
+    assert_cmpstr (sout, Op.EQ, "hello\n");
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+}
+
+static void
 t_run_invalid_args ()
 {
     // missing program to run
@@ -260,6 +300,10 @@ main (string[] args)
       rootdir = top_srcdir;
   else
       rootdir = ".";
+
+  // general operations
+  Test.add_func ("/umockdev-run/exit_code", t_run_exit_code);
+  Test.add_func ("/umockdev-run/pipes", t_run_pipes);
 
   // boundary conditions
   Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);
