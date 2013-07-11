@@ -1021,6 +1021,8 @@ private class ScriptRunner : Object {
         uint32 delta;
         uint8[] data;
 
+        debug ("ScriptRunner[%s]: start", this.device);
+
         while (this.running) {
             data = this.next_line (out op, out delta);
 
@@ -1044,14 +1046,17 @@ private class ScriptRunner : Object {
             }
         }
 
+        debug ("ScriptRunner[%s]: not running any more, ending thread", this.device);
         return null;
     }
 
     private uint8[] next_line (out char op, out uint32 delta)
     {
         // wrap around at the end
-        if (this.script.eof ())
+        if (this.script.eof ()) {
+            debug ("ScriptRunner[%s]: end of script %s, rewinding", this.device, this.script_file);
             this.script.seek (0, FileSeek.SET);
+        }
 
         // read operation code
         var cur_pos = this.script.tell ();
