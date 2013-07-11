@@ -120,6 +120,32 @@ Command line: Record and replay PtP/MTP USB devices
 Note that if your ``*.ioctl`` files get too large for some purpose, you can
 xz-compress them.
 
+Command line: Record and replay tty devices
+-------------------------------------------
+This example records the behaviour of an USB 3G stick with ModemManager.
+
+- Dump the sysfs device and udev properties of the relevant tty devices (a
+  Huawei stick creates ttyUSB{0,1,2}):
+
+  | umockdev-record /dev/ttyUSB* > huawei.umockdev
+  |
+
+- Record the communication that goes on between ModemManager and the 3G stick
+  into a file ("script"):
+
+  | umockdev-record -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
+  |     -s /dev/ttyUSB2=2.script -- modem-manager --debug
+
+  (The --debug option for ModemManager is not necessary, but it's nice to see
+  what's going on). Note that you should shut down the running system instance
+  for that, or run this on a private D-BUS.
+
+- Now you can disconnect the stick (not necessary, just to clearly prove that
+  the following does not actually talk to the stick), and replay in a test bed:
+
+  | umockdev-run -d huawei.umockdev -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
+  |      -s /dev/ttyUSB2=2.script -- modem-manager --debug
+
 
 Development
 ===========
