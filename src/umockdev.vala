@@ -80,7 +80,7 @@ public class Testbed: GLib.Object {
     ~Testbed()
     {
         // merely calling remove_all() does not invoke ScriptRunner dtor, so stop manually
-        foreach (ScriptRunner r in this.dev_script_runner.get_values())
+        foreach (unowned ScriptRunner r in this.dev_script_runner.get_values())
             r.stop ();
         this.dev_script_runner.remove_all();
 
@@ -631,8 +631,7 @@ public class Testbed: GLib.Object {
         if (fd < 0)
             throw new FileError.INVAL (dev + " is not a device suitable for scripts");
 
-        var s = new ScriptRunner (dev, recordfile, fd);
-        this.dev_script_runner.insert (dev, s);
+        this.dev_script_runner.insert (dev, new ScriptRunner (dev, recordfile, fd));
         return true;
     }
 
@@ -984,7 +983,7 @@ decode_hex (string data) throws UMockdev.Error
     return bin;
 }
 
-private class ScriptRunner : Object {
+private class ScriptRunner {
 
     public ScriptRunner (string device, string script_file, int fd) throws FileError
     {
