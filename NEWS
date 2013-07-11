@@ -33,6 +33,8 @@ Bug fixes:
 - umockdev-run: Give proper error message if --ioctl argument is invalid.
 - preload: Only look up original libc functions once. (issue #21)
 - preload: Wrap fclose(). (issue #20)
+- Work around gtk-doc non-POSIX recursive variable expansion with automake >=
+  1.13 and gtk-doc >= 1.19, which previously failed autogen.sh.
 
 0.2.11 (2013-07-03)
 -------------------
