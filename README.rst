@@ -66,14 +66,14 @@ umockdev consists of the following parts:
   libumockdev through the ``umockdev-wrapper`` program.
 
 - The ``umockdev-run`` program builds a sandbox using libumockdev, can load
-  ``*.umockdev`` and ``*.ioctl`` files into it, and run a program in that
-  sandbox. I. e. it is a CLI interface to libumockdev, which is useful in the
-  "debug a failure with a particular device" use case if you get the text
-  dumps from a bug report. This automatically takes care of using the preload
-  library, i. e. you don't need ``umockdev-wrapper`` with this. You cannot use
-  this program if you need to simulate uevents or change attributes/properties
-  on the fly; for those you need to use libumockdev directly.
-
+  ``*.umockdev``, ``*.ioctl``, and ``*.script`` files into it, and run a
+  program in that sandbox. I. e. it is a CLI interface to libumockdev, which is
+  useful in the "debug a failure with a particular device" use case if you get
+  the text dumps from a bug report. This automatically takes care of using the
+  preload library, i. e. you don't need ``umockdev-wrapper`` with this. You
+  cannot use this program if you need to simulate uevents or change
+  attributes/properties on the fly; for those you need to use libumockdev
+  directly.
 
 Examples
 ========

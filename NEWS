@@ -6,8 +6,8 @@ Command line argument changes (not backwards compatible):
   device as the first positional argument. This was inconsistant, and is
   necessary to support other kinds of recording in the future.
 - Rename umockdev-run's -l/--load option to -d/--device. Other kinds of files
-  (ioctl dumps, and soon read/write scripts) also get "loaded" into the
-  testbed, so the previous name does not make sense any more.
+  (ioctl dumps, and read/write scripts) also get "loaded" into the testbed, so
+  the previous name does not make sense any more.
 
 New features/API:
 - Emulate SUBSYSTEM=tty mocked device nodes as PTYs instead of plain files, so
