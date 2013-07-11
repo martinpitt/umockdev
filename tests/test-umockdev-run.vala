@@ -99,18 +99,6 @@ check_program_error (string program, string run_command, string expected_err)
 }
 
 static void
-t_gphoto_detect ()
-{
-    check_program_out ("gphoto2",
-        "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
-        rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 --auto-detect",
-        """Model                          Port            
-----------------------------------------------------------
-Canon PowerShot SX200 IS       usb:001,011     
-""");
-}
-
-static void
 t_run_invalid_args ()
 {
     // missing program to run
@@ -143,6 +131,18 @@ t_run_invalid_ioctl ()
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011 -- gphoto2 -l",
         "--ioctl");
+}
+
+static void
+t_gphoto_detect ()
+{
+    check_program_out ("gphoto2",
+        "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+        rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 --auto-detect",
+        """Model                          Port            
+----------------------------------------------------------
+Canon PowerShot SX200 IS       usb:001,011     
+""");
 }
 
 static void
