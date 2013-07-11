@@ -529,11 +529,15 @@ script_record_open(int fd)
 	abort();
     }
 
-    log = fopen(logname, "w");
+    log = fopen(logname, "a");
     if (log == NULL) {
 	perror("umockdev: failed to open script record file");
 	exit(1);
     }
+
+    // if we have a previous record, make sure that we start a new line
+    if (ftell(log) > 0)
+	putc('\n', log);
 
     DBG("script_record_open: start recording fd %i on device %i:%i into %s\n",
 	fd, major(fd_dev), minor(fd_dev), logname);
