@@ -1189,6 +1189,86 @@ t_testbed_disable(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpuint(num_udev_devices(), ==, 1);
 }
 
+static gboolean
+file_in_testbed(UMockdevTestbedFixture * fixture, const char *path)
+{
+    gboolean res;
+    char *p = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed),
+                               path, NULL);
+    res = g_file_test(p, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_SYMLINK);
+    g_free(p);
+    return res;
+}
+
+static void
+t_testbed_remove(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    GError *error = NULL;
+    const char *syspath;
+
+    /* create two /dev and /sys entries */
+    umockdev_testbed_add_from_string(fixture->testbed,
+				     "P: /devices/moo\n"
+				     "N: bus/usb/moo\n"
+				     "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/bus/usb/moo\n"
+                                     "A: dev=1:2\n", &error);
+    g_assert_no_error(error);
+
+    umockdev_testbed_add_from_string(fixture->testbed,
+				     "P: /devices/precious\n"
+				     "N: bus/tty/precious\n"
+				     "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/bus/tty/precious\n"
+                                     "A: dev=1:3\n", &error);
+    g_assert_no_error(error);
+
+    /* static device node */
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/static\nN: static=00FF614100\n"
+					      "E: SUBSYSTEM=usb\nE: DEVNAME=/dev/static\n"
+					      "A: dev=189:2\n", &error));
+    g_assert_no_error(error);
+
+    /* simplest possible device */
+    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "simple", NULL, NULL, NULL);
+    g_assert(syspath);
+
+    /* remove moo */
+    umockdev_testbed_remove_device(fixture->testbed, "/sys/devices/moo");
+
+    /* moo is gone */
+    g_assert(!file_in_testbed(fixture, "sys/devices/moo"));
+    g_assert(!file_in_testbed(fixture, "sys/dev/char/1:2"));
+    g_assert(!file_in_testbed(fixture, "sys/class/tty/moo"));
+    g_assert(!file_in_testbed(fixture, "dev/bus/usb/moo"));
+    g_assert(!file_in_testbed(fixture, "dev/.node/bus_usb_moo"));
+
+    /* but precious still exists */
+    g_assert(file_in_testbed(fixture, "sys/devices/precious"));
+    g_assert(file_in_testbed(fixture, "sys/dev/char/1:3"));
+    g_assert(file_in_testbed(fixture, "sys/class/tty/precious"));
+    g_assert(file_in_testbed(fixture, "dev/bus/tty/precious"));
+    g_assert(file_in_testbed(fixture, "dev/.node/bus_tty_precious"));
+
+    /* now remove precious as well; this should also clean parent dirs */
+    umockdev_testbed_remove_device(fixture->testbed, "/sys/devices/precious");
+    g_assert(!file_in_testbed(fixture, "sys/devices/precious"));
+    g_assert(!file_in_testbed(fixture, "sys/dev/char/1:2"));
+    g_assert(!file_in_testbed(fixture, "sys/class/tty"));
+    g_assert(!file_in_testbed(fixture, "dev/bus/tty"));
+
+    /* remove the other two, should not cause errors */
+    umockdev_testbed_remove_device(fixture->testbed, "/sys/devices/static");
+    g_assert(!file_in_testbed(fixture, "dev/static"));
+    umockdev_testbed_remove_device(fixture->testbed, "/sys/devices/simple");
+
+    /* should clean parent dirs */
+    g_assert(!file_in_testbed(fixture, "dev/bus/tty"));
+    g_assert(!file_in_testbed(fixture, "dev/bus/usb"));
+    g_assert(!file_in_testbed(fixture, "sys/class/usb"));
+    g_assert(!file_in_testbed(fixture, "sys/class/tty"));
+    g_assert(!file_in_testbed(fixture, "sys/bus/usb"));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1252,5 +1332,7 @@ main(int argc, char **argv)
 	       t_testbed_clear, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/disable", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_disable, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/remove", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_remove, t_testbed_fixture_teardown);
     return g_test_run();
 }

@@ -465,6 +465,66 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_remove_device:
+     * @self: A #UMockdevTestbed.
+     * @syspath: Sysfs path of device
+     *
+     * Remove a device from the testbed. This removes the sysfs directory, the
+     * /sys/class/ link, the device node, and all other information related to
+     * it. Note that this will also remove all child devices (i. e.
+     * subdirectories of @syspath).
+     */
+    public void remove_device (string syspath)
+    {
+        string real_path = Path.build_filename(this.root_dir, syspath);
+        string devname = Path.get_basename(syspath);
+
+        if (!FileUtils.test(real_path, FileTest.IS_DIR)) {
+            critical("umockdev_testbed_remove_device(): device %s does not exist", syspath);
+            return;
+        }
+
+        string subsystem;
+
+        try {
+            subsystem = Path.get_basename(
+                FileUtils.read_link(Path.build_filename(real_path, "subsystem")));
+        } catch (FileError e) {
+            critical("umockdev_testbed_remove_device(): cannot determine subsystem of %s: %s",
+                     syspath, e.message);
+            return;
+        }
+
+        // /dev and pointers to it
+        try {
+            string dev_maj_min;
+            FileUtils.get_contents(Path.build_filename(real_path, "dev"), out dev_maj_min);
+            FileUtils.unlink(Path.build_filename(this.sys_dir, "dev",
+                        (syspath.contains("/block/") ? "block" : "char"), dev_maj_min));
+
+            string? dev_node = find_devnode(real_path);
+            if (dev_node != null) {
+                string real_node = Path.build_filename(this.root_dir, dev_node);
+                FileUtils.unlink(real_node);
+                DirUtils.remove(Path.get_dirname(real_node));
+                FileUtils.unlink(Path.build_filename(this.root_dir, "dev", ".node", dev_node.substring(5).replace("/", "_")));
+            }
+        } catch (FileError e) {}
+
+        // class symlink
+        FileUtils.unlink(Path.build_filename(this.sys_dir, "class", subsystem, devname));
+        DirUtils.remove(Path.build_filename(this.sys_dir, "class", subsystem));
+        // bus symlink
+        if (subsystem == "usb" || subsystem == "pci") {
+            FileUtils.unlink(Path.build_filename(this.sys_dir, "bus", subsystem, "devices", devname));
+            DirUtils.remove(Path.build_filename(this.sys_dir, "bus", subsystem, "devices"));
+            DirUtils.remove(Path.build_filename(this.sys_dir, "bus", subsystem));
+        }
+        // sysfs dir
+        remove_dir(real_path, true);
+    }
+
+    /**
      * umockdev_testbed_add_from_string:
      * @self: A #UMockdevTestbed.
      * @data: Description of the device(s) as generated with umockdev-record
@@ -981,6 +1041,32 @@ decode_hex (string data) throws UMockdev.Error
         bin[i] = (hexdigit (data[i*2]) << 4) | hexdigit (data[i*2+1]);
 
     return bin;
+}
+
+private static string?
+find_devnode (string devpath)
+{
+    string? devname = null;
+
+    // read current properties from the uevent file
+    File f = File.new_for_path(Path.build_filename(devpath, "uevent"));
+    try {
+        var inp = new DataInputStream(f.read());
+        string line;
+        size_t len;
+        while ((line = inp.read_line(out len)) != null) {
+            if (line.has_prefix("DEVNAME=")) {
+                devname = line.substring(8);
+                if (!devname.has_prefix("/dev/"))
+                    devname = "/dev/" + devname;
+                break;
+            }
+        }
+        inp.close();
+    } catch (GLib.Error e) {
+        warning("Cannot read uevent file: %s\n", e.message);
+    }
+    return devname;
 }
 
 private class ScriptRunner {

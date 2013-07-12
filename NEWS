@@ -28,6 +28,8 @@ New features/API:
   attribute. (first part of issue #22)
 - Record the "driver" attribute in umockdev-record, and restore it in
   umockdev_testbed_add_from_string(). (second part of issue #22)
+- Add new method umockdev_testbed_remove_device() to remove a sysfs device and
+  all its associated links, device node, etc. (issue #17)
 
 Bug fixes:
 - umockdev-run: Give proper error message if --ioctl argument is invalid.
