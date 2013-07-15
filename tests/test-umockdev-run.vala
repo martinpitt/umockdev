@@ -262,6 +262,10 @@ There are 9 files in folder '/store_00010001/DCIM/100CANON'.
 static void
 t_input_touchpad ()
 {
+    if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
+        stderr.printf ("[SKIP: this test only works on little endian machines] ");
+        return;
+    }
     if (!have_program ("Xorg")) {
         stderr.printf ("[SKIP: Xorg not installed] ");
         return;

@@ -2,6 +2,8 @@
 ------------------
 - Fix /umockdev-run/integration/input-touchpad test case to not leave behind an
   Xorg process on failure.
+- Skip /umockdev-run/integration/input-touchpad test case on big-endian
+  machines, as we do not have ioctl data from big endian machines at the moment.
 
 0.3 (2013-07-12)
 ----------------
