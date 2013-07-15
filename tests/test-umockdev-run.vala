@@ -301,20 +301,14 @@ t_input_touchpad ()
     }
 
     /* call xinput */
-    string sout;
-    string serr;
-    int exit;
-    assert (get_program_out ("xinput", "env DISPLAY=:5 xinput", out sout, out serr, out exit));
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert (sout.contains ("SynPS/2 Synaptics TouchPad"));
+    string xinput_out, xinput_err;
+    int xinput_exit;
+    get_program_out ("xinput", "env DISPLAY=:5 xinput", out xinput_out, out xinput_err, out xinput_exit);
 
-    assert (get_program_out ("xinput", "env DISPLAY=:5 xinput --list-props 'SynPS/2 Synaptics TouchPad'",
-            out sout, out serr, out exit));
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert (sout.contains ("Synaptics Two-Finger Scrolling"));
-    assert (sout.contains ("/dev/input/event12"));
+    string props_out, props_err;
+    int props_exit;
+    get_program_out ("xinput", "env DISPLAY=:5 xinput --list-props 'SynPS/2 Synaptics TouchPad'",
+            out props_out, out props_err, out props_exit);
 
     /* shut down X */
     Posix.kill (xorg_pid, Posix.SIGTERM);
@@ -323,6 +317,15 @@ t_input_touchpad ()
     Process.close_pid (xorg_pid);
     FileUtils.remove (logfile);
     FileUtils.remove (logfile + ".old");
+
+    assert_cmpstr (xinput_err, Op.EQ, "");
+    assert_cmpint (xinput_exit, Op.EQ, 0);
+    assert (xinput_out.contains ("SynPS/2 Synaptics TouchPad"));
+
+    assert_cmpstr (props_err, Op.EQ, "");
+    assert_cmpint (props_exit, Op.EQ, 0);
+    assert (props_out.contains ("Synaptics Two-Finger Scrolling"));
+    assert (props_out.contains ("/dev/input/event12"));
 }
 
 

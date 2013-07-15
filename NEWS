@@ -1,3 +1,8 @@
+0.3.1 (UNRELEASED)
+------------------
+- Fix /umockdev-run/integration/input-touchpad test case to not leave behind an
+  Xorg process on failure.
+
 0.3 (2013-07-12)
 ----------------
 Command line argument changes (not backwards compatible):
