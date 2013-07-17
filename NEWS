@@ -13,6 +13,10 @@
   other device types than tty as well, except for SUBSYSTEM=="usb". With that
   you can use record&replay for e. g. input or DRI control devices.
   (main part of issue #5)
+- Reading scripts during device playback does not wrap around at EOF any more.
+  This more closely reproduces how real devices behave. If we actually get an
+  use case for wrapping around, we can do this by adding a new operation type
+  to script files.
 
 0.3 (2013-07-12)
 ----------------

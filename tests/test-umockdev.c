@@ -1105,14 +1105,8 @@ r 0 ^^^`^@\n";
   g_assert_cmpint(buf[1], ==, '^');
   g_assert_cmpint(buf[2], ==, 0);
 
-  /* wraps around */
+  /* end of script */
   ASSERT_EOF;
-  usleep(220000);
-  g_assert_cmpint(read(fd, buf, 5), ==, 5);
-  g_assert(strncmp(buf, "ready", 5) == 0);
-
-  /* the following read() will fail on the server side as we close the fd now
-   * instead of doing the expected write; this should not abort the program */
 
   close(fd);
 }

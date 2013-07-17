@@ -1121,6 +1121,9 @@ private class ScriptRunner {
                     this.op_write (data, delta);
                     break;
 
+                case 'Q':
+                    break;
+
                 default:
                     debug ("ScriptRunner[%s]: got unknown line op %c, ignoring", this.device, op);
                     break;
@@ -1133,13 +1136,15 @@ private class ScriptRunner {
 
     private uint8[] next_line (out char op, out uint32 delta)
     {
-        // read operation code; skip empty lines and wrap around at EOF
+        // read operation code; skip empty lines
         int c;
         for (;;) {
             c = this.script.getc ();
             if (c == FileStream.EOF) {
-                debug ("ScriptRunner[%s]: end of script %s, rewinding", this.device, this.script_file);
-                       this.script.seek (0, FileSeek.SET);
+                debug ("ScriptRunner[%s]: end of script %s, closing", this.device, this.script_file);
+                op = 'Q';
+                delta = 0;
+                return {};
             } else if (c != '\n') {
                 op = (char) c;
                 break;
