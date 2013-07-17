@@ -554,9 +554,8 @@ public class Testbed: GLib.Object {
      *             prefix); if <emphasis>contents</emphasis> is given (encoded in a
      *             continuous hex string), it creates a
      *             <filename>/dev/devname</filename> in the mock environment with
-     *             the given contents, otherwise the created dev file will be
-     *             empty. For SUBSYSTEM="tty" devices, the dev file will be a
-     *             pty instead; see #umockdev_testbed_get_dev_fd for details.</listitem>
+     *             the given contents, otherwise the created dev file will be a
+     *             pty; see #umockdev_testbed_get_dev_fd for details.</listitem>
      *   <listitem><type>S:</type> <emphasis>linkname</emphasis>: device node
      *             symlink (without the <filename>/dev/</filename> prefix); ignored right
      *             now.</listitem>
@@ -805,49 +804,46 @@ public class Testbed: GLib.Object {
     {
         assert (DirUtils.create_with_parents(Path.get_dirname(node_path), 0755) == 0);
 
-        // for terminals we create a PTY
-        if (subsystem == "tty") {
-            if (node_contents.length > 0)
-                throw new UMockdev.Error.VALUE ("device %s: SUBSYSTEM=tty devices cannot have a predefined device node contents", node_path);
-
-            int ptym, ptys;
-            char[] ptyname_array = new char[8192];
-            assert (Linux.openpty (out ptym, out ptys, ptyname_array, null, null) == 0);
-            string ptyname = (string) ptyname_array;
-            debug ("create_node_for_device: creating tty device %s: got pty %s", node_path, ptyname);
-            Posix.close (ptys);
-
-            // disable echo, canonical mode, and line ending translation by
-            // default, as that's usually what we want
-            Posix.termios ios;
-            assert (Posix.tcgetattr (ptym, out ios) == 0);
-            ios.c_iflag &= ~(Posix.IGNCR | Posix.INLCR | Posix.ICRNL);
-            ios.c_oflag &= ~(Posix.ONLCR | Posix.OCRNL);
-            ios.c_lflag &= ~(Posix.ICANON | Posix.ECHO);
-            assert (Posix.tcsetattr (ptym, Posix.TCSANOW, ios) == 0);
-
-            assert (FileUtils.symlink (ptyname, node_path) == 0);
-
-            // store ptym for controlling the master end
-            string devname = node_path.substring (this.root_dir.length);
-            assert (!this.dev_fd.contains (devname));
-            this.dev_fd.insert (devname, ptym);
+        // for pre-defined contents, block, and USB devices we create a normal file
+        if (node_contents.length > 0 || subsystem == "block" || subsystem == "usb") {
+            try {
+                debug ("create_node_for_device: creating file device %s", node_path);
+                FileUtils.set_data(node_path, node_contents);
+                /* set sticky bit on block devices, to indicate proper
+                 * stat() faking to our preload lib */
+                if (subsystem == "block")
+                    FileUtils.chmod(node_path, 01644);
+            } catch (FileError e) {
+                stderr.printf("Cannot create dev node file: %s\n", e.message);
+                Process.abort();
+            }
 
             return;
         }
 
-        // for other devices we create normal files
-        try {
-            debug ("create_node_for_device: creating file device %s", node_path);
-            FileUtils.set_data(node_path, node_contents);
-            /* set sticky bit on block devices, to indicate proper
-             * stat() faking to our preload lib */
-            if (subsystem == "block")
-                FileUtils.chmod(node_path, 01644);
-        } catch (FileError e) {
-            stderr.printf("Cannot create dev node file: %s\n", e.message);
-            Process.abort();
-        }
+        // otherwise we create a PTY
+        int ptym, ptys;
+        char[] ptyname_array = new char[8192];
+        assert (Linux.openpty (out ptym, out ptys, ptyname_array, null, null) == 0);
+        string ptyname = (string) ptyname_array;
+        debug ("create_node_for_device: creating pty device %s: got pty %s", node_path, ptyname);
+        Posix.close (ptys);
+
+        // disable echo, canonical mode, and line ending translation by
+        // default, as that's usually what we want
+        Posix.termios ios;
+        assert (Posix.tcgetattr (ptym, out ios) == 0);
+        ios.c_iflag &= ~(Posix.IGNCR | Posix.INLCR | Posix.ICRNL);
+        ios.c_oflag &= ~(Posix.ONLCR | Posix.OCRNL);
+        ios.c_lflag &= ~(Posix.ICANON | Posix.ECHO);
+        assert (Posix.tcsetattr (ptym, Posix.TCSANOW, ios) == 0);
+
+        assert (FileUtils.symlink (ptyname, node_path) == 0);
+
+        // store ptym for controlling the master end
+        string devname = node_path.substring (this.root_dir.length);
+        assert (!this.dev_fd.contains (devname));
+        this.dev_fd.insert (devname, ptym);
     }
 
 
@@ -943,8 +939,8 @@ public class Testbed: GLib.Object {
      * @self: A #UMockdevTestbed.
      * @devnode: Device node name ("/dev/...")
      *
-     * Some simulated devices are backed by a stream-like node, such as a
-     * PTY for devices with SUBSYSTEM=tty devices. Return the file descriptor
+     * Simulated devices without a pre-defined contents are backed by a
+     * stream-like device node (PTY). Return the file descriptor
      * for accessing their "master" side, i. e. the end that gets
      * controlled by test suites. The tested program opens the "slave" side,
      * which is just openening the device specified by @devnode, e. g.

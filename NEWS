@@ -9,6 +9,10 @@
 - Intercept SIGINT during ioctl recording, so that the record gets written even
   if the recorded program gets terminated with Control-C.
 - Fix /umockdev-testbed-usb/lsusb test case to work with libusbx 1.0.16.
+- Create PTY devices (for usage with get_dev_fd()) instead of plain files for
+  other device types than tty as well, except for SUBSYSTEM=="usb". With that
+  you can use record&replay for e. g. input or DRI control devices.
+  (main part of issue #5)
 
 0.3 (2013-07-12)
 ----------------

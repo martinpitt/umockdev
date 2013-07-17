@@ -890,11 +890,7 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
 					      "A: dev=1:3\n", &error));
     g_assert_no_error(error);
 
-    g_assert(g_file_get_contents("/dev/empty", &contents, &length, &error));
-    g_assert_no_error(error);
-    g_assert_cmpint(length, ==, 0);
-    g_assert_cmpstr(contents, ==, "");
-    g_free(contents);
+    g_assert_cmpint(umockdev_testbed_get_dev_fd(fixture->testbed, "/dev/empty"), >, 0);
     g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
     g_assert_cmpint(st.st_rdev, ==, makedev(1, 3));
@@ -906,11 +902,7 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
 				     "A: dev=189:1\n", &error);
     g_assert_no_error(error);
 
-    g_assert(g_file_get_contents("/dev/bus/usb/001", &contents, &length, &error));
-    g_assert_no_error(error);
-    g_assert_cmpint(length, ==, 0);
-    g_assert_cmpstr(contents, ==, "");
-    g_free(contents);
+    g_assert_cmpint(umockdev_testbed_get_dev_fd(fixture->testbed, "/dev/bus/usb/001"), >, 0);
 
     /* N: with value should set that contents */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
