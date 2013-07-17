@@ -4,6 +4,8 @@
   Xorg process on failure.
 - Skip /umockdev-run/integration/input-touchpad test case on big-endian
   machines, as we do not have ioctl data from big endian machines at the moment.
+- Flush the output file after each script recording event, to avoid losing data
+  when recording programs that get terminated with a signal.
 
 0.3 (2013-07-12)
 ----------------

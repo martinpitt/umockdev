@@ -620,6 +620,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 	putc(*cur, srinfo->log);
     }
 
+    fflush(srinfo->log);
     srinfo->op = op;
 }
 
