@@ -8,6 +8,7 @@
   when recording programs that get terminated with a signal.
 - Intercept SIGINT during ioctl recording, so that the record gets written even
   if the recorded program gets terminated with Control-C.
+- Fix /umockdev-testbed-usb/lsusb test case to work with libusbx 1.0.16.
 
 0.3 (2013-07-12)
 ----------------
