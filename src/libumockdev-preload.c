@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -260,6 +261,9 @@ recvmsg(int sockfd, struct msghdr * msg, int flags)
 int ioctl_record_fd = -1;
 FILE *ioctl_record_log;
 ioctl_tree *ioctl_record;
+struct sigaction orig_actint;
+
+static void ioctl_record_sigint_handler(int signum);
 
 static void
 ioctl_record_open(int fd)
@@ -302,6 +306,8 @@ ioctl_record_open(int fd)
     /* lazily open the record file */
     if (ioctl_record_log == NULL) {
 	const char *path = getenv("UMOCKDEV_IOCTL_RECORD_FILE");
+	struct sigaction act_int;
+
 	if (path == NULL) {
 	    fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_FILE not set\n");
 	    exit(1);
@@ -318,6 +324,12 @@ ioctl_record_open(int fd)
 
 	/* load an already existing log */
 	ioctl_record = ioctl_tree_read(ioctl_record_log);
+
+	/* ensure that we write the file also on Control-C */
+	act_int.sa_handler = ioctl_record_sigint_handler;
+	assert(sigemptyset(&act_int.sa_mask) == 0);
+	act_int.sa_flags = 0;
+	assert(sigaction(SIGINT, &act_int, &orig_actint) == 0);
     }
 }
 
@@ -338,6 +350,14 @@ ioctl_record_close(int fd)
 	ioctl_tree_free(ioctl_record);
 	ioctl_record = NULL;
     }
+}
+
+static void ioctl_record_sigint_handler(int signum)
+{
+    DBG("ioctl_record_sigint_handler: got signal %i, flushing record\n", signum);
+    ioctl_record_close(ioctl_record_fd);
+    assert(sigaction(SIGINT, &orig_actint, NULL) == 0);
+    raise(signum);
 }
 
 static void

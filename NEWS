@@ -6,6 +6,8 @@
   machines, as we do not have ioctl data from big endian machines at the moment.
 - Flush the output file after each script recording event, to avoid losing data
   when recording programs that get terminated with a signal.
+- Intercept SIGINT during ioctl recording, so that the record gets written even
+  if the recorded program gets terminated with Control-C.
 
 0.3 (2013-07-12)
 ----------------
