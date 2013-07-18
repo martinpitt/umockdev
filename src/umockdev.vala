@@ -1122,6 +1122,7 @@ private class ScriptRunner {
                     break;
 
                 case 'Q':
+                    this.running = false;
                     break;
 
                 default:
