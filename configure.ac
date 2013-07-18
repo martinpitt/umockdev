@@ -16,7 +16,7 @@
 
 AC_PREREQ([2.64])
 AC_INIT([umockdev],
-        [0.3],
+        m4_esyscmd([head -n1 NEWS | cut -f1 -d' ' | tr -d '\n']),
         [https://github.com/martinpitt/umockdev/issues],
         [umockdev],
 	[https://github.com/martinpitt/umockdev])
