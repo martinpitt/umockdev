@@ -267,7 +267,12 @@ t_system_script_log_simple ()
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
-    assert_cmpstr (file_contents (log), Op.EQ, "r 0 ^@");
+    string[] logwords = file_contents (log).split(" ");
+    assert_cmpuint (logwords.length, Op.EQ, 3);
+    assert_cmpstr (logwords[0], Op.EQ, "r");
+    // should be quick, give it 5 ms at most
+    assert_cmpint (int.parse(logwords[1]), Op.LE, 5);
+    assert_cmpstr (logwords[2], Op.EQ, "^@");
 
     FileUtils.remove (log);
 }
