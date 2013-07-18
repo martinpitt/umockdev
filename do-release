@@ -1,0 +1,39 @@
+#!/bin/sh
+set -e
+
+# This script does all the steps necessary for doing a new upstream release. It
+# should solely be used by upstream developers, distributors do not need to
+# worry about it.
+
+# check for anything uncommitted
+if LC_MESSAGES=C git st | grep -Eiq 'modified|untracked'; then
+    echo "untracked/modified files, see git status" >&2
+    exit 1
+fi
+
+# build and tests must succeed from a clean tree
+git clean -fdx
+./autogen.sh
+make -j4
+make check-valgrind
+make -j4 distcheck
+
+# update NEWS
+version=$(grep '(UNRELEASED)' NEWS | cut -f1 -d' ')
+[ -n "$version" ] || {
+    echo "no UNRELEASED in NEWS" >&2
+    exit 1
+}
+sed -i "s/(UNRELEASED)/$(date '+(%Y-%m-%d)')/" NEWS
+
+# build the final tarball with the NEWS update
+make dist
+
+# commit the release and tag
+git commit -a -m "release $version"
+git tag -s -m "release $version" $version
+git push
+git push --tags
+
+lp-project-upload umockdev $version umockdev-$version.tar.xz
+
