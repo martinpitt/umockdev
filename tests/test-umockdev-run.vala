@@ -24,6 +24,15 @@ const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
 
 string rootdir;
 
+static void
+assert_in (string needle, string haystack)
+{
+    if (!haystack.contains (needle)) {
+        stderr.printf ("'%s' not found in '%s'\n", needle, haystack);
+        Process.abort();
+    }
+}
+
 static bool
 have_program (string program)
 {
@@ -87,11 +96,7 @@ check_program_error (string program, string run_command, string expected_err)
     if (!get_program_out (program, umockdev_run_command + run_command, out sout, out serr, out exit))
         return;
 
-    if (!serr.contains (expected_err)) {
-        stderr.printf ("Error message does not contain expected '%s':\n------\n%s\n----\n",
-            expected_err, serr);
-        Process.abort ();
-    }
+    assert_in (expected_err, serr);
 
     assert_cmpint (exit, Op.NE, 0);
     assert (Process.if_exited (exit));
@@ -324,14 +329,78 @@ t_input_touchpad ()
 
     assert_cmpstr (xinput_err, Op.EQ, "");
     assert_cmpint (xinput_exit, Op.EQ, 0);
-    assert (xinput_out.contains ("SynPS/2 Synaptics TouchPad"));
+    assert_in ("SynPS/2 Synaptics TouchPad", xinput_out);
 
     assert_cmpstr (props_err, Op.EQ, "");
     assert_cmpint (props_exit, Op.EQ, 0);
-    assert (props_out.contains ("Synaptics Two-Finger Scrolling"));
-    assert (props_out.contains ("/dev/input/event12"));
+    assert_in ("Synaptics Two-Finger Scrolling", props_out);
+    assert_in ("/dev/input/event12", props_out);
 }
 
+static void
+t_input_evtest ()
+{
+    if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
+        stderr.printf ("[SKIP: this test only works on little endian machines] ");
+        return;
+    }
+
+    if (!have_program ("evtest")) {
+        stderr.printf ("[SKIP: evtest not installed] ");
+        return;
+    }
+
+    Pid evtest_pid;
+    int outfd, errfd;
+
+    try {
+        Process.spawn_async_with_pipes (null, {"umockdev-run",
+            "-d", rootdir + "/devices/input/usbkbd.umockdev",
+            "-i", "/dev/input/event5=" + rootdir + "/devices/input/usbkbd.evtest.ioctl",
+            "-s", "/dev/input/event5=" + rootdir + "/devices/input/usbkbd.evtest.script",
+            "evtest", "/dev/input/event5"},
+            null, SpawnFlags.SEARCH_PATH, null,
+            out evtest_pid, null, out outfd, out errfd);
+    } catch (SpawnError e) {
+        stderr.printf ("cannot call evtest: %s\n", e.message);
+        Process.abort();
+    }
+
+    // our script covers 1.4 seconds, give it some slack
+    Posix.sleep (2);
+    Posix.kill (evtest_pid, Posix.SIGTERM);
+    var sout = new uint8[10000];
+    var serr = new uint8[10000];
+    ssize_t sout_len = Posix.read (outfd, sout, sout.length);
+    ssize_t serr_len = Posix.read (errfd, serr, sout.length);
+    int status;
+    Posix.waitpid (evtest_pid, out status, 0);
+    Process.close_pid (evtest_pid);
+
+    if (serr_len > 0) {
+        serr[serr_len] = 0;
+        stderr.printf ("evtest error: %s\n", (string) serr);
+        Process.abort();
+    }
+
+    assert_cmpint ((int) sout_len, Op.GT, 10);
+    sout[sout_len] = 0;
+    string output = (string) sout;
+
+    // check supported events
+    assert_in ("Event type 1 (EV_KEY)", output);
+    assert_in ("Event code 15 (KEY_TAB)", output);
+
+    // check 'A' key event
+    assert_in ("type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004", output);
+    assert_in ("type 1 (EV_KEY), code 30 (KEY_A), value 1\n", output);
+    assert_in ("type 1 (EV_KEY), code 30 (KEY_A), value 0\n", output);
+
+    // check 'left shift' key event
+    assert_in ("type 4 (EV_MSC), code 4 (MSC_SCAN), value 700e1", output);
+    assert_in ("type 1 (EV_KEY), code 42 (KEY_LEFTSHIFT), value 1\n", output);
+    assert_in ("type 1 (EV_KEY), code 42 (KEY_LEFTSHIFT), value 0\n", output);
+}
 
 int
 main (string[] args)
@@ -362,6 +431,7 @@ main (string[] args)
 
   // input devices
   Test.add_func ("/umockdev-run/integration/input-touchpad", t_input_touchpad);
+  Test.add_func ("/umockdev-run/integration/input-evtest", t_input_evtest);
 
   return Test.run();
 }
