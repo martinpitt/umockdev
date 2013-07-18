@@ -353,11 +353,18 @@ t_input_evtest ()
     Pid evtest_pid;
     int outfd, errfd;
 
+    // FIXME: Is there a more elegant way?
+    string script_arch;
+    if (long.MAX == int64.MAX)
+        script_arch = "64";
+    else
+        script_arch = "32";
+
     try {
         Process.spawn_async_with_pipes (null, {"umockdev-run",
             "-d", rootdir + "/devices/input/usbkbd.umockdev",
             "-i", "/dev/input/event5=" + rootdir + "/devices/input/usbkbd.evtest.ioctl",
-            "-s", "/dev/input/event5=" + rootdir + "/devices/input/usbkbd.evtest.script",
+            "-s", "/dev/input/event5=" + rootdir + "/devices/input/usbkbd.evtest.script." + script_arch,
             "evtest", "/dev/input/event5"},
             null, SpawnFlags.SEARCH_PATH, null,
             out evtest_pid, null, out outfd, out errfd);

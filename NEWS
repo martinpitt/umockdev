@@ -1,6 +1,8 @@
 0.3.2 (UNRELEASED)
 ------------------
 - script replay: Fix endless loop on end of script file.
+- Fix /umockdev-run/integration/input-evtest for 32 bit architectures. Add a
+  script recorded on 32 bit and select the right one in the test.
 
 0.3.1 (2013-07-18)
 ------------------
