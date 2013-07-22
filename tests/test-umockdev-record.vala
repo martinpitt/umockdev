@@ -373,6 +373,114 @@ t_system_script_log_chatter ()
     FileUtils.remove (log);
 }
 
+/*
+ * umockdev-record --script recording to a file, with our chatter-socket-stream command
+ */
+static void
+t_system_script_log_chatter_socket_stream ()
+{
+    string log;
+    string spath = "/tmp/umockdev_test";
+    Pid chatter_pid;
+
+    try {
+        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+
+        var s = new Socket (SocketFamily.UNIX, SocketType.STREAM, SocketProtocol.DEFAULT);
+        assert (s != null);
+        s.blocking = false;
+
+        assert (s.bind (new UnixSocketAddress (spath), true));
+        assert (s.listen ());
+
+        // start chatter
+        try {
+            assert (Process.spawn_async_with_pipes (null,
+                {umockdev_record_path, "--script", spath + "=" + log, "--",
+                 Path.build_filename (rootdir, "tests", "chatter-socket-stream"), spath},
+                null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD,
+                null, out chatter_pid, null, null, null));
+        } catch (SpawnError e) {
+            stderr.printf ("Cannot call umockdev-record: %s\n", e.message);
+            Process.abort ();
+        }
+
+        // wait until chatter connects
+        int timeout = 20;
+        Socket conn = null;
+        while (timeout > 0) {
+            try {
+                conn = s.accept ();
+                break;
+            } catch (IOError e) {
+                if (e is IOError.WOULD_BLOCK) {
+                    timeout--;
+                    Thread.usleep(10000);
+                } else
+                    throw e;
+            }
+        }
+        assert (conn != null);
+
+        var buf = new uint8[1000];
+
+        // expect the question
+        ssize_t len = conn.receive (buf);
+        assert (len > 0);
+        buf[len] = 0;
+        assert_cmpstr ((string) buf, Op.EQ, "What is your name?\n");
+
+        // type name and second string after some delay
+        Thread.usleep (300000);
+        conn.send ("John\n".data);
+
+        // give it some time for the response
+        Thread.usleep (10000);
+        len = conn.receive (buf);
+        assert (len > 0);
+        buf[len] = 0;
+        assert_cmpstr ((string) buf, Op.EQ, "hello John\n");
+
+        // check the send message
+        Thread.usleep (20000);
+        len = conn.receive (buf);
+        assert (len > 0);
+        buf[len] = 0;
+        assert_cmpstr ((string) buf, Op.EQ, "send()");
+
+        // send stuff for recv()
+        Thread.usleep (20000);
+        conn.send ("recv()".data);
+    } catch (Error e) {
+        stderr.printf ("Error: %s\n", e.message);
+        FileUtils.remove (spath);
+        Process.abort ();
+    }
+    FileUtils.remove (spath);
+
+    int status;
+    assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), Op.EQ, (int) chatter_pid);
+    assert_cmpint (status, Op.EQ, 0);
+
+    // evaluate log
+    var log_stream = FileStream.open (log, "r");
+    int time = 0;
+    assert_cmpint (log_stream.scanf ("w %d What is your name?^J\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.GE, 250);
+    assert_cmpint (time, Op.LE, 400);
+    assert_cmpint (log_stream.scanf ("w %d hello John^J\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (log_stream.scanf ("w %d send()\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.GE, 10);
+    assert_cmpint (log_stream.scanf ("r %d recv()\n", &time), Op.EQ, 1);
+    assert_cmpint (time, Op.GE, 20);
+    assert_cmpint (time, Op.LE, 40);
+
+    FileUtils.remove (log);
+}
+
 int
 main (string[] args)
 {
@@ -396,6 +504,7 @@ main (string[] args)
     Test.add_func ("/umockdev-record/ioctl-log", t_system_ioctl_log);
     Test.add_func ("/umockdev-record/script-log-simple", t_system_script_log_simple);
     Test.add_func ("/umockdev-record/script-log-chatter", t_system_script_log_chatter);
+    Test.add_func ("/umockdev-record/script-log-socket", t_system_script_log_chatter_socket_stream);
 
     return Test.run();
 }

@@ -1,3 +1,8 @@
+0.4 (UNRELEASED)
+----------------
+New features:
+- Add recording of Unix stream sockets. (part of issue #24)
+
 0.3.2 (2013-07-18)
 ------------------
 - script replay: Fix endless loop on end of script file.

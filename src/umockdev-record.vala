@@ -278,6 +278,9 @@ split_devfile_arg(string arg, out string devnum, out string fname)
     if (Posix.S_ISCHR(st.st_mode) || Posix.S_ISBLK(st.st_mode)) {
         // if we have a device node, get devnum from stat
         devnum = ((Posix.major(st.st_rdev) << 8) + Posix.minor(st.st_rdev)).to_string();
+    } else if (Posix.S_ISSOCK(st.st_mode)) {
+        // Unix sockets are passed by name
+        devnum = dev;
     } else {
         // otherwise we assume that we have a sysfs device, resolve via dev attribute
         string contents;

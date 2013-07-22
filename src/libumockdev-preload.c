@@ -487,8 +487,12 @@ ioctl(int d, unsigned long request, void *arg)
  *
  ********************************/
 
+#define MAX_SCRIPT_SOCKET_LOGFILE 50
+
 static fd_map script_dev_logfile_map;	/* maps a st_rdev to a log file name */
 static int script_dev_logfile_map_inited = 0;
+const char* script_socket_logfile[2*MAX_SCRIPT_SOCKET_LOGFILE]; /* list of socket name, log file name */
+size_t script_socket_logfile_len = 0;
 static fd_map script_recorded_fds;
 
 struct script_record_info {
@@ -505,45 +509,48 @@ init_script_dev_logfile_map(void)
     int i, dev;
     char varname[100];
     const char *devname, *logname;
+    char *endptr;
 
     script_dev_logfile_map_inited = 1;
 
     for (i = 0; 1; ++i) {
-	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEV_%i", i);
-	devname = getenv(varname);
-	if (devname == NULL)
-	    break;
-	dev = atoi(devname);
 	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_FILE_%i", i);
 	logname = getenv(varname);
-	if (logname == NULL) {
+	if (logname == NULL)
+	    break;
+	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEV_%i", i);
+	devname = getenv(varname);
+	if (devname == NULL) {
 	    fprintf(stderr, "umockdev: $%s not set\n", varname);
 	    exit(1);
 	}
-
-	DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev),
+	dev = strtol(devname, &endptr, 10);
+	if (dev != 0 && *endptr == '\0') {
+	    // if it's a number, then it is an rdev of a device
+	    DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev),
 	    logname);
-	fd_map_add(&script_dev_logfile_map, dev, logname);
+	    fd_map_add(&script_dev_logfile_map, dev, logname);
+	} else {
+	    // if it's a path, then we record a socket
+	    if (script_socket_logfile_len < MAX_SCRIPT_SOCKET_LOGFILE) {
+		DBG("init_script_dev_logfile_map: will record script of socket %s into %s\n", devname, logname);
+		script_socket_logfile[2*script_socket_logfile_len] = devname;
+		script_socket_logfile[2*script_socket_logfile_len+1] = logname;
+		script_socket_logfile_len++;
+	    } else {
+		fprintf(stderr, "too many script sockets to record\n");
+		abort();
+	    }
+	}
     }
 }
 
 static void
-script_record_open(int fd)
+script_start_record(int fd, const char *logname)
 {
-    dev_t fd_dev;
-    const char *logname;
     FILE *log;
     struct script_record_info *srinfo;
 
-    if (!script_dev_logfile_map_inited)
-	init_script_dev_logfile_map();
-
-    /* check if the opened device is one we want to record */
-    fd_dev = dev_of_fd(fd);
-    if (!fd_map_get(&script_dev_logfile_map, fd_dev, (const void **)&logname)) {
-	DBG("script_record_open: fd %i on device %i:%i is not recorded\n", fd, major(fd_dev), minor(fd_dev));
-	return;
-    }
     if (fd_map_get(&script_recorded_fds, fd, NULL)) {
 	fprintf(stderr, "script_record_open: internal error: fd %i is already being recorded\n", fd);
 	abort();
@@ -559,13 +566,58 @@ script_record_open(int fd)
     if (ftell(log) > 0)
 	putc('\n', log);
 
-    DBG("script_record_open: start recording fd %i on device %i:%i into %s\n",
-	fd, major(fd_dev), minor(fd_dev), logname);
     srinfo = malloc(sizeof(struct script_record_info));
     srinfo->log = log;
     assert(clock_gettime(CLOCK_MONOTONIC, &srinfo->time) == 0);
     srinfo->op = 0;
     fd_map_add(&script_recorded_fds, fd, srinfo);
+}
+
+static void
+script_record_open(int fd)
+{
+    dev_t fd_dev;
+    const char *logname;
+
+    if (!script_dev_logfile_map_inited)
+	init_script_dev_logfile_map();
+
+    /* check if the opened device is one we want to record */
+    fd_dev = dev_of_fd(fd);
+    if (!fd_map_get(&script_dev_logfile_map, fd_dev, (const void **)&logname)) {
+	DBG("script_record_open: fd %i on device %i:%i is not recorded\n", fd, major(fd_dev), minor(fd_dev));
+	return;
+    }
+
+    DBG("script_record_open: start recording fd %i on device %i:%i into %s\n",
+	fd, major(fd_dev), minor(fd_dev), logname);
+    script_start_record(fd, logname);
+}
+
+// stream sockets use connect() instead of open()
+int
+connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
+    libc_func(connect, int, int, const struct sockaddr *, socklen_t);
+    const char *path = getenv("UMOCKDEV_DIR");
+    size_t i;
+    int res = _connect(sockfd, addr, addrlen);
+
+    if (res == 0 && addr->sa_family == AF_UNIX && path == NULL) {
+	const char* sock_path = ((struct sockaddr_un *) addr)->sun_path;
+	/* find out where we log it to */
+	if (!script_dev_logfile_map_inited)
+	    init_script_dev_logfile_map();
+	for (i = 0; i < script_socket_logfile_len; ++i) {
+	    if (strcmp(script_socket_logfile[2*i], sock_path) == 0) {
+		DBG("testbed wrapped connect: starting recording of unix socket %s on fd %i\n", sock_path, sockfd);
+		script_start_record(sockfd, script_socket_logfile[2*i+1]);
+		return res;
+	    }
+	}
+    }
+
+    return res;
 }
 
 static void
@@ -704,6 +756,28 @@ fgets(char *s, int size, FILE * stream)
 	len = strlen(res);
 	script_record_op('r', fileno(stream), s, len);
     }
+    return res;
+}
+
+ssize_t
+send(int fd, const void *buf, size_t count, int flags)
+{
+    libc_func(send, ssize_t, int, const void *, size_t, int);
+    ssize_t res;
+
+    res = _send(fd, buf, count, flags);
+    script_record_op('w', fd, buf, res);
+    return res;
+}
+
+ssize_t
+recv(int fd, void *buf, size_t count, int flags)
+{
+    libc_func(recv, ssize_t, int, void *, size_t, int);
+    ssize_t res;
+
+    res = _recv(fd, buf, count, flags);
+    script_record_op('r', fd, buf, res);
     return res;
 }
 
@@ -870,7 +944,7 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
     if (p == NULL)								\
 	return -1;								\
     DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
-    ret = _ ## prefix ## stat ## suffix(ver, p, st);							\
+    ret = _ ## prefix ## stat ## suffix(ver, p, st);				\
     if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
 	&& is_emulated_device(p, st->st_mode)) {				\
 	st->st_mode &= ~S_IFREG;						\

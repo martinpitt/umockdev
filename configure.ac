@@ -50,7 +50,7 @@ m4_ifdef([GOBJECT_INTROSPECTION_CHECK],
 
 
 AC_SEARCH_LIBS([dlsym], [dl], [], [AC_MSG_ERROR([Dynamic linking loader library not found])])
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32.0 gobject-2.0 >= 2.32.0 gio-2.0 >= 2.32.0])
+PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32.0 gobject-2.0 >= 2.32.0 gio-2.0 >= 2.32.0 gio-unix-2.0 >= 2.32.0])
 PKG_CHECK_MODULES([LIBUDEV], [libudev])
 PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
 
