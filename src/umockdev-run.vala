@@ -25,6 +25,8 @@ static string[] opt_ioctl;
 [CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_script;
 [CCode (array_length=false, array_null_terminated=true)]
+static string[] opt_unix_stream;
+[CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_program;
 static bool opt_version = false;
 
@@ -38,6 +40,9 @@ static const GLib.OptionEntry[] options = {
     {"script", 's', 0, OptionArg.FILENAME_ARRAY, ref opt_script,
      "Load an umockdev-record script into the testbed. Can be specified multiple times.",
      "devname=scriptfilename"},
+    {"unix-stream", 'u', 0, OptionArg.FILENAME_ARRAY, ref opt_unix_stream,
+     "Load an umockdev-record script for a mocked Unix stream socket. Can be specified multiple times.",
+     "socket_path=scriptfilename"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_program, "", ""},
     {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
@@ -121,6 +126,20 @@ main (string[] args)
             testbed.load_script (parts[0], parts[1]);
         } catch (FileError e) {
             stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
+            return 1;
+        }
+    }
+
+    foreach (var i in opt_unix_stream) {
+        string[] parts = i.split ("=", 2); // socket_path, scriptfilename
+        if (parts.length != 2) {
+            stderr.printf ("Error: --unix-stream argument must be socket_path=filename\n");
+            return 1;
+        }
+        try {
+            testbed.load_socket_script (parts[0], Posix.SOCK_STREAM, parts[1]);
+        } catch (FileError e) {
+            stderr.printf ("Error: Cannot install %s for stream socket %s: %s\n", parts[1], parts[0], e.message);
             return 1;
         }
     }

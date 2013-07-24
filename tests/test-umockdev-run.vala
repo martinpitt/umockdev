@@ -215,6 +215,33 @@ w 0 bye!^J""");
 }
 
 static void
+t_run_script_chatter_socket_stream ()
+{
+    string script_file;
+
+    // create umockdev and script files
+    try {
+        int fd = FileUtils.open_tmp ("chatter.XXXXXX.script", out script_file);
+        Posix.close (fd);
+
+        FileUtils.set_contents (script_file, """w 0 What is your name?^J
+r 307 Joe Tester^J
+w 0 hello Joe Tester^J
+w 20 send()
+r 30 somejunk""");
+    } catch (FileError e) {
+        stderr.printf ("cannot create temporary file: %s\n", e.message);
+        Process.abort();
+    }
+
+    check_program_out ("true", " -u /dev/socket/chatter=" + script_file +
+                       " -- tests/chatter-socket-stream /dev/socket/chatter",
+                       "Got name: Joe Tester\n\nGot recv: somejunk\n");
+
+    FileUtils.remove (script_file);
+}
+
+static void
 t_gphoto_detect ()
 {
     check_program_out ("gphoto2",
@@ -430,6 +457,7 @@ main (string[] args)
 
   // script replay
   Test.add_func ("/umockdev-run/script-chatter", t_run_script_chatter);
+  Test.add_func ("/umockdev-run/script-chatter-socket-stream", t_run_script_chatter_socket_stream);
 
   // tests with gphoto2 program for PowerShot
   Test.add_func ("/umockdev-run/integration/gphoto-detect", t_gphoto_detect);
