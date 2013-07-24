@@ -398,7 +398,7 @@ t_system_script_log_chatter_socket_stream ()
             assert (Process.spawn_async_with_pipes (null,
                 {umockdev_record_path, "--script", spath + "=" + log, "--",
                  Path.build_filename (rootdir, "tests", "chatter-socket-stream"), spath},
-                null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD,
+                null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD | SpawnFlags.STDOUT_TO_DEV_NULL,
                 null, out chatter_pid, null, null, null));
         } catch (SpawnError e) {
             stderr.printf ("Cannot call umockdev-record: %s\n", e.message);

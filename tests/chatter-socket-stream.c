@@ -60,6 +60,7 @@ main(int argc, char **argv)
     len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
+    printf("Got name: %s\n", buf);
     writestr("hello ");
     writestr(buf);
 
@@ -70,6 +71,7 @@ main(int argc, char **argv)
     len = recv(fd, buf, sizeof(buf) - 1, 0);
     assert(len > 0);
     buf[len] = 0;
+    printf("Got recv: %s\n", buf);
 
     close(fd);
     return 0;
