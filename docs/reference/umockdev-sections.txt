@@ -21,6 +21,7 @@ umockdev_testbed_add_from_string
 umockdev_testbed_add_from_file
 umockdev_testbed_load_ioctl
 umockdev_testbed_load_script
+umockdev_testbed_load_socket_script
 umockdev_testbed_get_dev_fd
 umockdev_testbed_clear
 umockdev_testbed_disable

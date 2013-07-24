@@ -25,6 +25,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <linux/usbdevice_fs.h>
 
 #include <libudev.h>
@@ -1111,6 +1113,72 @@ r 0 ^^^`^@\n";
   close(fd);
 }
 
+static void
+t_testbed_script_replay_socket_stream(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  char *tmppath, *sockpath;
+  int fd;
+  struct sockaddr_un saddr;
+  char buf[1024];
+
+  static const char* test_script = "r 200 ready\n\
+w 0 abc\n\
+w 2 defgh\n\
+r 10 response\n";
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_socket.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_socket_script(fixture->testbed, "/dev/socket/chatter",
+                                                SOCK_STREAM, tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+
+  sockpath = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev/socket/chatter", NULL);
+  g_assert(g_file_test(sockpath, G_FILE_TEST_EXISTS));
+  g_free(sockpath);
+
+  /* start communication */
+  fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+  g_assert_cmpint(fd, >=, 0);
+  saddr.sun_family = AF_UNIX;
+  snprintf(saddr.sun_path, sizeof(saddr.sun_path), "/dev/socket/chatter");
+  if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
+      perror("t_testbed_script_replay_socket_stream() connect");
+      abort();
+  }
+
+  /* should get initial greeting after 200 ms */
+  ASSERT_EOF;
+  usleep(220000);
+  g_assert_cmpint(read(fd, buf, 5), ==, 5);
+  g_assert(strncmp(buf, "ready", 5) == 0);
+  g_assert_cmpint(errno, ==, 0);
+
+  /* do the two write blocks in two matching calls; check that nothing is
+   * readable before */
+  ASSERT_EOF;
+  g_assert_cmpint(write(fd, "abc", 3), ==, 3);
+  ASSERT_EOF;
+  g_assert_cmpint(write(fd, "defgh", 5), ==, 5);
+
+  /* now we should get the response after 10 ms */
+  ASSERT_EOF;
+  usleep(15000);
+  g_assert_cmpint(read(fd, buf, 50), ==, 8);
+  g_assert(strncmp(buf, "response", 8) == 0);
+  g_assert_cmpint(errno, ==, 0);
+  ASSERT_EOF;
+
+  close(fd);
+  g_unlink (tmppath);
+}
 
 
 static void
@@ -1312,6 +1380,8 @@ main(int argc, char **argv)
     /* tests for script replay */
     g_test_add("/umockdev-testbed/script_replay_simple", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_simple, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/script_replay_socket_stream", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_script_replay_socket_stream, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

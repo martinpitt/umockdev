@@ -89,6 +89,12 @@ public class Testbed: GLib.Object {
             Posix.close (fd);
         }
 
+        if (this.socket_server != null) {
+            debug ("shutting down socket server thread");
+            this.socket_server.stop ();
+            this.socket_server = null;
+        }
+
         debug ("Removing test bed %s", this.root_dir);
         remove_dir (this.root_dir);
         Environment.unset_variable("UMOCKDEV_DIR");
@@ -694,7 +700,40 @@ public class Testbed: GLib.Object {
         return true;
     }
 
-    private string add_dev_from_string(string data) throws UMockdev.Error
+    /**
+     * umockdev_testbed_load_socket_script:
+     * @self: A #UMockdevTestbed.
+     * @path: Unix socket path
+     * @type: Unix socket type (#SOCK_STREAM, #SOCK_DGRAM)
+     * @recordfile: Path of the script record file.
+     * @error: return location for a GError, or %NULL
+     *
+     * Add an Unix socket to the testbed that is backed by a recorded script.
+     * Clients can connect to the socket using @path (i. e. without the testbed
+     * prefix).
+     *
+     * Returns: %TRUE on success, %FALSE if the @path or @type are
+     *          invalid and an error occurred.
+     */
+    public bool load_socket_script (string path, int type, string recordfile) throws FileError
+    {
+        int fd = Posix.socket (Posix.AF_UNIX, type, 0);
+        if (fd < 0)
+            throw new FileError.INVAL ("Cannot create socket type %i: %s".printf(
+                                       type, strerror(errno)));
+
+        string real_path = Path.build_filename (this.root_dir, path);
+        assert(DirUtils.create_with_parents(Path.get_dirname(real_path), 0755) == 0);
+
+        // start thread to accept client connections at first socket creation
+        if (this.socket_server == null)
+            this.socket_server = new SocketServer ();
+
+        this.socket_server.add (real_path, fd, recordfile);
+        return true;
+    }
+
+    private string add_dev_from_string (string data) throws UMockdev.Error
     {
         char type;
         string? key;
@@ -969,6 +1008,8 @@ public class Testbed: GLib.Object {
     private UeventSender.sender? ev_sender = null;
     private HashTable<string,int> dev_fd;
     private HashTable<string,ScriptRunner> dev_script_runner;
+    private SocketServer socket_server = null;
+
 }
 
 
@@ -1083,7 +1124,7 @@ private class ScriptRunner {
 
     ~ScriptRunner ()
     {
-        this.stop();
+        this.stop ();
     }
 
     public void stop ()
@@ -1249,6 +1290,146 @@ private class ScriptRunner {
     private FileStream script;
     private int fd;
     private bool running;
+}
+
+
+private class SocketServer {
+
+    public SocketServer ()
+    {
+        this.running = true;
+        this.socket_scriptfile = new HashTable<string, string> (str_hash, str_equal);
+        this.script_runners = new HashTable<string, ScriptRunner> (str_hash, str_equal);
+        this.thread = new Thread<void*> ("SocketServer", this.run);
+
+        // we use a control pipe which we trigger when adding or stopping, to
+        // interrupt the select()
+        var fds = new int[2];
+        assert (Posix.pipe (fds) == 0);
+        this.ctrl_r = fds[0];
+        this.ctrl_w = fds[1];
+    }
+
+    ~SocketServer ()
+    {
+        this.stop ();
+    }
+
+    public void stop ()
+    {
+        if (!this.running)
+            return;
+
+        this.running = false;
+
+        // wake up the select() in our thread
+        debug ("Stopping SocketServer: signalling thread");
+        char b = '1';
+        Posix.write (this.ctrl_w, &b, 1);
+
+        // merely calling remove_all() does not invoke ScriptRunner dtor, so stop manually
+        foreach (unowned ScriptRunner r in this.script_runners.get_values())
+            r.stop ();
+        this.script_runners.remove_all();
+
+        debug ("Stopping SocketServer: joining thread");
+        this.thread.join ();
+    }
+
+    public void add (string sock_path, int fd, string record_file)
+    {
+        try {
+            var s = new Socket.from_fd (fd);
+            assert (s != null);
+            assert (s.bind (new UnixSocketAddress (sock_path), true));
+            assert (s.listen ());
+            this.listen_sockets += s;
+        } catch (GLib.Error e) {
+            stderr.printf ("load_socket_script(): cannot create Socket: %s\n", e.message);
+            Posix.abort ();
+        }
+
+        debug ("SocketServer.add: Created socket path %s, fd %i", sock_path, fd);
+
+        this.socket_scriptfile.insert (sock_path, record_file);
+
+        // wake up the select() in our thread
+        char b = '1';
+        Posix.write (this.ctrl_w, &b, 1);
+    }
+
+    private void* run ()
+    {
+        debug ("starting SocketServer thread");
+        while (this.running) {
+            // wait for incoming connects
+            Posix.fd_set fds;
+            Posix.FD_ZERO (out fds);
+            Posix.FD_SET (this.ctrl_r, ref fds);
+            int max = this.ctrl_r;
+            foreach (unowned Socket s in this.listen_sockets) {
+                Posix.FD_SET (s.fd, ref fds);
+                if (s.fd > max)
+                    max = s.fd;
+            }
+            /* ideally we'd use an infinite timeout here; but Vala
+             * currently doesn't allow that, and also it's a good defense
+             * against infinite hangs */
+            int res = Posix.select (max + 1, &fds, null, null, {0, 5000000});
+            if (res < 0) {
+                if (errno == Posix.EINTR)
+                    continue;
+                stderr.printf ("socket server thread: select() failed: %s\n", strerror (errno));
+                Posix.abort ();
+            }
+            if (res == 0)
+                continue;  // timeout
+
+            // if we got triggered by our control fd, consume the data
+            if (Posix.FD_ISSET (this.ctrl_r, fds) > 0) {
+                debug ("socket server thread: woken up by control fd");
+                char buf;
+                Posix.read (this.ctrl_r, &buf, 1);
+                continue;
+            }
+
+            debug ("socket server thread: select() got requests");
+
+            // accept the incoming connections and create ScriptRunners for them
+            foreach (unowned Socket s in this.listen_sockets) {
+                if (Posix.FD_ISSET (s.fd, fds) > 0) {
+                    int fd = Posix.accept (s.fd, null, null);
+                    if (fd < 0) {
+                        stderr.printf ("socket server thread: accept() failed: %s\n", strerror (errno));
+                        Posix.abort ();
+                    }
+                    string sock_path = null;
+                    try {
+                        sock_path = ((UnixSocketAddress) s.get_local_address()).path;
+                        string script = this.socket_scriptfile.get (sock_path);
+                        debug ("socket server thread: accepted request on server socket fd %i, path %s, script %s",
+                               s.fd, sock_path, script);
+                        string key = "%s%i".printf (sock_path, fd);
+                        this.script_runners.insert (key, new ScriptRunner (key, script, fd));
+                    } catch (GLib.Error e) {
+                        stderr.printf ("socket server thread: cannot launch ScriptRunner: %s\n", e.message);
+                        Posix.abort ();
+                    }
+                }
+            }
+        }
+
+        debug ("socket server thread: end");
+        return null;
+    }
+
+    private Socket[] listen_sockets = {};
+    private HashTable<string,string> socket_scriptfile;
+    private HashTable<string,ScriptRunner> script_runners;
+    private Thread<void*> thread;
+    private bool running;
+    private int ctrl_r;
+    private int ctrl_w;
 }
 
 /**

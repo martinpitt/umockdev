@@ -2,6 +2,8 @@
 ----------------
 New features:
 - Add recording of Unix stream sockets. (part of issue #24)
+- Add new method umockdev_testbed_load_socket_script() to replay recorded
+  read()s/recv()s and write()s/send()s to a Unix socket. (part of issue #24)
 
 0.3.2 (2013-07-18)
 ------------------

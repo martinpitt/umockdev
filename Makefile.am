@@ -117,6 +117,7 @@ libumockdev_la_SOURCES =	\
 
 libumockdev_la_VALAFLAGS =		\
 	--pkg gio-2.0			\
+	--pkg gio-unix-2.0		\
 	--pkg linux			\
 	-H src/umockdev.h		\
 	--library=UMockdev-1.0		\
@@ -139,7 +140,7 @@ libumockdev_la_LIBADD =		\
 # see http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libumockdev_la_LDFLAGS =	\
 	$(AM_LDFLAGS)		\
-	-version-info 2:0:2	\
+	-version-info 3:0:3	\
 	-export-dynamic -no-undefined \
 	-export-symbols-regex '^umockdev_(testbed|error).*' \
 	$(NULL)
