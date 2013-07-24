@@ -1113,7 +1113,13 @@ private class ScriptRunner {
                            this.device, delta);
                     Thread.usleep (delta * 1000);
                     debug ("ScriptRunner[%s]: read op after sleep; writing data '%s'", this.device, (string) data);
-                    assert (Posix.write (this.fd, data, data.length - 1) == data.length - 1);
+                    ssize_t l = Posix.write (this.fd, data, data.length - 1);
+                    if (l < 0) {
+                        stderr.printf ("ScriptRunner[%s]: write failed: %s\n",
+                                       this.device, strerror (errno));
+                        Process.abort();
+                    }
+                    assert (l == data.length - 1);
                     break;
 
                 case 'w':
