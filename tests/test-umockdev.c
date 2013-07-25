@@ -1026,8 +1026,8 @@ r 20 Bogus Device\n\
 w 10 split write\n\
 \n\
 r 10 ACK\n\
-w 0 ^^^`^@\n\
-r 0 ^^^`^@\n";
+w 0 ^@^^^`^@a\n\
+r 0 ^@^^^`^@a\n";
 
   umockdev_testbed_add_from_string(fixture->testbed,
           "P: /devices/greeter\nN: greeter\n"
@@ -1100,12 +1100,14 @@ r 0 ^^^`^@\n";
   g_assert(strncmp(buf, "ACK", 3) == 0);
 
   /* corner cases in encoding */
-  g_assert_cmpint(write(fd, "\x1E^\0", 3), ==, 3);
+  g_assert_cmpint(write(fd, "\0\x1E^\0a", 5), ==, 5);
   usleep(10000);
-  g_assert_cmpint(read(fd, buf, 10), ==, 3);
-  g_assert_cmpint(buf[0], ==, '\x1E');
-  g_assert_cmpint(buf[1], ==, '^');
-  g_assert_cmpint(buf[2], ==, 0);
+  g_assert_cmpint(read(fd, buf, 10), ==, 5);
+  g_assert_cmpint(buf[0], ==, 0);
+  g_assert_cmpint(buf[1], ==, '\x1E');
+  g_assert_cmpint(buf[2], ==, '^');
+  g_assert_cmpint(buf[3], ==, 0);
+  g_assert_cmpint(buf[4], ==, 'a');
 
   /* end of script */
   ASSERT_EOF;
@@ -1125,8 +1127,8 @@ t_testbed_script_replay_socket_stream(UMockdevTestbedFixture * fixture, gconstpo
 
   static const char* test_script = "r 200 ready\n\
 w 0 abc\n\
-w 2 defgh\n\
-r 10 response\n";
+w 2 ^@defgh\n\
+r 10 ^@response\n";
 
   /* write script into temporary file */
   fd = g_file_open_tmp("test_script_socket.XXXXXX", &tmppath, &error);
@@ -1166,13 +1168,14 @@ r 10 response\n";
   ASSERT_EOF;
   g_assert_cmpint(write(fd, "abc", 3), ==, 3);
   ASSERT_EOF;
-  g_assert_cmpint(write(fd, "defgh", 5), ==, 5);
+  g_assert_cmpint(write(fd, "\0defgh", 6), ==, 6);
 
   /* now we should get the response after 10 ms */
   ASSERT_EOF;
   usleep(15000);
-  g_assert_cmpint(read(fd, buf, 50), ==, 8);
-  g_assert(strncmp(buf, "response", 8) == 0);
+  g_assert_cmpint(read(fd, buf, 50), ==, 9);
+  g_assert_cmpint(buf[0], ==, 0);
+  g_assert(strncmp(buf + 1, "response", 8) == 0);
   g_assert_cmpint(errno, ==, 0);
   ASSERT_EOF;
 
