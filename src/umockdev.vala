@@ -1325,7 +1325,7 @@ private class SocketServer {
         // wake up the select() in our thread
         debug ("Stopping SocketServer: signalling thread");
         char b = '1';
-        Posix.write (this.ctrl_w, &b, 1);
+        assert (Posix.write (this.ctrl_w, &b, 1) == 1);
 
         // merely calling remove_all() does not invoke ScriptRunner dtor, so stop manually
         foreach (unowned ScriptRunner r in this.script_runners.get_values())
@@ -1355,7 +1355,7 @@ private class SocketServer {
 
         // wake up the select() in our thread
         char b = '1';
-        Posix.write (this.ctrl_w, &b, 1);
+        assert (Posix.write (this.ctrl_w, &b, 1) == 1);
     }
 
     private void* run ()
@@ -1389,7 +1389,7 @@ private class SocketServer {
             if (Posix.FD_ISSET (this.ctrl_r, fds) > 0) {
                 debug ("socket server thread: woken up by control fd");
                 char buf;
-                Posix.read (this.ctrl_r, &buf, 1);
+                assert (Posix.read (this.ctrl_r, &buf, 1) == 1);
                 continue;
             }
 
