@@ -1256,9 +1256,9 @@ private class ScriptRunner {
             }
 
             if (Posix.memcmp (buf, data[offset:data.length], len) != 0) {
-                stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s', expected block '%s' (%" +
-                               ssize_t.FORMAT +" bytes)\n",
-                               this.device, encode(buf), encode(data[offset:data.length]));
+                stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                               " bytes), expected block '%s'\n",
+                               this.device, encode(buf), len, encode(data[offset:offset+len]));
                 Posix.abort ();
             }
 
