@@ -7,6 +7,10 @@ New features:
 - Add new umockdev-run option -u/--unix-stream to load a script for a mocked
   Unix socket into the testbed. (part of issue #24)
 
+Bug fixes:
+- Quote send/received data in script replay debug output, to get along with
+  embedded null bytes and control characters. (issue #25)
+
 0.3.2 (2013-07-18)
 ------------------
 - script replay: Fix endless loop on end of script file.

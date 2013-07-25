@@ -1153,18 +1153,18 @@ private class ScriptRunner {
                     debug ("ScriptRunner[%s]: read op; sleeping %" + uint32.FORMAT + " ms",
                            this.device, delta);
                     Thread.usleep (delta * 1000);
-                    debug ("ScriptRunner[%s]: read op after sleep; writing data '%s'", this.device, (string) data);
-                    ssize_t l = Posix.write (this.fd, data, data.length - 1);
+                    debug ("ScriptRunner[%s]: read op after sleep; writing data '%s'", this.device, encode(data));
+                    ssize_t l = Posix.write (this.fd, data, data.length);
                     if (l < 0) {
                         stderr.printf ("ScriptRunner[%s]: write failed: %s\n",
                                        this.device, strerror (errno));
                         Process.abort();
                     }
-                    assert (l == data.length - 1);
+                    assert (l == data.length);
                     break;
 
                 case 'w':
-                    debug ("ScriptRunner[%s]: write op, data '%s'", this.device, (string) data);
+                    debug ("ScriptRunner[%s]: write op, data '%s'", this.device, encode(data));
                     this.op_write (data, delta);
                     break;
 
@@ -1216,34 +1216,19 @@ private class ScriptRunner {
         string? line = this.script.read_line ();
         assert (line != null);
 
-        // unquote
-        uint8[] data = {};
-        for (int i = 0; i < line.length; ++i) {
-            if (line.data[i] == '^') {
-                assert (i + 1 < line.length);
-                data += (line.data[i+1] == '`') ? '^' : (line.data[i+1] - 64);
-                ++i;
-            } else
-                data += line.data[i];
-        }
-
-        // null terminator for string conversion (only for debug() messages)
-        data += 0;
-
-        return data;
+        return decode (line);
     }
 
     private void op_write (uint8[] data, uint32 delta)
     {
         Posix.fd_set fds;
         Posix.timeval timeout = {0, 200000};
-        size_t blksize = data.length - 1;  /* skip null terminator */
         size_t offset = 0;
-        uint8[] buf = new uint8 [blksize];
+        uint8[] buf = new uint8 [data.length];
 
         // a recorded block might be actually written in multiple smaller
         // chunks
-        while (this.running && offset < blksize) {
+        while (this.running && offset < data.length) {
             Posix.FD_ZERO (out fds);
             Posix.FD_SET (this.fd, ref fds);
             int res = Posix.select (this.fd + 1, &fds, null, null, timeout);
@@ -1257,31 +1242,66 @@ private class ScriptRunner {
 
             if (res == 0) {
                 debug ("ScriptRunner[%s]: timed out on read operation on expected block '%s', trying again",
-                       this.device, (string) data[offset:blksize]);
+                       this.device, encode(data[offset:data.length]));
                 continue;
             }
 
-            ssize_t len = Posix.read (this.fd, buf, blksize - offset);
+            ssize_t len = Posix.read (this.fd, buf, data.length - offset);
             // if the client closes the fd, we'll get EIO
             if (len <= 0) {
                 debug ("ScriptRunner[%s]: got failure or EOF on read operation on expected block '%s', resetting",
-                       this.device, (string) data[offset:blksize]);
+                       this.device, encode(data[offset:data.length]));
                 this.script.seek (0, FileSeek.SET);
                 return;
             }
 
-            if (Posix.memcmp (buf, data[offset:blksize], len) != 0) {
+            if (Posix.memcmp (buf, data[offset:data.length], len) != 0) {
                 stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s', expected block '%s' (%" +
                                ssize_t.FORMAT +" bytes)\n",
-                               this.device, (string) buf, (string) data[offset:blksize]);
+                               this.device, encode(buf), encode(data[offset:data.length]));
                 Posix.abort ();
             }
 
             offset += len;
             debug ("ScriptRunner[%s]: op_write, got %" + ssize_t.FORMAT + " bytes; offset: %" +
                    size_t.FORMAT + ", full block size %" + size_t.FORMAT,
-                   this.device, len, offset, blksize);
+                   this.device, len, offset, data.length);
         }
+    }
+
+    private static uint8[] decode (string quoted)
+    {
+        uint8[] data = {};
+        for (int i = 0; i < quoted.length; ++i) {
+            if (quoted.data[i] == '^') {
+                assert (i + 1 < quoted.length);
+                data += (quoted.data[i+1] == '`') ? '^' : (quoted.data[i+1] - 64);
+                ++i;
+            } else
+                data += quoted.data[i];
+        }
+        return data;
+    }
+
+    private static string encode (uint8[] data)
+    {
+        uint8[] quoted = {};
+        for (int i = 0; i < data.length; ++i) {
+            if (data[i] < 32) {
+                quoted += '^';
+                quoted += data[i] + 64;
+            } else if (data[i] == '^') {
+                /* we cannot encode ^ as ^^, as we need that for 0x1E already; so
+                 * take the next free code which is 0x60 */
+                quoted += '^';
+                quoted += '`';
+            } else
+                quoted += data[i];
+        }
+
+        // null terminator
+        quoted += 0;
+        return (string) quoted;
     }
 
     public string device { get; private set; }
