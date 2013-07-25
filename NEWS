@@ -6,6 +6,8 @@ New features:
   read()s/recv()s and write()s/send()s to a Unix socket. (part of issue #24)
 - Add new umockdev-run option -u/--unix-stream to load a script for a mocked
   Unix socket into the testbed. (part of issue #24)
+- Add new script file operation "f" to set a fuzz level when comparing expected
+  incoming strings. (issue #26)
 
 Bug fixes:
 - Quote send/received data in script replay debug output, to get along with

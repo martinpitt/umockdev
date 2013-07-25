@@ -1183,6 +1183,60 @@ r 10 ^@response\n";
   g_unlink (tmppath);
 }
 
+static void
+t_testbed_script_replay_fuzz(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  char *tmppath;
+  int fd;
+  char buf[1024];
+
+  static const char* test_script = "f 20 -\n\
+w 0 aaaaaaaaaa\n\
+w 0 bbbbbbbbbb\n\
+r 0 OK\n";
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/fuzzy\nN: fuzzy\n"
+          "E: DEVNAME=/dev/fuzzy\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
+  g_assert_no_error(error);
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_fuzzy.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_script(fixture->testbed, "/dev/fuzzy", tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* start communication */
+  fd = g_open("/dev/fuzzy", O_RDWR | O_NONBLOCK, 0);
+  g_assert_cmpint(fd, >=, 0);
+  errno = 0;
+
+  /* one wrong character (10%) */
+  g_assert_cmpint(write(fd, "axaaaaaaaa", 10), ==, 10);
+  /* two wrong characters (20%), in two blocks */
+  g_assert_cmpint(write(fd, "b1b", 3), ==, 3);
+  g_assert_cmpint(write(fd, "bbbbb7b", 7), ==, 7);
+
+  /* wait for final OK to make sure it survived */
+  usleep(10000);
+  g_assert_cmpint(read(fd, buf, 11), ==, 2);
+  g_assert(strncmp(buf, "OK", 2) == 0);
+  g_assert_cmpint(errno, ==, 0);
+
+  /* end of script */
+  ASSERT_EOF;
+
+  close(fd);
+}
+
 
 static void
 t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
@@ -1385,6 +1439,8 @@ main(int argc, char **argv)
 	       t_testbed_script_replay_simple, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_socket_stream", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_socket_stream, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/script_replay_fuzz", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_script_replay_fuzz, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

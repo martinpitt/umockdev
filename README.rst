@@ -31,11 +31,11 @@ Right now umockdev supports the following features:
    (for everything else) by default. You can manually create other kinds of
    fake devices in your tests, too.
 
- * Recording and replay of read()s and write()s from/to a (character) device
-   (e. g. for emulating modems)
-
- * Recording and replay of read()s/recv()s and write()s/send()s from/to an Unix
-   socket (e. g. for Android's /dev/socket/rild)
+ * Recording and replay of read()s/recv()s and write()s/send()s from/to a
+   character device (e. g. for emulating modems) or an Unix socket (e. g. for
+   Android's /dev/socket/rild). Replay can optionally use a configurable fuzz
+   factor in case the expected (previously recorded) data doesn't perfectly
+   match what is actually being sent from the tested application.
 
  * Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
    Wacom tablets, etc.) ioctls

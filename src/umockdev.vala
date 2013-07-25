@@ -1172,6 +1172,16 @@ private class ScriptRunner {
                     this.running = false;
                     break;
 
+                case 'f':
+                    if (delta > 100) {
+                        stderr.printf ("ScriptRunner[%s]: fuzz value %u is invalid (must be between 0 and 100)\n",
+                                       this.device, delta);
+                        Process.abort();
+                    }
+                    this.fuzz = delta;
+                    debug ("ScriptRunner[%s]: setting fuzz level to %u%%", this.device, this.fuzz);
+                    break;
+
                 default:
                     debug ("ScriptRunner[%s]: got unknown line op %c, ignoring", this.device, op);
                     break;
@@ -1255,11 +1265,27 @@ private class ScriptRunner {
                 return;
             }
 
-            if (Posix.memcmp (buf, data[offset:data.length], len) != 0) {
-                stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
-                               " bytes), expected block '%s'\n",
-                               this.device, encode(buf), len, encode(data[offset:offset+len]));
-                Posix.abort ();
+            if (this.fuzz == 0) {
+                if (Posix.memcmp (buf, data[offset:data.length], len) != 0) {
+                    stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                                   " bytes), expected block '%s'\n",
+                                   this.device, encode(buf), len, encode(data[offset:offset+len]));
+                    Posix.abort ();
+                }
+            } else {
+                uint d = hamming (buf, data[offset:offset+len]);
+                if (d * 100 > this.fuzz * len) {
+                    stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                                   " bytes), expected block '%s', difference %u%% > fuzz level %u%%\n",
+                                   this.device, encode(buf), len, encode(data[offset:offset+len]),
+                                   (d * 1000 / len + 5) / 10, this.fuzz);
+                    Posix.abort ();
+                } /* else {
+                    debug ("ScriptRunner op_write[%s]: data matches: got block '%s' (%" + ssize_t.FORMAT +
+                                   " bytes), expected block '%s', difference %u%% <= fuzz level %u%%\n",
+                                   this.device, encode(buf), len, encode(data[offset:offset+len]),
+                                   (d * 1000 / len + 5) / 10, this.fuzz);
+                } */
             }
 
             offset += len;
@@ -1304,12 +1330,25 @@ private class ScriptRunner {
         return (string) quoted;
     }
 
+    private static uint hamming (uint8[] d1, uint8[] d2)
+    {
+        assert (d1.length == d2.length);
+        uint d = 0;
+        uint i;
+
+        // use xor instead of "if !=" to avoid branching
+        for (i = 0; i < d1.length; ++i)
+            d += (uint) ((d1[i] ^ d2[i]) > 0);
+        return d;
+    }
+
     public string device { get; private set; }
     private string script_file;
     private Thread<void*> thread;
     private FileStream script;
     private int fd;
     private bool running;
+    private uint fuzz = 0;
 }
 
 
