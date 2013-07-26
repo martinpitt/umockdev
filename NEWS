@@ -9,6 +9,7 @@ New features:
 - Add new script file operation "f" to set a fuzz level when comparing expected
   incoming strings. (issue #26)
 - Add docs/script-format.txt: document the umockdev script format.
+- README.rst: Add unix socket record/replay example.
 
 Bug fixes:
 - Quote send/received data in script replay debug output, to get along with

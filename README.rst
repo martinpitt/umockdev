@@ -150,6 +150,38 @@ This example records the behaviour of an USB 3G stick with ModemManager.
   |      -s /dev/ttyUSB2=2.script -- modem-manager --debug
 
 
+Record and replay an Unix socket
+--------------------------------
+This example records the behaviour of ofonod when talking to Android's rild
+through ``/dev/socket/rild``.
+
+ - Record the communication:
+
+   | sudo pkill ofonod; sudo umockdev-record -s /dev/socket/rild=phonecall.script -- ofonod -n -d
+   |
+
+   Now make a call, send a SMS, or anything else you want to replay later.
+   Press Control-C when you are done.
+
+ - Now you can run ofonod in a testbed with the mocked rild:
+
+   | sudo pkill ofonod; sudo umockdev-run -u /dev/socket/rild=/home/phablet/rild.script -- ofonod -n -d
+   |
+
+   Note that you don't need to record device properties or specify -d/--device
+   for unix sockets, since their path is all that is to be known about them.
+
+   With the API, you would do this with a call like
+
+   |   umockdev_testbed_load_socket_script(testbed, "/dev/socket/rild",
+   |                                       SOCK_STREAM, "rild.script", &error);
+
+   Note that for Unix sockets you cannot ``use umockdev_testbed_get_dev_fd()``,
+   you can only use scripts with them. If you need full control in your test suite,
+   you can of course create the socket in <testbed root>/<socket path> and
+   handle the bind/accept/communication yourself.
+
+
 Development
 ===========
 | Home page: https://github.com/martinpitt/umockdev
