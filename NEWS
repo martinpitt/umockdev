@@ -8,6 +8,7 @@ New features:
   Unix socket into the testbed. (part of issue #24)
 - Add new script file operation "f" to set a fuzz level when comparing expected
   incoming strings. (issue #26)
+- Add docs/script-format.txt: document the umockdev script format.
 
 Bug fixes:
 - Quote send/received data in script replay debug output, to get along with

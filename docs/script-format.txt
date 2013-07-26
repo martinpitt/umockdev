@@ -1,0 +1,47 @@
+umockdev script format
+----------------------
+An umockdev script file records the "dialog" between the program under test
+("client") and the device or socket it is talking to.  Script files use a
+line-based format, one line for an individual operation:
+
+operation value data
+
+operation
+---------
+single letter for the type of I/O operation. Possible operation codes are:
+
+  r : Client program does a read() or recv() operation; umockdev will send
+      data; <data> can be read in several smaller blocks if the first read
+      operation does not request the full length of data. During recording, the
+      time since the previous operation (in ms) gets recorded into the "value"
+      number; during replay, umockdev waits for that time before sending the
+      recorded data to mimic the original device or socket.
+
+  w : Client program does a write() or send() operation; it's required that
+      this matches the previously recorded data, so that umockdev and the
+      client program stay in sync. During recording, multiple successive writes
+      which are less than 10 ms apart are merged into one block.
+      Correspondingly, the actually written data during replay can be split
+      into arbitrary smaller chunks. The time since the previous operation (in
+      ms) gets recorded into the "value" number for reference, but is not
+      relevant during replay.
+
+   f: Set/change fuzz percentage. This specifies the percentage of allowed
+      character mismatches between a recorded 'w'rite block and the actually
+      sent data. This defaults to '0' (i. e. exact matching). It is recommended
+      to not set this to > 20 to avoid getting out of sync and missing some
+      actual misbehaviour; preferrably, only use it for some specific messages
+      which are known to have some variance, instead of just setting it at
+      the top of a script. The data member is ignored, it's recommended to use
+      "-".
+
+   Q : Stop processing the script. This is not required, nor written by
+       umockdev-record. You can use this for testing or appending notes at the
+       end of the script. value and data are ignored.
+
+data
+----
+In order to represent the data block as a single line, byte values b <= 32 are
+escaped as '^' followed by (b+64). The '^' character itself is represented as
+"^`". So the byte value 0 is represented as "^@", 1 as "^A", 10 (line feed) as
+"^J", 30 as "^^", 94 as "^`". All values >= 32 (except '^') are verbatim.

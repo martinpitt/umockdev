@@ -386,7 +386,8 @@ SUBDIRS += \
 endif
 
 doc_DATA = \
-	 README.rst	\
+	 README.rst			\
+	 docs/script-format.txt		\
 	 $(NULL)
 
 EXAMPLES = \
