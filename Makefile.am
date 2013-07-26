@@ -358,6 +358,8 @@ if HAVE_PYTHON
 		$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py; \
 	fi
 endif
+	echo "== Running static code tests against build tree =="
+	tests/test-static-code
 endif
 
 check-installed: $(CHECKS)
