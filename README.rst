@@ -163,6 +163,15 @@ through ``/dev/socket/rild``.
    Now make a call, send a SMS, or anything else you want to replay later.
    Press Control-C when you are done.
 
+ - ofonod's messages that get sent to rild are not 100% predictable, some bytes
+   in some messages are always different. Edit the recorded rild.script to set
+   a fuzz factor of 5, i. e. at most 5% of the bytes in a message are allowed
+   to be different from the recorded ones. Insert a line
+
+      f 5 -
+
+   at the top of the file. See docs/script-format.txt for details.
+
  - Now you can run ofonod in a testbed with the mocked rild:
 
    | sudo pkill ofonod; sudo umockdev-run -u /dev/socket/rild=/home/phablet/rild.script -- ofonod -n -d
