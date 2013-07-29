@@ -404,8 +404,12 @@ public class Testbed: GLib.Object {
                     (dev_path.contains("/block/") ? "block" : "char"));
                 if (DirUtils.create_with_parents(sysdev_dir, 0755) != 0)
                     error("cannot create dir '%s': %s", sysdev_dir, strerror(errno));
-                assert(FileUtils.symlink("../../" + dev_path.substring(5),
-                                         Path.build_filename(sysdev_dir, attributes[i+1])) == 0);
+                string dest = Path.build_filename(sysdev_dir, attributes[i+1]);
+                if (!FileUtils.test(dest, FileTest.EXISTS)) {
+                    if (FileUtils.symlink("../../" + dev_path.substring(5), dest) < 0)
+                        error("add_device %s: failed to symlink %s to %s: %s\n", name, dest,
+                              dev_path.substring(5), strerror(errno));
+                }
             }
         }
         if (attributes.length % 2 != 0)
