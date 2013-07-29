@@ -673,6 +673,27 @@ script_record_open(int fd)
     script_start_record(fd, logname);
 }
 
+static void
+script_record_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int res)
+{
+    const char *path = getenv("UMOCKDEV_DIR");
+    size_t i;
+
+    if (addr->sa_family == AF_UNIX && res == 0 && path == NULL) {
+	const char *sock_path = ((struct sockaddr_un *) addr)->sun_path;
+
+	/* find out where we log it to */
+	if (!script_dev_logfile_map_inited)
+	    init_script_dev_logfile_map();
+	for (i = 0; i < script_socket_logfile_len; ++i) {
+	    if (strcmp(script_socket_logfile[2*i], sock_path) == 0) {
+		DBG("script_record_connect: starting recording of unix socket %s on fd %i\n", sock_path, sockfd);
+		script_start_record(sockfd, script_socket_logfile[2*i+1]);
+	    }
+	}
+    }
+}
+
 
 static void
 script_record_close(int fd)
@@ -995,40 +1016,24 @@ int
 connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
     libc_func(connect, int, int, const struct sockaddr *, socklen_t);
-    const char *path = getenv("UMOCKDEV_DIR");
-    size_t i;
     int res;
 
+    /* playback */
     if (addr->sa_family == AF_UNIX) {
 	const char *sock_path = ((struct sockaddr_un *) addr)->sun_path;
 	const char *p = trap_path(sock_path);
 	struct sockaddr_un trapped_addr;
 
-	/* playback */
 	if (p != sock_path) {
-
 	    DBG("testbed wrapped connect: redirecting Unix socket %s to %s\n", sock_path, p);
 	    trapped_addr.sun_family = AF_UNIX;
 	    strncpy(trapped_addr.sun_path, p, sizeof(trapped_addr.sun_path));
 	    addr = (struct sockaddr*) &trapped_addr;
 	}
+    }
 
-	/* recording */
-	res = _connect(sockfd, addr, addrlen);
-	if (res == 0 && path == NULL) {
-	    /* find out where we log it to */
-	    if (!script_dev_logfile_map_inited)
-		init_script_dev_logfile_map();
-	    for (i = 0; i < script_socket_logfile_len; ++i) {
-		if (strcmp(script_socket_logfile[2*i], sock_path) == 0) {
-		    DBG("testbed wrapped connect: starting recording of unix socket %s on fd %i\n", sock_path, sockfd);
-		    script_start_record(sockfd, script_socket_logfile[2*i+1]);
-		    return res;
-		}
-	    }
-	}
-    } else
-	res = _connect(sockfd, addr, addrlen);
+    res = _connect(sockfd, addr, addrlen);
+    script_record_connect(sockfd, addr, addrlen, res);
 
     return res;
 }
