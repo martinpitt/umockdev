@@ -605,12 +605,12 @@ init_script_dev_logfile_map(void)
 	}
 	dev = strtol(devname, &endptr, 10);
 	if (dev != 0 && *endptr == '\0') {
-	    // if it's a number, then it is an rdev of a device
+	    /* if it's a number, then it is an rdev of a device */
 	    DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev),
 	    logname);
 	    fd_map_add(&script_dev_logfile_map, dev, logname);
 	} else {
-	    // if it's a path, then we record a socket
+	    /* if it's a path, then we record a socket */
 	    if (script_socket_logfile_len < MAX_SCRIPT_SOCKET_LOGFILE) {
 		DBG("init_script_dev_logfile_map: will record script of socket %s into %s\n", devname, logname);
 		script_socket_logfile[2*script_socket_logfile_len] = devname;
@@ -641,7 +641,7 @@ script_start_record(int fd, const char *logname)
 	exit(1);
     }
 
-    // if we have a previous record, make sure that we start a new line
+    /* if we have a previous record, make sure that we start a new line */
     if (ftell(log) > 0)
 	putc('\n', log);
 
