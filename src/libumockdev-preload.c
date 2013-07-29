@@ -333,7 +333,7 @@ netlink_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 }
 
 static void
-netlink_recvmsg(int sockfd, struct msghdr * msg, int flags, int ret)
+netlink_recvmsg(int sockfd, struct msghdr * msg, int flags, ssize_t ret)
 {
     struct cmsghdr *cmsg;
     struct sockaddr_nl *sender;
