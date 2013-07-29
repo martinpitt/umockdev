@@ -30,7 +30,7 @@ CLEANFILES =
 DISTCLEANFILES =
 CHECKS =
 
-EXTRA_DIST = COPYING README.rst NEWS devices
+EXTRA_DIST = COPYING README.rst NEWS devices docs/script-format.txt
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
 TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
 		    TOP_SRCDIR=$(top_srcdir) \
@@ -272,7 +272,7 @@ tests_test_ioctl_tree_LDADD =	\
 
 CHECKS += tests/test-umockdev tests/test-ioctl-tree
 
-EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf
+EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf tests/test-static-code
 
 noinst_PROGRAMS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
