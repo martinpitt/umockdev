@@ -359,7 +359,7 @@ if HAVE_PYTHON
 	fi
 endif
 	echo "== Running static code tests against build tree =="
-	tests/test-static-code
+	$(srcdir)/tests/test-static-code
 endif
 
 check-installed: $(CHECKS)
