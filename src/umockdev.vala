@@ -64,8 +64,7 @@ public class Testbed: GLib.Object {
         try {
             this.root_dir = DirUtils.make_tmp("umockdev.XXXXXX");
         } catch (FileError e) {
-            stderr.printf("Cannot create temporary directory: %s\n", e.message);
-            Process.abort();
+            error("Cannot create temporary directory: %s", e.message);
         }
         this.sys_dir = Path.build_filename(this.root_dir, "sys");
         DirUtils.create(this.sys_dir, 0755);
@@ -155,8 +154,7 @@ public class Testbed: GLib.Object {
         try {
             FileUtils.set_data(Path.build_filename(this.root_dir, devpath, name), value);
         } catch (FileError e) {
-            stderr.printf("Cannot write attribute file: %s\n", e.message);
-            Process.abort();
+            error("Cannot write attribute file: %s", e.message);
         }
     }
 
@@ -204,8 +202,7 @@ public class Testbed: GLib.Object {
     {
         var path = Path.build_filename(this.root_dir, devpath, name);
         if (FileUtils.symlink(value, path) < 0) {
-            stderr.printf("Cannot create symlink %s: %s\n", path, strerror(errno));
-            Process.abort();
+            error("Cannot create symlink %s: %s", path, strerror(errno));
         }
     }
 
@@ -256,8 +253,7 @@ public class Testbed: GLib.Object {
             /* write it back */
             FileUtils.set_data(uevent_path, props.data);
         } catch (GLib.Error e) {
-            stderr.printf("Cannot update uevent file: %s\n", e.message);
-            Process.abort();
+            error("Cannot update uevent file: %s", e.message);
         }
     }
 
@@ -585,8 +581,7 @@ public class Testbed: GLib.Object {
             if (this.re_record_optval == null)
                 this.re_record_optval = new Regex("^([N]): ([^=\n]+)(?>=([0-9A-F]+))?(?>\n|$)");
         } catch (RegexError e) {
-            stderr.printf("Internal error, cannot create regex: %s\n", e.message);
-            Process.abort();
+            error("Internal error, cannot create regex: %s", e.message);
         }
 
         string cur_data = data;
@@ -857,8 +852,7 @@ public class Testbed: GLib.Object {
                 if (subsystem == "block")
                     FileUtils.chmod(node_path, 01644);
             } catch (FileError e) {
-                stderr.printf("Cannot create dev node file: %s\n", e.message);
-                Process.abort();
+                error("Cannot create dev node file: %s", e.message);
             }
 
             return;
@@ -1159,11 +1153,8 @@ private class ScriptRunner {
                     Thread.usleep (delta * 1000);
                     debug ("ScriptRunner[%s]: read op after sleep; writing data '%s'", this.device, encode(data));
                     ssize_t l = Posix.write (this.fd, data, data.length);
-                    if (l < 0) {
-                        stderr.printf ("ScriptRunner[%s]: write failed: %s\n",
-                                       this.device, strerror (errno));
-                        Process.abort();
-                    }
+                    if (l < 0)
+                        error ("ScriptRunner[%s]: write failed: %s", this.device, strerror (errno));
                     assert (l == data.length);
                     break;
 
@@ -1177,11 +1168,9 @@ private class ScriptRunner {
                     break;
 
                 case 'f':
-                    if (delta > 100) {
-                        stderr.printf ("ScriptRunner[%s]: fuzz value %u is invalid (must be between 0 and 100)\n",
-                                       this.device, delta);
-                        Process.abort();
-                    }
+                    if (delta > 100)
+                        error ("ScriptRunner[%s]: fuzz value %u is invalid (must be between 0 and 100)",
+                               this.device, delta);
                     this.fuzz = delta;
                     debug ("ScriptRunner[%s]: setting fuzz level to %u%%", this.device, this.fuzz);
                     break;
@@ -1214,17 +1203,13 @@ private class ScriptRunner {
         }
 
         var cur_pos = this.script.tell ();
-        if (this.script.getc () != ' ') {
-            stderr.printf ("Missing space after operation code in %s at position %li\n", this.script_file, cur_pos);
-            Posix.abort ();
-        }
+        if (this.script.getc () != ' ')
+            error ("Missing space after operation code in %s at position %li", this.script_file, cur_pos);
 
         // read time delta
         cur_pos = this.script.tell ();
-        if (this.script.scanf ("%" + uint32.FORMAT + " ", out delta) != 1) {
-            stderr.printf ("Cannot parse time in %s at position %li\n", this.script_file, cur_pos);
-            Posix.abort ();
-        }
+        if (this.script.scanf ("%" + uint32.FORMAT + " ", out delta) != 1)
+            error ("Cannot parse time in %s at position %li", this.script_file, cur_pos);
 
         // remainder of the line is the data
         string? line = this.script.read_line ();
@@ -1249,9 +1234,8 @@ private class ScriptRunner {
             if (res < 0) {
                 if (errno == Posix.EINTR)
                     continue;
-                stderr.printf ("ScriptRunner op_write[%s]: select() failed: %s\n",
-                               this.device, strerror (errno));
-                Posix.abort ();
+                error ("ScriptRunner op_write[%s]: select() failed: %s",
+                       this.device, strerror (errno));
             }
 
             if (res == 0) {
@@ -1270,20 +1254,17 @@ private class ScriptRunner {
             }
 
             if (this.fuzz == 0) {
-                if (Posix.memcmp (buf, data[offset:data.length], len) != 0) {
-                    stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
-                                   " bytes), expected block '%s'\n",
-                                   this.device, encode(buf), len, encode(data[offset:offset+len]));
-                    Posix.abort ();
-                }
+                if (Posix.memcmp (buf, data[offset:data.length], len) != 0)
+                    error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                           " bytes), expected block '%s'",
+                           this.device, encode(buf), len, encode(data[offset:offset+len]));
             } else {
                 uint d = hamming (buf, data[offset:offset+len]);
                 if (d * 100 > this.fuzz * len) {
-                    stderr.printf ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
-                                   " bytes), expected block '%s', difference %u%% > fuzz level %u%%\n",
-                                   this.device, encode(buf), len, encode(data[offset:offset+len]),
-                                   (d * 1000 / len + 5) / 10, this.fuzz);
-                    Posix.abort ();
+                    error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                           " bytes), expected block '%s', difference %u%% > fuzz level %u%%",
+                           this.device, encode(buf), len, encode(data[offset:offset+len]),
+                           (d * 1000 / len + 5) / 10, this.fuzz);
                 } /* else {
                     debug ("ScriptRunner op_write[%s]: data matches: got block '%s' (%" + ssize_t.FORMAT +
                                    " bytes), expected block '%s', difference %u%% <= fuzz level %u%%\n",
@@ -1408,8 +1389,7 @@ private class SocketServer {
             assert (s.listen ());
             this.listen_sockets += s;
         } catch (GLib.Error e) {
-            stderr.printf ("load_socket_script(): cannot create Socket: %s\n", e.message);
-            Posix.abort ();
+            error ("load_socket_script(): cannot create Socket: %s", e.message);
         }
 
         debug ("SocketServer.add: Created socket path %s, fd %i", sock_path, fd);
@@ -1442,8 +1422,7 @@ private class SocketServer {
             if (res < 0) {
                 if (errno == Posix.EINTR)
                     continue;
-                stderr.printf ("socket server thread: select() failed: %s\n", strerror (errno));
-                Posix.abort ();
+                error ("socket server thread: select() failed: %s", strerror (errno));
             }
             if (res == 0)
                 continue;  // timeout
@@ -1462,10 +1441,8 @@ private class SocketServer {
             foreach (unowned Socket s in this.listen_sockets) {
                 if (Posix.FD_ISSET (s.fd, fds) > 0) {
                     int fd = Posix.accept (s.fd, null, null);
-                    if (fd < 0) {
-                        stderr.printf ("socket server thread: accept() failed: %s\n", strerror (errno));
-                        Posix.abort ();
-                    }
+                    if (fd < 0)
+                        error ("socket server thread: accept() failed: %s", strerror (errno));
                     string sock_path = null;
                     try {
                         sock_path = ((UnixSocketAddress) s.get_local_address()).path;
@@ -1475,8 +1452,7 @@ private class SocketServer {
                         string key = "%s%i".printf (sock_path, fd);
                         this.script_runners.insert (key, new ScriptRunner (key, script, fd));
                     } catch (GLib.Error e) {
-                        stderr.printf ("socket server thread: cannot launch ScriptRunner: %s\n", e.message);
-                        Posix.abort ();
+                        error ("socket server thread: cannot launch ScriptRunner: %s", e.message);
                     }
                 }
             }
