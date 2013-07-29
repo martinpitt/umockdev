@@ -873,6 +873,26 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
     return ret;						    	    \
 }
 
+#define WRAP_OPEN2(prefix, suffix) \
+int prefix ## open ## suffix (const char *path, int flags)	    \
+{ \
+    const char *p;						    \
+    libc_func(prefix ## open ## suffix, int, const char*, int);	    \
+    int ret;							    \
+    p = trap_path(path);					    \
+    if (p == NULL)						    \
+	return -1;						    \
+    DBG("testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
+    ret =  _ ## prefix ## open ## suffix(p, flags);		    \
+    if (path != p)						    \
+	ioctl_emulate_open(ret, path);				    \
+    else {							    \
+	ioctl_record_open(ret);					    \
+	script_record_open(ret);				    \
+    }								    \
+    return ret;						    	    \
+}
+
 WRAP_1ARG(DIR *, NULL, opendir);
 
 WRAP_2ARGS(FILE *, NULL, fopen, const char *);
@@ -893,6 +913,8 @@ WRAP_VERSTAT(__lx, 64);
 
 WRAP_OPEN(,);
 WRAP_OPEN(, 64);
+WRAP_OPEN2(__,_2);
+WRAP_OPEN2(__,64_2);
 
 ssize_t
 read(int fd, void *buf, size_t count)

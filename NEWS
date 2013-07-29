@@ -1,3 +1,8 @@
+0.4.1 (UNRELEASED)
+------------------
+Bug fixes:
+ - preload: Wrap __open_2() and __open64_2().
+
 0.4 (2013-07-29)
 ----------------
 New features:
