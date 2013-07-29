@@ -1,4 +1,4 @@
-0.4 (UNRELEASED)
+0.4 (2013-07-29)
 ----------------
 New features:
 - Add recording of Unix stream sockets. (part of issue #24)
