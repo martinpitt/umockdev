@@ -174,7 +174,7 @@ through ``/dev/socket/rild``.
 
  - Now you can run ofonod in a testbed with the mocked rild:
 
-   | sudo pkill ofonod; sudo umockdev-run -u /dev/socket/rild=/home/phablet/rild.script -- ofonod -n -d
+   | sudo pkill ofonod; sudo umockdev-run -u /dev/socket/rild=phonecall.script -- ofonod -n -d
    |
 
    Note that you don't need to record device properties or specify -d/--device
@@ -183,7 +183,7 @@ through ``/dev/socket/rild``.
    With the API, you would do this with a call like
 
    |   umockdev_testbed_load_socket_script(testbed, "/dev/socket/rild",
-   |                                       SOCK_STREAM, "rild.script", &error);
+   |                                       SOCK_STREAM, "phonecall.script", &error);
 
    Note that for Unix sockets you cannot ``use umockdev_testbed_get_dev_fd()``,
    you can only use scripts with them. If you need full control in your test suite,
