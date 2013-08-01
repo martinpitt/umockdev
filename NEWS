@@ -1,4 +1,4 @@
-0.4.2 (UNRELEASED)
+0.4.2 (2013-08-01)
 ------------------
 - preload: Don't intercept netlink socket() calls during recording.
 - Update devices/cameras/canon-powershot-sx200.ioctl for libgphoto 2.5.
