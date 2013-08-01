@@ -253,9 +253,33 @@ Canon PowerShot SX200 IS       usb:001,011
 """);
 }
 
+static bool
+check_gphoto_version ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    if (!get_program_out ("gphoto2", "gphoto2 --version", out sout, out serr, out exit))
+        return false;
+    string[] words = sout.split(" ", 3);
+    if (words.length < 2)
+        return false;
+
+    if (double.parse (words[1]) < 2.5) {
+        stderr.printf ("[SKIP: needs gphoto >= 2.5] ");
+        return false;
+    }
+
+    return true;
+}
+
 static void
 t_gphoto_folderlist ()
 {
+    if (!check_gphoto_version ())
+        return;
+
     check_program_out ("gphoto2",
         "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -l",
@@ -272,6 +296,9 @@ There are 0 folders in folder '/store_00010001/DCIM/100CANON'.
 static void
 t_gphoto_filelist ()
 {
+    if (!check_gphoto_version ())
+        return;
+
     check_program_out ("gphoto2",
         "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -L",
