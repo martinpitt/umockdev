@@ -3,6 +3,7 @@
 Bug fixes:
 - preload: Wrap __open_2() and __open64_2().
 - preload: Don't intercept netlink socket() calls during recording.
+- Update devices/cameras/canon-powershot-sx200.ioctl for libgphoto 2.5.
 
 0.4 (2013-07-29)
 ----------------

@@ -278,16 +278,9 @@ t_gphoto_filelist ()
         """There is no file in folder '/'.
 There is no file in folder '/store_00010001'.
 There is no file in folder '/store_00010001/DCIM'.
-There are 9 files in folder '/store_00010001/DCIM/100CANON'.
-#1     IMG_0095.JPG               rd  1640 KB 3264x2448 image/jpeg
-#2     IMG_0096.JPG               rd  1669 KB 3264x2448 image/jpeg
-#3     IMG_0097.JPG               rd  1741 KB 3264x2448 image/jpeg
-#4     IMG_0098.JPG               rd  1328 KB 3264x2448 image/jpeg
-#5     IMG_0099.JPG               rd  1290 KB 3264x2448 image/jpeg
-#6     IMG_0100.JPG               rd  2340 KB 3264x2448 image/jpeg
-#7     IMG_0101.JPG               rd  1916 KB 3264x2448 image/jpeg
-#8     IMG_0102.JPG               rd  2026 KB 3264x2448 image/jpeg
-#9     IMG_0103.JPG               rd  1810 KB 3264x2448 image/jpeg
+There are 2 files in folder '/store_00010001/DCIM/100CANON'.
+#1     IMG_0001.JPG               rd     5 KB image/jpeg
+#2     IMG_0002.JPG               rd     6 KB image/jpeg
 """);
 }
 
