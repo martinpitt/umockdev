@@ -1,7 +1,8 @@
 0.4.1 (2013-07-29)
 ------------------
 Bug fixes:
- - preload: Wrap __open_2() and __open64_2().
+- preload: Wrap __open_2() and __open64_2().
+- preload: Don't intercept netlink socket() calls during recording.
 
 0.4 (2013-07-29)
 ----------------

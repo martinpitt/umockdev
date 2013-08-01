@@ -297,8 +297,9 @@ netlink_socket(int domain, int type, int protocol)
 {
     libc_func(socket, int, int, int, int);
     int fd;
+    const char *path = getenv("UMOCKDEV_DIR");
 
-    if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT) {
+    if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT && path != NULL) {
 	fd = _socket(AF_UNIX, type, 0);
 	fd_map_add(&wrapped_netlink_sockets, fd, NULL);
 	DBG("testbed wrapped socket: intercepting netlink, fd %i\n", fd);
