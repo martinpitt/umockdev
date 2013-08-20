@@ -192,7 +192,9 @@ get_rdev(const char *nodename)
 static int
 is_emulated_device(const char *path, const mode_t st_mode)
 {
-    int orig_errno, res;
+    libc_func(readlink, ssize_t, const char*, char*, size_t);
+    int orig_errno;
+    ssize_t res;
     char dest[10];		/* big enough, we are only interested in the prefix */
 
     /* we use symlinks to the real /dev/pty/ for mocking tty devices, those
@@ -200,7 +202,7 @@ is_emulated_device(const char *path, const mode_t st_mode)
      * stay symlinks */
     if (S_ISLNK(st_mode)) {
 	orig_errno = errno;
-	res = readlink(path, dest, sizeof(dest));
+	res = _readlink(path, dest, sizeof(dest));
 	errno = orig_errno;
 	assert(res > 0);
 
