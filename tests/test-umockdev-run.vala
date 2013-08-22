@@ -306,9 +306,66 @@ t_gphoto_filelist ()
 There is no file in folder '/store_00010001'.
 There is no file in folder '/store_00010001/DCIM'.
 There are 2 files in folder '/store_00010001/DCIM/100CANON'.
-#1     IMG_0001.JPG               rd     5 KB image/jpeg
-#2     IMG_0002.JPG               rd     6 KB image/jpeg
+#1     IMG_0001.JPG               rd    67 KB  640x480  image/jpeg
+#2     IMG_0002.JPG               rd    88 KB  640x480  image/jpeg
 """);
+}
+
+static void
+t_gphoto_thumbs ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    if (!check_gphoto_version ())
+        return;
+
+    get_program_out ("gphoto2", umockdev_run_command + "-d " + rootdir +
+            "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+            rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -T",
+            out sout, out serr, out exit);
+
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_in ("thumb_IMG_0001.jpg", sout);
+    assert_in ("thumb_IMG_0002.jpg", sout);
+
+    Posix.Stat st;
+    assert (Posix.stat("thumb_IMG_0001.jpg", out st) == 0);
+    assert_cmpuint ((uint) st.st_size, Op.GT, 500);
+    assert (Posix.stat("thumb_IMG_0002.jpg", out st) == 0);
+    assert_cmpuint ((uint) st.st_size, Op.GT, 500);
+
+    FileUtils.remove ("thumb_IMG_0001.jpg");
+    FileUtils.remove ("thumb_IMG_0002.jpg");
+}
+static void
+t_gphoto_download ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    if (!check_gphoto_version ())
+        return;
+
+    get_program_out ("gphoto2", umockdev_run_command + "-d " + rootdir +
+            "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
+            rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -P",
+            out sout, out serr, out exit);
+
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_in ("IMG_0001.JPG", sout);
+    assert_in ("IMG_0002.JPG", sout);
+
+    Posix.Stat st;
+    assert (Posix.stat("IMG_0001.JPG", out st) == 0);
+    assert_cmpuint ((uint) st.st_size, Op.GT, 5000);
+    assert (Posix.stat("IMG_0002.JPG", out st) == 0);
+    assert_cmpuint ((uint) st.st_size, Op.GT, 5000);
+
+    FileUtils.remove ("IMG_0001.JPG");
+    FileUtils.remove ("IMG_0002.JPG");
 }
 
 static void
@@ -483,6 +540,8 @@ main (string[] args)
   Test.add_func ("/umockdev-run/integration/gphoto-detect", t_gphoto_detect);
   Test.add_func ("/umockdev-run/integration/gphoto-folderlist", t_gphoto_folderlist);
   Test.add_func ("/umockdev-run/integration/gphoto-filelist", t_gphoto_filelist);
+  Test.add_func ("/umockdev-run/integration/gphoto-thumbs", t_gphoto_thumbs);
+  Test.add_func ("/umockdev-run/integration/gphoto-download", t_gphoto_download);
 
   // input devices
   Test.add_func ("/umockdev-run/integration/input-touchpad", t_input_touchpad);
