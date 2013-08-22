@@ -402,14 +402,15 @@ ioctl_record_open(int fd)
     if (dev_of_fd(fd) != record_rdev)
 	return;
 
-    /* recording is already in progress? e. g. libmtp opens the device
-     * multiple times */
-    /*
-       if (ioctl_record_fd >= 0) {
+    /* recording is already in progress? */
+    if (ioctl_record_fd >= 0) {
+	/* libmtp opens the device multiple times, we can't do that */
+	/*
        fprintf(stderr, "umockdev: recording for this device is already ongoing, stopping recording of previous open()\n");
        ioctl_record_close();
-       }
-     */
+       */
+       fprintf(stderr, "umockdev: WARNING: ioctl recording for this device is already ongoing on fd %i, but application opened it a second time on fd %i without closing\n", ioctl_record_fd, fd);
+    }
 
     ioctl_record_fd = fd;
 
@@ -440,6 +441,10 @@ ioctl_record_open(int fd)
 	assert(sigemptyset(&act_int.sa_mask) == 0);
 	act_int.sa_flags = 0;
 	assert(sigaction(SIGINT, &act_int, &orig_actint) == 0);
+
+	DBG("ioctl_record_open: starting ioctl recording of fd %i into %s\n", fd, path);
+    } else {
+	DBG("ioctl_record_open: ioctl recording is already ongoing, continuing on new fd %i\n", fd);
     }
 }
 
@@ -449,6 +454,7 @@ ioctl_record_close(int fd)
     if (fd < 0 || fd != ioctl_record_fd)
 	return;
 
+    DBG("ioctl_record_close: stopping ioctl recording on fd %i\n", fd);
     ioctl_record_fd = -1;
 
     /* recorded anything? */
