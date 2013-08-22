@@ -463,8 +463,6 @@ ioctl_record_close(int fd)
 	assert(ftruncate(fileno(ioctl_record_log), 0) == 0);
 	ioctl_tree_write(ioctl_record_log, ioctl_record);
 	fflush(ioctl_record_log);
-	ioctl_tree_free(ioctl_record);
-	ioctl_record = NULL;
     }
 }
 
