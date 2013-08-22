@@ -781,6 +781,9 @@ ioctl_type ioctl_db[] = {
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
     I_CUSTOM(USBDEVFS_REAPURB, 0, usbdevfs_reapurb),
     I_CUSTOM(USBDEVFS_REAPURBNDELAY, 0, usbdevfs_reapurb),
+#ifdef USBDEVFS_GET_CAPABILITIES
+    I_SIMPLE_STRUCT_IN(USBDEVFS_GET_CAPABILITIES, 0, ioctl_insertion_parent_stateless),
+#endif
 
     /* hardware/state independent ioctls */
     I_NOSTATE(USBDEVFS_CLAIMINTERFACE, success),

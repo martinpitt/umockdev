@@ -2,6 +2,7 @@
 ------------------
 - preload: Don't call overridden readlink() in helper function. Fixes building
   with gcc 4.6 and older. (issue #27)
+- Support USBDEVFS_GET_CAPABILITIES ioctl.
 
 0.4.2 (2013-08-01)
 ------------------
