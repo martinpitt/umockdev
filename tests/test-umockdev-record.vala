@@ -30,8 +30,7 @@ spawn (string command, out string sout, out string serr, out int exit)
     try {
         assert (Process.spawn_command_line_sync (command, out sout, out serr, out exit));
     } catch (SpawnError e) {
-        stderr.printf ("Cannot call '%s': %s\n", command, e.message);
-        Process.abort ();
+        error ("Cannot call '%s': %s", command, e.message);
     }
 }
 
@@ -42,8 +41,7 @@ file_contents (string filename)
     try {
         assert (FileUtils.get_contents (filename, out contents));
     } catch (FileError e) {
-        stderr.printf ("Cannot get contents of %s: %s\n", filename, e.message);
-        Process.abort ();
+        error ("Cannot get contents of %s: %s", filename, e.message);
     }
     return contents;
 }
@@ -181,8 +179,7 @@ t_system_all ()
     try {
         assert (tb.add_from_string (sout));
     } catch (UMockdev.Error e) {
-        stderr.printf ("Error when adding system dump to testbed: %s\n", e.message);
-        Process.abort ();
+        error ("Error when adding system dump to testbed: %s", e.message);
     }
 }
 
@@ -330,8 +327,7 @@ t_system_script_log_chatter ()
             null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD | SpawnFlags.STDOUT_TO_DEV_NULL,
             null, out chatter_pid, null, null, null));
     } catch (SpawnError e) {
-        stderr.printf ("Cannot call umockdev-record: %s\n", e.message);
-        Process.abort ();
+        error ("Cannot call umockdev-record: %s", e.message);
     }
 
     var chatter_stream = FileStream.fdopen (ptym, "r+");
@@ -401,8 +397,7 @@ t_system_script_log_chatter_socket_stream ()
                 null, SpawnFlags.SEARCH_PATH | SpawnFlags.DO_NOT_REAP_CHILD | SpawnFlags.STDOUT_TO_DEV_NULL,
                 null, out chatter_pid, null, null, null));
         } catch (SpawnError e) {
-            stderr.printf ("Cannot call umockdev-record: %s\n", e.message);
-            Process.abort ();
+            error ("Cannot call umockdev-record: %s", e.message);
         }
 
         // wait until chatter connects
@@ -452,9 +447,8 @@ t_system_script_log_chatter_socket_stream ()
         Thread.usleep (20000);
         conn.send ("recv()".data);
     } catch (Error e) {
-        stderr.printf ("Error: %s\n", e.message);
         FileUtils.remove (spath);
-        Process.abort ();
+        error ("Error: %s", e.message);
     }
     FileUtils.remove (spath);
 
