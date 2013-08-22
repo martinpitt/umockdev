@@ -612,6 +612,12 @@ usbdevfs_reapurb_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 {
     struct usbdevfs_urb *u1 = n1->data;
     struct usbdevfs_urb *u2 = n2->data;
+
+    /* never consider input URBs equal as that might give a mismatch between
+     * identical SUBMITs and different REAPs */
+    if (u1->endpoint & 0x80 || u2->endpoint & 0x80)
+        return FALSE;
+
     return u1->type == u2->type && u1->endpoint == u2->endpoint &&
 	u1->status == u2->status && u1->flags == u2->flags &&
 	u1->buffer_length == u2->buffer_length &&

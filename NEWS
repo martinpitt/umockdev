@@ -5,6 +5,9 @@
 - Support USBDEVFS_GET_CAPABILITIES ioctl.
 - preload: Repair recording if device gets opened multiple times (got broken in
   0.3)
+- ioctl recording: Never consider input URBs equal even if they have exactly
+  the same data, as that might give a mismatch between identical SUBMITs and
+  different REAPs.
 
 0.4.2 (2013-08-01)
 ------------------
