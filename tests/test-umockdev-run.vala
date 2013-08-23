@@ -54,7 +54,7 @@ get_program_out (string program, string command, out string sout,
                  out string serr, out int exit)
 {
     if (!have_program (program)) {
-        stderr.printf ("[SKIP: %s not installed] ", program);
+        stdout.printf ("[SKIP: %s not installed] ", program);
         sout = "";
         serr = "";
         exit = -1;
@@ -267,7 +267,7 @@ check_gphoto_version ()
         return false;
 
     if (double.parse (words[1]) < 2.5) {
-        stderr.printf ("[SKIP: needs gphoto >= 2.5] ");
+        stdout.printf ("[SKIP: needs gphoto >= 2.5] ");
         return false;
     }
 
@@ -372,11 +372,11 @@ static void
 t_input_touchpad ()
 {
     if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
-        stderr.printf ("[SKIP: this test only works on little endian machines] ");
+        stdout.printf ("[SKIP: this test only works on little endian machines] ");
         return;
     }
     if (!have_program ("Xorg")) {
-        stderr.printf ("[SKIP: Xorg not installed] ");
+        stdout.printf ("[SKIP: Xorg not installed] ");
         return;
     }
 
@@ -445,12 +445,12 @@ static void
 t_input_evtest ()
 {
     if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
-        stderr.printf ("[SKIP: this test only works on little endian machines] ");
+        stdout.printf ("[SKIP: this test only works on little endian machines] ");
         return;
     }
 
     if (!have_program ("evtest")) {
-        stderr.printf ("[SKIP: evtest not installed] ");
+        stdout.printf ("[SKIP: evtest not installed] ");
         return;
     }
 

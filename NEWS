@@ -1,3 +1,7 @@
+0.4.4 (UNRELEASED)
+------------------
+- testsuite: Write "skip" messages to stdout instead of stderr.
+
 0.4.3 (2013-08-23)
 ------------------
 - preload: Don't call overridden readlink() in helper function. Fixes building

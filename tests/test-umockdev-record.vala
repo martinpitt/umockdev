@@ -491,7 +491,7 @@ t_gphoto2_record ()
     }
     spawn ("gphoto2 --auto-detect", out sout, out serr, out exit);
     if (exit != 0) {
-        stderr.printf ("[SKIP: gphoto2 --auto-detect failed: %s] ", sout + serr);
+        stdout.printf ("[SKIP: gphoto2 --auto-detect failed: %s] ", sout + serr);
         return;
     }
 
@@ -504,7 +504,7 @@ t_gphoto2_record ()
     }
     MatchInfo match;
     if (!port_re.match (sout, 0, out match)) {
-        stderr.printf ("[SKIP: no gphoto2 compatible camera attached] ");
+        stdout.printf ("[SKIP: no gphoto2 compatible camera attached] ");
         return;
     }
     string busnum = match.fetch(1);
