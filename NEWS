@@ -1,4 +1,4 @@
-0.4.3 (UNRELEASED)
+0.4.3 (2013-08-23)
 ------------------
 - preload: Don't call overridden readlink() in helper function. Fixes building
   with gcc 4.6 and older. (issue #27)
