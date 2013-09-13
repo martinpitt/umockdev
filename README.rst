@@ -21,24 +21,24 @@ as JavaScript or Python).
 
 Right now umockdev supports the following features:
 
- * Emulation of arbitrary sysfs devices, attributes, and udev properties
+- Emulation of arbitrary sysfs devices, attributes, and udev properties
 
- * Synthesis of arbitrary uevents
+- Synthesis of arbitrary uevents
 
- * Emulation of /dev device nodes; they look just like the original real
-   device (i. e. stat() delivers a block/char device with appropriate
-   major/minor), but are backed by a PTY (for terminal devices) or a plain file
-   (for everything else) by default. You can manually create other kinds of
-   fake devices in your tests, too.
+- Emulation of /dev device nodes; they look just like the original real
+  device (i. e. stat() delivers a block/char device with appropriate
+  major/minor), but are backed by a PTY (for terminal devices) or a plain file
+  (for everything else) by default. You can manually create other kinds of
+  fake devices in your tests, too.
 
- * Recording and replay of read()s/recv()s and write()s/send()s from/to a
-   character device (e. g. for emulating modems) or an Unix socket (e. g. for
-   Android's /dev/socket/rild). Replay can optionally use a configurable fuzz
-   factor in case the expected (previously recorded) data doesn't perfectly
-   match what is actually being sent from the tested application.
+- Recording and replay of read()s/recv()s and write()s/send()s from/to a
+  character device (e. g. for emulating modems) or an Unix socket (e. g. for
+  Android's /dev/socket/rild). Replay can optionally use a configurable fuzz
+  factor in case the expected (previously recorded) data doesn't perfectly
+  match what is actually being sent from the tested application.
 
- * Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
-   Wacom tablets, etc.) ioctls
+- Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
+  Wacom tablets, etc.) ioctls
 
 Other aspects and functionality will be added in the future as use cases arise.
 
@@ -96,20 +96,24 @@ Command line: Record and replay PtP/MTP USB devices
 - Connect your digital camera, mobile phone, or other device which supports
   PtP or MTP, and locate it in lsusb. For example
 
-  Bus 001 Device 012: ID 0fce:0166 Sony Ericsson Xperia Mini Pro
+  ::
+
+    Bus 001 Device 012: ID 0fce:0166 Sony Ericsson Xperia Mini Pro
 
 - Dump the sysfs device and udev properties:
 
-  | $ umockdev-record /dev/bus/usb/001/012 > mobile.umockdev
-  |
+  ::
+
+    $ umockdev-record /dev/bus/usb/001/012 > mobile.umockdev
 
 - Now record the dynamic behaviour (i. e. usbfs ioctls) of various operations.
   You can store multiple different operations in the same file, which will
   share the common communication between them. For example:
 
-  | $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
-  | $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
-  |
+  ::
+
+    $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
+    $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
 
 - Now you can disconnect your device, and run the same operations in a mocked
   testbed. Please note that ``/dev/bus/usb/001/012`` merely echoes what is in
@@ -117,8 +121,10 @@ Command line: Record and replay PtP/MTP USB devices
   /dev directory. You can rename that device in the generated ``*.umockdev``
   files and on the command line.
 
-  | $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
-  | $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
+  ::
+
+    $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
+    $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
 
 Note that if your ``*.ioctl`` files get too large for some purpose, you can
 xz-compress them.
@@ -130,14 +136,18 @@ This example records the behaviour of an USB 3G stick with ModemManager.
 - Dump the sysfs device and udev properties of the relevant tty devices (a
   Huawei stick creates ttyUSB{0,1,2}):
 
-  | umockdev-record /dev/ttyUSB* > huawei.umockdev
-  |
+  ::
+
+    umockdev-record /dev/ttyUSB* > huawei.umockdev
+
 
 - Record the communication that goes on between ModemManager and the 3G stick
   into a file ("script"):
 
-  | umockdev-record -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
-  |     -s /dev/ttyUSB2=2.script -- modem-manager --debug
+  ::
+
+    umockdev-record -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
+        -s /dev/ttyUSB2=2.script -- modem-manager --debug
 
   (The --debug option for ModemManager is not necessary, but it's nice to see
   what's going on). Note that you should shut down the running system instance
@@ -146,8 +156,10 @@ This example records the behaviour of an USB 3G stick with ModemManager.
 - Now you can disconnect the stick (not necessary, just to clearly prove that
   the following does not actually talk to the stick), and replay in a test bed:
 
-  | umockdev-run -d huawei.umockdev -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
-  |      -s /dev/ttyUSB2=2.script -- modem-manager --debug
+  ::
+
+    umockdev-run -d huawei.umockdev -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
+         -s /dev/ttyUSB2=2.script -- modem-manager --debug
 
 
 Record and replay an Unix socket
@@ -155,40 +167,48 @@ Record and replay an Unix socket
 This example records the behaviour of ofonod when talking to Android's rild
 through ``/dev/socket/rild``.
 
- - Record the communication:
+- Record the communication:
 
-   | sudo pkill ofonod; sudo umockdev-record -s /dev/socket/rild=phonecall.script -- ofonod -n -d
-   |
+  ::
 
-   Now make a call, send a SMS, or anything else you want to replay later.
-   Press Control-C when you are done.
+    sudo pkill ofonod
+    sudo umockdev-record -s /dev/socket/rild=phonecall.script -- ofonod -n -d
 
- - ofonod's messages that get sent to rild are not 100% predictable, some bytes
-   in some messages are always different. Edit the recorded rild.script to set
-   a fuzz factor of 5, i. e. at most 5% of the bytes in a message are allowed
-   to be different from the recorded ones. Insert a line
+  Now make a call, send a SMS, or anything else you want to replay later.
+  Press Control-C when you are done.
 
-      f 5 -
+- ofonod's messages that get sent to rild are not 100% predictable, some bytes
+  in some messages are always different. Edit the recorded rild.script to set
+  a fuzz factor of 5, i. e. at most 5% of the bytes in a message are allowed
+  to be different from the recorded ones. Insert a line
 
-   at the top of the file. See docs/script-format.txt for details.
+  ::
 
- - Now you can run ofonod in a testbed with the mocked rild:
+     f 5 -
 
-   | sudo pkill ofonod; sudo umockdev-run -u /dev/socket/rild=phonecall.script -- ofonod -n -d
-   |
+  at the top of the file. See docs/script-format.txt for details.
 
-   Note that you don't need to record device properties or specify -d/--device
-   for unix sockets, since their path is all that is to be known about them.
+- Now you can run ofonod in a testbed with the mocked rild:
 
-   With the API, you would do this with a call like
+  ::
 
-   |   umockdev_testbed_load_socket_script(testbed, "/dev/socket/rild",
-   |                                       SOCK_STREAM, "phonecall.script", &error);
+    sudo pkill ofonod
+    sudo umockdev-run -u /dev/socket/rild=phonecall.script -- ofonod -n -d
 
-   Note that for Unix sockets you cannot ``use umockdev_testbed_get_dev_fd()``,
-   you can only use scripts with them. If you need full control in your test suite,
-   you can of course create the socket in <testbed root>/<socket path> and
-   handle the bind/accept/communication yourself.
+  Note that you don't need to record device properties or specify -d/--device
+  for unix sockets, since their path is all that is to be known about them.
+
+  With the API, you would do this with a call like
+
+  ::
+
+    umockdev_testbed_load_socket_script(testbed, "/dev/socket/rild",
+                                        SOCK_STREAM, "phonecall.script", &error);
+
+  Note that for Unix sockets you cannot ``use umockdev_testbed_get_dev_fd()``,
+  you can only use scripts with them. If you need full control in your test suite,
+  you can of course create the socket in <testbed root>/<socket path> and
+  handle the bind/accept/communication yourself.
 
 Build, Test, Run
 ================
