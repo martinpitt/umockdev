@@ -363,9 +363,15 @@ t_system_script_log_chatter ()
     assert_cmpint (time, Op.LE, 800);
     assert_cmpint (log_stream.scanf ("w %d I ♥ John^Ja^I tab and a^J line break in one write^J\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.LE, 20);
-    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar!^J\n", &time), Op.EQ, 1);;
+    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar !^J\n", &time), Op.EQ, 1);;
     assert_cmpint (time, Op.GE, 250);
     assert_cmpint (time, Op.LE, 450);
+
+    assert_cmpint (log_stream.scanf ("w %d bye!^J\n", &time), Op.EQ, 1);;
+    assert_cmpint (time, Op.LE, 20);
+
+    // verify EOF
+    assert_cmpint (log_stream.scanf ("%*c"), Op.EQ, -1);
 
     FileUtils.remove (log);
 }
