@@ -918,6 +918,9 @@ WRAP_VERSTAT(__x, 64);
 WRAP_VERSTAT(__lx,);
 WRAP_VERSTAT(__lx, 64);
 
+int __open_2(const char *path, int flags);
+int __open64_2(const char *path, int flags);
+
 WRAP_OPEN(,);
 WRAP_OPEN(, 64);
 WRAP_OPEN2(__,_2);
