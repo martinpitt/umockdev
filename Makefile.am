@@ -297,6 +297,7 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 tests_test_umockdev_run_SOURCES = 	\
 	tests/test-umockdev-run.vala	\
 	tests/assertions.vapi		\
+	src/config.vapi			\
 	$(NULL)
 
 tests_test_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -w

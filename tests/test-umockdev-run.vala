@@ -128,6 +128,13 @@ t_run_exit_code ()
 }
 
 static void
+t_run_version ()
+{
+    // missing program to run
+    check_program_out ("true", "--version", Config.VERSION + "\n");
+}
+
+static void
 t_run_pipes ()
 {
     string sout;
@@ -148,6 +155,31 @@ t_run_invalid_args ()
 {
     // missing program to run
     check_program_error ("true", "", "--help");
+
+    // unknown option
+    check_program_error ("true", "--foobarize", "--help");
+}
+
+static void
+t_run_invalid_device ()
+{
+    // nonexisting device file
+    check_program_error ("true", "-d non.existing", "Cannot open non.existing:");
+
+    // invalid device file
+    try {
+        string umockdev_file;
+        int fd = FileUtils.open_tmp ("ttyS0.XXXXXX.umockdev", out umockdev_file);
+        Posix.close (fd);
+
+        FileUtils.set_contents (umockdev_file, "P: /devices/foo\n");
+
+        check_program_error ("true", "-d " + umockdev_file, "Invalid record file " +
+                             umockdev_file + ": missing SUBSYSTEM");
+    } catch (FileError e) {
+        stderr.printf ("cannot create temporary file: %s\n", e.message);
+        Process.abort();
+    }
 }
 
 static void
@@ -176,6 +208,39 @@ t_run_invalid_ioctl ()
         "/devices/cameras/canon-powershot-sx200.umockdev -i " +
         "/dev/bus/usb/001/011 -- gphoto2 -l",
         "--ioctl");
+}
+
+static void
+t_run_invalid_script ()
+{
+    // wrongly formatted option
+    check_program_error ("true", "-d " + rootdir +
+        "/devices/cameras/canon-powershot-sx200.umockdev -s " +
+        "/dev/bus/usb/001/011 -- true",
+        "--script argument must be");
+
+    // unsuitable device for scripts
+    check_program_error ("true", "-d " + rootdir +
+        "/devices/cameras/canon-powershot-sx200.umockdev -s " +
+        "/dev/bus/usb/001/011=/etc/passwd -- true",
+        "not a device suitable for scripts");
+
+    // nonexisting script
+    check_program_error ("true", "-d " + rootdir +
+        "/devices/input/usbkbd.umockdev -s " +
+        "/dev/input/event5=/non/existing -- true",
+        "Cannot install /non/existing for device /dev/input/event5:");
+
+    // wrongly formatted -u option
+    check_program_error ("true", "-u /dev/mysock -- true",
+        "--unix-stream argument must be");
+}
+
+static void
+t_run_invalid_program ()
+{
+    check_program_error ("true", "no.such.prog",
+        "Cannot run no.such.prog: Failed to execute");
 }
 
 static void
@@ -526,11 +591,15 @@ main (string[] args)
 
   // general operations
   Test.add_func ("/umockdev-run/exit_code", t_run_exit_code);
+  Test.add_func ("/umockdev-run/version", t_run_version);
   Test.add_func ("/umockdev-run/pipes", t_run_pipes);
 
-  // boundary conditions
+  // error conditions
   Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);
+  Test.add_func ("/umockdev-run/invalid-device", t_run_invalid_device);
   Test.add_func ("/umockdev-run/invalid-ioctl", t_run_invalid_ioctl);
+  Test.add_func ("/umockdev-run/invalid-script", t_run_invalid_script);
+  Test.add_func ("/umockdev-run/invalid-program", t_run_invalid_program);
 
   // script replay
   Test.add_func ("/umockdev-run/script-chatter", t_run_script_chatter);
