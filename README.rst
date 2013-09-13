@@ -250,12 +250,19 @@ as adding support for more ioctls) or contribute a bug fix, please check out
 the git repository, push your changes to github, and create a pull request.
 Contributions are appreciated, and I will do my best to provide timely reviews.
 
+If you find a bug in umockdev or have an idea about a new feature but don't
+want to implement it yourself, please file a report in the github issue
+tracker. Please always include the version of umockdev that you are using, and
+a complete runnable reproducer of the problem (i. e. the code and recorded
+scripts/ioctls, etc.), unless it is a feature request.
+
 Authors
 =======
 Martin Pitt <martin.pitt@ubuntu.com>
 
 You can contact me on IRC: pitti on Freenode, I'm hanging out in
-#ubuntu-quality and other channels.
+#ubuntu-quality and other channels. You can also file an issue on github and
+I'll answer your question there.
 
 License
 =======
