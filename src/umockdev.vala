@@ -1264,7 +1264,7 @@ private class ScriptRunner {
                     error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
                            " bytes), expected block '%s', difference %u%% > fuzz level %u%%",
                            this.device, encode(buf), len, encode(data[offset:offset+len]),
-                           (d * 1000 / len + 5) / 10, this.fuzz);
+                           (uint) (d * 1000 / len + 5) / 10, this.fuzz);
                 } /* else {
                     debug ("ScriptRunner op_write[%s]: data matches: got block '%s' (%" + ssize_t.FORMAT +
                                    " bytes), expected block '%s', difference %u%% <= fuzz level %u%%\n",
@@ -1275,7 +1275,7 @@ private class ScriptRunner {
 
             offset += len;
             debug ("ScriptRunner[%s]: op_write, got %" + ssize_t.FORMAT + " bytes; offset: %" +
-                   size_t.FORMAT + ", full block size %" + size_t.FORMAT,
+                   size_t.FORMAT + ", full block size %i",
                    this.device, len, offset, data.length);
         }
     }
