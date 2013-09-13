@@ -190,6 +190,33 @@ through ``/dev/socket/rild``.
    you can of course create the socket in <testbed root>/<socket path> and
    handle the bind/accept/communication yourself.
 
+Build, Test, Run
+================
+If you want to build umockdev from a git checkout, run ./autogen.sh to build
+the autotools files; you need autoreconf, autoconf, automake, libtool, and
+gtk-doc-tools for this.
+
+After that, or if you build from a release tarball, umockdev uses a standard
+autotools build system:
+
+- Run ``./configure`` first; you may want to supply ``--prefix``,
+  ``--sysconfdir``, and other options, see ``./configure --help``.
+- Run ``make`` to build the project.
+- Run ``make check`` to run the tests against the build tree.
+- Run ``make install`` as root to install into the configured prefix
+  (``/usr/local`` by default).
+- Run ``make check-installed`` to run the test suite against the installed
+  version of umockdev.
+
+If you don't want to install umockdev but use it from the build tree, set
+these environment variables, assuming that your current directory is the
+top-level directory of the umockdev tree:
+
+::
+
+  LD_LIBRARY_PATH=`pwd`/.libs:$LD_LIBRARY_PATH
+  GI_TYPELIB_PATH=`pwd`:$GI_TYPELIB_PATH
+  PATH=`pwd`/src:$PATH
 
 Development
 ===========
@@ -198,9 +225,17 @@ Development
 | Bugs:      https://github.com/martinpitt/umockdev/issues
 | Releases:  https://launchpad.net/umockdev/+download
 
+umockdev is very much demand driven. If you want to work on a new feature (such
+as adding support for more ioctls) or contribute a bug fix, please check out
+the git repository, push your changes to github, and create a pull request.
+Contributions are appreciated, and I will do my best to provide timely reviews.
+
 Authors
 =======
 Martin Pitt <martin.pitt@ubuntu.com>
+
+You can contact me on IRC: pitti on Freenode, I'm hanging out in
+#ubuntu-quality and other channels.
 
 License
 =======

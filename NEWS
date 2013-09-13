@@ -1,6 +1,8 @@
 0.4.4 (UNRELEASED)
 ------------------
 - testsuite: Write "skip" messages to stdout instead of stderr.
+- README.rst: Add information about building, testing, running, and
+  contributing.
 
 0.4.3 (2013-08-23)
 ------------------
