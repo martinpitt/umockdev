@@ -345,7 +345,7 @@ t_system_script_log_chatter ()
     while (!read_line_timeout (chatter_stream).contains ("line break in one write"));
 
     Thread.usleep (300000);
-    chatter_stream.puts ("foo ☹ bar !\n");
+    chatter_stream.puts ("foo ☹ bar ^!\n");
 
     assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "bye!\n");
 
@@ -363,7 +363,7 @@ t_system_script_log_chatter ()
     assert_cmpint (time, Op.LE, 800);
     assert_cmpint (log_stream.scanf ("w %d I ♥ John^Ja^I tab and a^J line break in one write^J\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.LE, 20);
-    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar !^J\n", &time), Op.EQ, 1);;
+    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar ^`!^J\n", &time), Op.EQ, 1);;
     assert_cmpint (time, Op.GE, 250);
     assert_cmpint (time, Op.LE, 450);
 
