@@ -223,6 +223,9 @@ autotools build system:
   ``--sysconfdir``, and other options, see ``./configure --help``.
 - Run ``make`` to build the project.
 - Run ``make check`` to run the tests against the build tree.
+- Run ``make check-code-coverage`` to run the tests against the build tree and
+  measure the code coverage (requires configuring with --enable-code-coverage).
+  Report will be written to ``umockdev-*-coverage/index.html``.
 - Run ``make install`` as root to install into the configured prefix
   (``/usr/local`` by default).
 - Run ``make check-installed`` to run the test suite against the installed

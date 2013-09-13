@@ -63,6 +63,19 @@ AM_CONDITIONAL(HAVE_PYTHON, [test x$PYTHON != x])
 AC_CHECK_PROGS(VALAC, [valac])
 AM_PROG_VALAC([0.16.1])
 
+# code coverage support
+AC_MSG_CHECKING(for GNOME code coverage support)
+m4_ifdef([GNOME_CODE_COVERAGE],
+         [AC_MSG_RESULT(yes)
+          GNOME_CODE_COVERAGE],
+         [AC_MSG_RESULT(no)
+          GNOME_CODE_COVERAGE_RULES=''
+          AC_SUBST([GNOME_CODE_COVERAGE_RULES])
+          enable_code_coverage="no"])
+
+CFLAGS="$CFLAGS $CODE_COVERAGE_CFLAGS"
+LDFLAGS="$LDFLAGS $CODE_COVERAGE_CFLAGS"
+
 AC_CONFIG_FILES([
 	Makefile
 	src/umockdev-1.0.pc
@@ -79,7 +92,8 @@ AC_MSG_RESULT([
   CFLAGS:				${CFLAGS}
   LDFLAGS:				${LDFLAGS}
 
-  gobject-introspection support:	${enable_introspection}])
+  gobject-introspection support:	${enable_introspection}
+  code coverage support:		${enable_code_coverage}])
 
 if test x$PYTHON != x; then
   AC_MSG_RESULT([  Python:				${PYTHON}])

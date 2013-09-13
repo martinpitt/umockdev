@@ -26,5 +26,12 @@ else
     echo "gtk-doc not installed, you will not be able to generate documentation."
     echo 'EXTRA_DIST =' > docs/gtk-doc.make
 fi
+
+if type lcov >/dev/null 2>&1; then
+    args="$args --enable-code-coverage"
+else
+    echo "lcov not installed, not enabling code coverage"
+fi
+
 autoreconf --install --symlink
-[ -n "$NOCONFIGURE" ] || ./configure "$args" "$@"
+[ -n "$NOCONFIGURE" ] || ./configure $args "$@"

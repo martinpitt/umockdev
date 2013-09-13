@@ -12,6 +12,10 @@
 *.stamp-t
 *.log
 *.trs
+*.gcda
+*.gcno
+*-coverage
+*-coverage.info
 stamp-*
 Makefile.in
 Makefile

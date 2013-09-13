@@ -3,6 +3,8 @@
 - testsuite: Write "skip" messages to stdout instead of stderr.
 - README.rst: Add information about building, testing, running, and
   contributing.
+- Add code coverage reporting with gcov and lcov, using the gnome-common
+  macros. autogen.sh will enable this automatically if lcov is installed.
 
 0.4.3 (2013-08-23)
 ------------------
