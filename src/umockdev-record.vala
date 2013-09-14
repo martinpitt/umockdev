@@ -183,7 +183,7 @@ record_device(string dev)
                            out exitcode);
         if (exitcode != 0)
             throw new SpawnError.FAILED("udevadm exited with code %i".printf(exitcode));
-    } catch (SpawnError e) {
+    } catch (Error e) {
         exit_error("Cannot call udevadm: %s", e.message);
     }
 
@@ -211,7 +211,7 @@ record_device(string dev)
     Dir d;
     try {
         d = Dir.open(dev);
-    } catch (FileError e) {
+    } catch (Error e) {
         exit_error("Cannot open directory %s: %s", dev, e.message);
         return; /* not reached, just to avoid warnings */
     }
@@ -229,7 +229,7 @@ record_device(string dev)
         if (FileUtils.test(attr_path, FileTest.IS_SYMLINK)) {
             try {
                 stdout.printf("L: %s=%s\n", attr, FileUtils.read_link(attr_path));
-            } catch (FileError e) {
+            } catch (Error e) {
                 exit_error("Cannot read link %s: %s", attr, e.message);
             }
         } else if (FileUtils.test(attr_path, FileTest.IS_REGULAR)) {
@@ -286,7 +286,7 @@ split_devfile_arg(string arg, out string devnum, out string fname)
         string contents;
         try {
             FileUtils.get_contents(Path.build_filename(dev, "dev"), out contents);
-        } catch (FileError e) {
+        } catch (Error e) {
             exit_error("Cannot open %s/dev: %s", dev, e.message);
         }
         string[] fields = contents.strip().split(":");
@@ -347,7 +347,7 @@ main (string[] args)
     oc.add_main_entries (options, null);
     try {
         oc.parse (ref args);
-    } catch (OptionError e) {
+    } catch (Error e) {
         exit_error("Error: %s\nRun %s --help for how to use this program", e.message, args[0]);
     }
 

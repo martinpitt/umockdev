@@ -67,7 +67,7 @@ main (string[] args)
     oc.add_main_entries (options, null);
     try {
         oc.parse (ref args);
-    } catch (OptionError e) {
+    } catch (Error e) {
         stderr.printf("Error: %s\nRun %s --help for how to use this program\n", e.message, args[0]);
         return 1;
     }
@@ -90,13 +90,13 @@ main (string[] args)
         string record;
         try {
             FileUtils.get_contents (path, out record);
-        } catch (FileError e) {
+        } catch (Error e) {
             stderr.printf ("Error: Cannot open %s: %s\n", path, e.message);
             return 1;
         }
         try {
             testbed.add_from_string (record);
-        } catch (GLib.Error e) {
+        } catch (Error e) {
             stderr.printf ("Error: Invalid record file %s: %s\n", path, e.message);
             return 1;
         }
@@ -110,7 +110,7 @@ main (string[] args)
         }
         try {
             testbed.load_ioctl (parts[0], parts[1]);
-        } catch (FileError e) {
+        } catch (Error e) {
             stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
             return 1;
         }
@@ -124,7 +124,7 @@ main (string[] args)
         }
         try {
             testbed.load_script (parts[0], parts[1]);
-        } catch (FileError e) {
+        } catch (Error e) {
             stderr.printf ("Error: Cannot install %s for device %s: %s\n", parts[1], parts[0], e.message);
             return 1;
         }
@@ -138,7 +138,7 @@ main (string[] args)
         }
         try {
             testbed.load_socket_script (parts[0], Posix.SOCK_STREAM, parts[1]);
-        } catch (FileError e) {
+        } catch (Error e) {
             stderr.printf ("Error: Cannot install %s for stream socket %s: %s\n", parts[1], parts[0], e.message);
             return 1;
         }
@@ -156,7 +156,7 @@ main (string[] args)
         Process.spawn_async (null, opt_program, null,
                             SpawnFlags.SEARCH_PATH | SpawnFlags.CHILD_INHERITS_STDIN | SpawnFlags.DO_NOT_REAP_CHILD ,
                             null, out child_pid);
-    } catch (SpawnError e) {
+    } catch (Error e) {
             stderr.printf ("Cannot run %s: %s\n", opt_program[0], e.message);
             Process.exit (1);
     }
