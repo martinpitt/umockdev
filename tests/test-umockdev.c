@@ -581,6 +581,28 @@ t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
+t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    struct udev *udev;
+    struct udev_monitor *mon;
+
+    /* set up monitor */
+    udev = udev_new();
+    g_assert(udev != NULL);
+    mon = udev_monitor_new_from_netlink(udev, "udev");
+    g_assert(mon != NULL);
+
+    /* unknown device */
+    umockdev_testbed_uevent(fixture->testbed, "/devices/unknown", "add");
+
+    /* should not trigger an actual event */
+    g_assert(udev_monitor_receive_device(mon) == NULL);
+
+    udev_monitor_unref(mon);
+    udev_unref(udev);
+}
+
+static void
 t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GUdevClient *client;
@@ -1419,6 +1441,8 @@ main(int argc, char **argv)
 	       t_testbed_uevent_libudev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_uevent_gudev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/uevent/error", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_uevent_error, t_testbed_fixture_teardown);
 
     /* tests for mocking USB devices */
     g_test_add("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
