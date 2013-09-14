@@ -535,9 +535,9 @@ t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     gchar *syspath;
     GMainLoop *mainloop;
     struct event_counter counter = { 0, 0, 0 };
-    const gchar *subsystems[] = { "pci", NULL };
+    const gchar *subsystems[] = { "bluetooth", NULL };
 
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
+    syspath = umockdev_testbed_add_device(fixture->testbed, "bluetooth", "mydev", NULL,
 					  /* attributes */
 					  "idVendor", "0815", NULL,
 					  /* properties */
