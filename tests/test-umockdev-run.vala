@@ -234,6 +234,10 @@ t_run_invalid_script ()
     // wrongly formatted -u option
     check_program_error ("true", "-u /dev/mysock -- true",
         "--unix-stream argument must be");
+
+    // invalid socket name
+    check_program_error ("true", "-u ../../../null/mysock=/nosuch.script -- true",
+        "Cannot create socket path: Permission denied");
 }
 
 static void

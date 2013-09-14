@@ -722,7 +722,9 @@ public class Testbed: GLib.Object {
                                        type, strerror(errno)));
 
         string real_path = Path.build_filename (this.root_dir, path);
-        assert(DirUtils.create_with_parents(Path.get_dirname(real_path), 0755) == 0);
+        if (DirUtils.create_with_parents(Path.get_dirname(real_path), 0755) != 0)
+            throw new FileError.INVAL ("Cannot create socket path: %s".printf(
+                                       strerror(errno)));
 
         // start thread to accept client connections at first socket creation
         if (this.socket_server == null)
