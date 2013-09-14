@@ -35,6 +35,15 @@ spawn (string command, out string sout, out string serr, out int exit)
     }
 }
 
+static void
+assert_in (string needle, string haystack)
+{
+    if (!haystack.contains (needle)) {
+        stderr.printf ("'%s' not found in '%s'\n", needle, haystack);
+        Process.abort();
+    }
+}
+
 string
 file_contents (string filename)
 {
@@ -162,6 +171,21 @@ t_testbed_no_ioctl_record ()
     assert (serr.contains ("UMOCKDEV_DIR cannot be used"));
 }
 
+static void
+t_system_single ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    spawn (umockdev_record_path + " /dev/null /dev/loop0", out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_in("E: DEVNAME=/dev/null", sout);
+    assert_in("P: /devices/virtual/block/loop0", sout);
+    assert_in("E: DEVNAME=/dev/loop0", sout);
+}
+
 // system /sys: umockdev-record --all works and result loads back
 static void
 t_system_all ()
@@ -182,6 +206,24 @@ t_system_all ()
     } catch (UMockdev.Error e) {
         error ("Error when adding system dump to testbed: %s", e.message);
     }
+}
+
+static void
+t_system_invalid ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    spawn (umockdev_record_path + " /sys/class", out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "Invalid device /sys/class, has no uevent attribute\n");
+    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpint (exit, Op.NE, 0);
+
+    spawn (umockdev_record_path + " /sys/block/loop0/size", out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "Invalid device /sys/devices/virtual/block/loop0/size, has no uevent attribute\n");
+    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpint (exit, Op.NE, 0);
 }
 
 /*
@@ -483,6 +525,20 @@ t_system_script_log_chatter_socket_stream ()
 }
 
 static void
+t_run_invalid_args ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    spawn (umockdev_record_path + " /dev/no/such/device", out sout, out serr, out exit);
+
+    assert_in ("Cannot access device /dev/no/such/device: No such file", serr);
+    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpint (exit, Op.NE, 0);
+}
+
+static void
 t_gphoto2_record ()
 {
     string sout, sout_record;
@@ -564,11 +620,16 @@ main (string[] args)
     Test.add_func ("/umockdev-record/testbed-multiple", t_testbed_multiple);
     Test.add_func ("/umockdev-record/testbed-no-ioctl-record", t_testbed_no_ioctl_record);
 
+    Test.add_func ("/umockdev-record/system-single", t_system_single);
     Test.add_func ("/umockdev-record/system-all", t_system_all);
+    Test.add_func ("/umockdev-record/system-invalid", t_system_invalid);
     Test.add_func ("/umockdev-record/ioctl-log", t_system_ioctl_log);
     Test.add_func ("/umockdev-record/script-log-simple", t_system_script_log_simple);
     Test.add_func ("/umockdev-record/script-log-chatter", t_system_script_log_chatter);
     Test.add_func ("/umockdev-record/script-log-socket", t_system_script_log_chatter_socket_stream);
+
+    // error conditions
+    Test.add_func ("/umockdev-record/invalid-args", t_run_invalid_args);
 
     // these tests require particular hardware and get skipped otherwise
     Test.add_func ("/umockdev-record/gphoto2-record", t_gphoto2_record);
