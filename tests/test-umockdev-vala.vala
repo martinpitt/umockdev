@@ -149,13 +149,19 @@ E: SUBSYSTEM=usb
   // add simple ioctl tree
   string test_tree;
   if (BYTE_ORDER == ByteOrder.LITTLE_ENDIAN)
-      test_tree = """USBDEVFS_CONNECTINFO 0 0B00000000000000
+      test_tree = """# little-endian test ioctls
+USBDEVFS_CONNECTINFO 0 0B00000000000000
 USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
+
+# another connect info
 USBDEVFS_CONNECTINFO 42 0C00000001000000
 """;
   else
-      test_tree = """USBDEVFS_CONNECTINFO 0 0000000B00000000
+      test_tree = """# big-endian test ioctls
+USBDEVFS_CONNECTINFO 0 0000000B00000000
 USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
+
+# another connect info
 USBDEVFS_CONNECTINFO 42 0000000C01000000
 """;
 

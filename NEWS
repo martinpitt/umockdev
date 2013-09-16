@@ -5,7 +5,8 @@
   contributing.
 - Add code coverage reporting with gcov and lcov, using the gnome-common
   macros. autogen.sh will enable this automatically if lcov is installed.
-- Support comments in scripts, lines starting with '#' get ignored.
+- Support comments in scripts and ioctl records, lines starting with '#' get
+  ignored.
 
 0.4.3 (2013-08-23)
 ------------------

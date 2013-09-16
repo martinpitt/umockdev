@@ -198,6 +198,10 @@ ioctl_tree_read(FILE * f)
     size_t line_len;
 
     while (getline(&line, &line_len, f) >= 0) {
+	/* skip empty and comment lines */
+	if (line[0] == '\n' || line[0] == '#')
+	    continue;
+
 	node = ioctl_tree_new_from_text(line);
 	if (node == NULL) {
 	    DBG("ioctl_tree_read: failure to parse line: %s", line);
