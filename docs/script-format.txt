@@ -39,6 +39,8 @@ single letter for the type of I/O operation. Possible operation codes are:
        umockdev-record. You can use this for testing or appending notes at the
        end of the script. value and data are ignored.
 
+   # : Comment; remainder of the line is entirely ignored
+
 data
 ----
 In order to represent the data block as a single line, byte values b <= 32 are

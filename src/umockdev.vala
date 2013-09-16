@@ -1189,7 +1189,7 @@ private class ScriptRunner {
 
     private uint8[] next_line (out char op, out uint32 delta)
     {
-        // read operation code; skip empty lines
+        // read operation code; skip empty lines and comments
         int c;
         for (;;) {
             c = this.script.getc ();
@@ -1198,6 +1198,8 @@ private class ScriptRunner {
                 op = 'Q';
                 delta = 0;
                 return {};
+            } else if (c == '#') {
+                assert (this.script.read_line () != null);
             } else if (c != '\n') {
                 op = (char) c;
                 break;

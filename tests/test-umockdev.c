@@ -1039,6 +1039,8 @@ t_testbed_script_replay_simple(UMockdevTestbedFixture * fixture, gconstpointer d
 w 0 abc\n\
 w 2 defgh\n\
 r 10 response^I1^J\n\
+\n\
+# pretty unicode\n\
 r 2  hello world ☺\n\
 w 10 A\n\
 w 10 T\n\
@@ -1048,6 +1050,7 @@ r 20 Bogus Device\n\
 w 10 split write\n\
 \n\
 r 10 ACK\n\
+# some corner cases in encoding\n\
 w 0 ^@^^^`^@a\n\
 r 0 ^@^^^`^@a\n";
 
