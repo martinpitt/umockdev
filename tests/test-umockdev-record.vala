@@ -519,7 +519,7 @@ t_system_script_log_chatter_socket_stream ()
     assert_cmpint (time, Op.GE, 10);
     assert_cmpint (log_stream.scanf ("r %d recv()\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.GE, 20);
-    assert_cmpint (time, Op.LE, 40);
+    assert_cmpint (time, Op.LE, 60);
 
     FileUtils.remove (log);
 }
