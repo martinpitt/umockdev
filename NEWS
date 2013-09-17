@@ -1,3 +1,7 @@
+0.4.5 (UNRELEASED)
+------------------
+- Make various test cases more robust.
+
 0.4.4 (2013-09-16)
 ------------------
 - testsuite: Write "skip" messages to stdout instead of stderr.
