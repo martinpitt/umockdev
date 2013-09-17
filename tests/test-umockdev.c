@@ -585,6 +585,8 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     struct udev *udev;
     struct udev_monitor *mon;
+    FILE *orig_stderr;
+    char buf[1000];
 
     /* set up monitor */
     udev = udev_new();
@@ -592,8 +594,17 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
     mon = udev_monitor_new_from_netlink(udev, "udev");
     g_assert(mon != NULL);
 
-    /* unknown device */
+    /* unknown device, shouldn't crash but print an error message */
+    orig_stderr = stderr;
+    stderr = tmpfile();
+    g_assert(stderr != NULL);
     umockdev_testbed_uevent(fixture->testbed, "/devices/unknown", "add");
+    fflush(stderr);
+    rewind(stderr);
+    g_assert(fgets(buf, sizeof(buf), stderr) != NULL);
+    g_assert_cmpstr(buf, ==, "ERROR: uevent_sender_send: No such device /devices/unknown\n");
+    fclose(stderr);
+    stderr = orig_stderr;
 
     /* should not trigger an actual event */
     g_assert(udev_monitor_receive_device(mon) == NULL);
