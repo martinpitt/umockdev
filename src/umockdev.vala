@@ -1422,7 +1422,7 @@ private class SocketServer {
             /* ideally we'd use an infinite timeout here; but Vala
              * currently doesn't allow that, and also it's a good defense
              * against infinite hangs */
-            int res = Posix.select (max + 1, &fds, null, null, {0, 5000000});
+            int res = Posix.select (max + 1, &fds, null, null, {0, 500000});
             if (res < 0) {
                 if (errno == Posix.EINTR)
                     continue;

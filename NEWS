@@ -1,3 +1,7 @@
+0.4.6 (UNRELEASED)
+------------------
+- Fix wrong select() call timeout which caused a failure on arm64.
+
 0.4.5 (2013-09-17)
 ------------------
 - Make various test cases more robust.
