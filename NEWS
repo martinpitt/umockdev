@@ -1,4 +1,4 @@
-0.4.6 (UNRELEASED)
+0.4.6 (2013-10-11)
 ------------------
 - Fix wrong select() call timeout which caused a failure on arm64.
 - Skip umockdev-record tests which need /sys if there is no real /sys.
