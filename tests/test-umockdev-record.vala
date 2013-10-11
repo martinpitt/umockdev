@@ -182,6 +182,10 @@ t_system_single ()
         stderr.printf ("[SKIP: no real /sys on this system] ");
         return;
     }
+    if (!FileUtils.test("/sys/block/loop0", FileTest.EXISTS)) {
+        stderr.printf ("[SKIP: no /sys/block/loop0 on this system] ");
+        return;
+    }
 
     spawn (umockdev_record_path + " /dev/null /dev/loop0", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");

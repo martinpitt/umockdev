@@ -1,3 +1,8 @@
+0.4.7 (UNRELEASED)
+------------------
+- Skip umockdev-record loop device test if /sys exists, but there is no loop
+  device.
+
 0.4.6 (2013-10-11)
 ------------------
 - Fix wrong select() call timeout which caused a failure on arm64.
