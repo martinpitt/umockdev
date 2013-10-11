@@ -178,6 +178,11 @@ t_system_single ()
     string serr;
     int exit;
 
+    if (!FileUtils.test("/sys/dev/char/1:3", FileTest.EXISTS)) {
+        stderr.printf ("[SKIP: no real /sys on this system] ");
+        return;
+    }
+
     spawn (umockdev_record_path + " /dev/null /dev/loop0", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -193,6 +198,11 @@ t_system_all ()
     string sout;
     string serr;
     int exit;
+
+    if (!FileUtils.test("/sys/dev/char", FileTest.EXISTS)) {
+        stderr.printf ("[SKIP: no real /sys on this system] ");
+        return;
+    }
 
     spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
@@ -214,6 +224,11 @@ t_system_invalid ()
     string sout;
     string serr;
     int exit;
+
+    if (!FileUtils.test("/sys/block/loop0", FileTest.EXISTS)) {
+        stderr.printf ("[SKIP: no real /sys on this system] ");
+        return;
+    }
 
     spawn (umockdev_record_path + " /sys/class", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "Invalid device /sys/class, has no uevent attribute\n");

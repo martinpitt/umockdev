@@ -1,6 +1,8 @@
 0.4.6 (UNRELEASED)
 ------------------
 - Fix wrong select() call timeout which caused a failure on arm64.
+- Skip umockdev-record tests which need /sys if there is no real /sys.
+  (Debian #724203)
 
 0.4.5 (2013-09-17)
 ------------------
