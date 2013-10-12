@@ -2,6 +2,8 @@
 ------------------
 - Skip umockdev-record loop device test if /sys exists, but there is no loop
   device.
+- Slightly relax timings in /umockdev-testbed/script_replay_simple test to
+  avoid failure on slow machines.
 
 0.4.6 (2013-10-11)
 ------------------

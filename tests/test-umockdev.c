@@ -1102,11 +1102,11 @@ r 0 ^@^^^`^@a\n";
 
   /* now we should get the response after 10 ms */
   ASSERT_EOF;
-  usleep(15000);
+  usleep(20000);
   g_assert_cmpint(read(fd, buf, 11), ==, 11);
   g_assert(strncmp(buf, "response\t1\n", 11) == 0);
   g_assert_cmpint(errno, ==, 0);
-  usleep(2000);
+  usleep(5000);
   g_assert_cmpint(read(fd, buf, 15), ==, 15);
   g_assert(strncmp(buf, "hello world ☺\n", 15) == 0);
   g_assert_cmpint(errno, ==, 0);
