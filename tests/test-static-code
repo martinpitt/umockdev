@@ -31,7 +31,7 @@ R=$(echo "$CODE_WRAPPERS" | grep -B1  '^[a-z_]\+(' | awk 'BEGIN { RS="--\n" } /s
 check_empty "$R" "preload libc wrapped code part has non-exported function(s)"
 
 # wrappers must not have a '_' in the name, libc doesn't use that style
-R=$(echo "$LIBC_OVERRIDES" | grep _ || true)
+R=$(echo "$LIBC_OVERRIDES" | grep _ | grep -v inotify_add_watch || true)
 check_empty "$R" "preload libc wrapped code part exports function with '_'"
 
 # must not use wrapped functions in internal logic
