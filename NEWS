@@ -4,6 +4,7 @@
   device.
 - Slightly relax timings in /umockdev-testbed/script_replay_simple test to
   avoid failure on slow machines.
+- preload: Wrap chmod()
 
 0.4.6 (2013-10-11)
 ------------------
