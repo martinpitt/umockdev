@@ -905,6 +905,7 @@ WRAP_1ARG(DIR *, NULL, opendir);
 WRAP_2ARGS(FILE *, NULL, fopen, const char *);
 WRAP_2ARGS(FILE *, NULL, fopen64, const char *);
 WRAP_2ARGS(int, -1, mkdir, mode_t);
+WRAP_2ARGS(int, -1, chmod, mode_t);
 WRAP_2ARGS(int, -1, access, int);
 WRAP_2ARGS(int, -1, stat, struct stat *);
 WRAP_2ARGS(int, -1, stat64, struct stat64 *);
