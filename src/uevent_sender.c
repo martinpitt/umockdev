@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <linux/un.h>
+#include <unistd.h>
 
 #include <libudev.h>
 
@@ -218,6 +219,7 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     count += strlen(props + count) + 1;
     strcpy(props + count, "SUBSYSTEM=");
     strcat(props + count, subsystem);
+    count += strlen(props + count) + 1;
 
     /* add versioned header */
     memset(&nlh, 0x00, sizeof(struct udev_monitor_netlink_header));
@@ -239,9 +241,9 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
 
     /* add properties list */
     nlh.properties_off = iov[0].iov_len;
-    nlh.properties_len = sizeof(props);
+    nlh.properties_len = count;
     iov[1].iov_base = props;
-    iov[1].iov_len = sizeof(props);
+    iov[1].iov_len = count;
 
     /* send message */
     memset(&smsg, 0x00, sizeof(struct msghdr));
