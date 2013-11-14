@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <linux/un.h>
+#include <unistd.h>
 
 #include <libudev.h>
 
