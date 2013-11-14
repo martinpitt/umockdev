@@ -95,16 +95,19 @@ static void
 sendmsg_all(uevent_sender * sender, struct msghdr *msg)
 {
     glob_t gl;
+    int res;
 
     /* find current listeners */
-    if (glob(sender->socket_glob, GLOB_NOSORT, NULL, &gl) == 0) {
+    res = glob(sender->socket_glob, GLOB_NOSORT, NULL, &gl);
+    if (res == 0) {
 	size_t i;
 	for (i = 0; i < gl.gl_pathc; ++i)
 	    sendmsg_one(sender, msg, gl.gl_pathv[i]);
     } else {
 	/* ensure that we only fail due to that, not due to bad globs */
-	if (errno != GLOB_NOMATCH) {
-	    perror("sendmsg_all: cannot run glob");
+	if (res != GLOB_NOMATCH) {
+            fprintf(stderr, "ERROR: sendmsg_all: %s glob failed with %i\n",
+                    sender->socket_glob, res);
 	    abort();
 	}
     }
