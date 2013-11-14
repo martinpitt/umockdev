@@ -1,4 +1,4 @@
-0.4.7 (UNRELEASED)
+0.4.7 (2013-11-14)
 ------------------
 - Skip umockdev-record loop device test if /sys exists, but there is no loop
   device.
