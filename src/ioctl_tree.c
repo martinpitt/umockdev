@@ -752,15 +752,18 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
     return tree;
 }
 
+
 /***********************************
  *
  * Known ioctls
  *
  ***********************************/
 
+/* ioctl which does not need to consider its data argument and has no state */
 #define I_NOSTATE(name, execute_result) \
     {name, -1, 0, #name, NULL, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
 
+/* input structs with fixed length with explicit size */
 #define I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, size, nr_range, insertion_parent_fn) \
     {name, size, nr_range, namestr,                                            \
      ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,      \
@@ -768,15 +771,18 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
      ioctl_simplestruct_write, ioctl_simplestruct_equal,                       \
      ioctl_simplestruct_in_execute, insertion_parent_fn}
 
-#define I_NAMED_SIMPLE_STRUCT_IN(name, namestr, nr_range, insertion_parent_fn) \
-    I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, -1, nr_range, insertion_parent_fn)
-
 #define I_SIZED_SIMPLE_STRUCT_IN(name, size, nr_range, insertion_parent_fn) \
     I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, size, nr_range, insertion_parent_fn)
+
+/* input structs with fixed length with size encoded in ioctl code */
+#define I_NAMED_SIMPLE_STRUCT_IN(name, namestr, nr_range, insertion_parent_fn) \
+    I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, -1, nr_range, insertion_parent_fn)
 
 #define I_SIMPLE_STRUCT_IN(name, nr_range, insertion_parent_fn) \
     I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, -1, nr_range, insertion_parent_fn)
 
+/* data with custom handlers; necessary for structs with pointers to nested
+ * structs, or keeping stateful handlers */
 #define I_CUSTOM(name, nr_range, fn_prefix)                     \
     {name, -1, nr_range, #name,                                 \
      fn_prefix ## _init_from_bin, fn_prefix ## _init_from_text, \
