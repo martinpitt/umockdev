@@ -35,6 +35,10 @@ typedef struct {
     /* ret: 0: unhandled, 1: handled, move to next node, 2: handled, keep node */
     int (*execute) (const ioctl_tree *, unsigned long, void *, int *);
     ioctl_tree *(*insertion_parent) (ioctl_tree *, ioctl_tree *);
+    /* some structs have a variable length and contain a length field, or their
+     * ioctls do not encode the size; if set, and real_size < 0, this function
+     * returns the length */
+    size_t (*get_data_size) (unsigned long, const void *);
 } ioctl_type;
 
 typedef struct {

@@ -538,6 +538,75 @@ ioctl_simplestruct_in_execute(const ioctl_tree * node, unsigned long id, void *a
 
 /***********************************
  *
+ * ioctls with dynamic length struct data, but no pointers to substructs
+ *
+ ***********************************/
+
+static void
+ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
+{
+    size_t size = node->type->get_data_size(node->id, data);
+    DBG("ioctl_varlenstruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, size);
+    node->data = malloc(size);
+    memcpy(node->data, data, size);
+}
+
+static int
+ioctl_varlenstruct_init_from_text(ioctl_tree * node, const char *data)
+{
+    size_t data_len = strlen(data) / 2;
+
+    node->data = malloc(data_len);
+
+    if (!read_hex(data, node->data, data_len)) {
+	fprintf(stderr, "ioctl_varlenstruct_init_from_text: failed to parse '%s'\n", data);
+	free(node->data);
+	return FALSE;
+    }
+
+    /* verify that the text data size actually matches get_data_size() */
+    size_t size = node->type->get_data_size(node->id, node->data);
+
+    if (size != data_len) {
+	fprintf(stderr, "ioctl_varlenstruct_init_from_text: ioctl %lX: expected data length %zi, but got %zu bytes from text data\n",
+		node->id, size, data_len);
+	free(node->data);
+	return FALSE;
+    }
+
+    return TRUE;
+}
+
+static void
+ioctl_varlenstruct_write(const ioctl_tree * node, FILE * f)
+{
+    assert(node->data != NULL);
+    write_hex(f, node->data, node->type->get_data_size(node->id, node->data));
+}
+
+static int
+ioctl_varlenstruct_equal(const ioctl_tree * n1, const ioctl_tree * n2)
+{
+    size_t size1 = n1->type->get_data_size(n1->id, n1->data);
+    size_t size2 = n2->type->get_data_size(n2->id, n2->data);
+    return n1->id == n2->id && size1 == size2 && memcmp(n1->data, n2->data, size1) == 0;
+}
+
+static int
+ioctl_varlenstruct_in_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+{
+    if (id == node->id) {
+	size_t size = node->type->get_data_size(id, node->data);
+	memcpy(arg, node->data, size);
+	*ret = node->ret;
+	return 1;
+    }
+
+    return 0;
+}
+
+/***********************************
+ *
  * USBDEVFS_REAPURB
  *
  ***********************************/
@@ -769,7 +838,7 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
      ioctl_simplestruct_init_from_bin, ioctl_simplestruct_init_from_text,      \
      ioctl_simplestruct_free_data,                                             \
      ioctl_simplestruct_write, ioctl_simplestruct_equal,                       \
-     ioctl_simplestruct_in_execute, insertion_parent_fn}
+     ioctl_simplestruct_in_execute, insertion_parent_fn, NULL}
 
 #define I_SIZED_SIMPLE_STRUCT_IN(name, size, nr_range, insertion_parent_fn) \
     I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, size, nr_range, insertion_parent_fn)
@@ -780,6 +849,14 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
 
 #define I_SIMPLE_STRUCT_IN(name, nr_range, insertion_parent_fn) \
     I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, -1, nr_range, insertion_parent_fn)
+
+/* input structs with a variable length (but no pointers to substructures) */
+#define I_VARLEN_STRUCT_IN(name, insertion_parent_fn, data_size_fn) \
+    {name, -1, 0, #name,                                                       \
+     ioctl_varlenstruct_init_from_bin, ioctl_varlenstruct_init_from_text,      \
+     ioctl_simplestruct_free_data,                                             \
+     ioctl_varlenstruct_write, ioctl_varlenstruct_equal,                       \
+     ioctl_varlenstruct_in_execute, insertion_parent_fn, data_size_fn}
 
 /* data with custom handlers; necessary for structs with pointers to nested
  * structs, or keeping stateful handlers */
