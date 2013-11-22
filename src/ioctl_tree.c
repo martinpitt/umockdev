@@ -19,11 +19,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
+#include <linux/sockios.h>
+#include <linux/ethtool.h>
 
 #include "ioctl_tree.h"
 
@@ -787,6 +791,33 @@ usbdevfs_reapurb_insertion_parent(ioctl_tree * tree, ioctl_tree * node)
 
 /***********************************
  *
+ * ethtool
+ *
+ ***********************************/
+
+static size_t
+ioctl_ethtool_data_len(unsigned long id, const void* data)
+{
+    /* see /usr/include/linux/ethtool.h */
+    uint32_t cmd = *((uint32_t*) data);
+    DBG("ioctl_ethtool_data_len: id %lX, cmd: %X\n", id, cmd);
+    switch (cmd) {
+	/* structs with fixed size */
+	case ETHTOOL_GWOL:
+	    /* cannot use sizeof, as this gives 2 padding junk bytes at the end */
+	    return offsetof(struct ethtool_wolinfo, sopass) + SOPASS_MAX;
+
+	/* structs with dynamic size */
+
+	default:
+	    fprintf(stderr, "ioctl_ethtool_data_len: unsupported cmd: %X\n", cmd);
+	    abort();
+    }
+}
+
+
+/***********************************
+ *
  * generic implementations for hardware/state independent ioctls
  *
  ***********************************/
@@ -912,6 +943,9 @@ ioctl_type ioctl_db[] = {
 #ifdef EVIOCGMTSLOTS
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGMTSLOTS(32), "EVIOCGMTSLOTS", 0, ioctl_insertion_parent_stateless),
 #endif
+
+    /* ethtool */
+    I_VARLEN_STRUCT_IN(SIOCETHTOOL, ioctl_insertion_parent_stateless, ioctl_ethtool_data_len),
 
     /* terminator */
     {0, 0, 0, "", NULL, NULL, NULL, NULL, NULL}

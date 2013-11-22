@@ -25,6 +25,8 @@
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
+#include <linux/sockios.h>
+#include <linux/ethtool.h>
 
 #include "ioctl_tree.h"
 
@@ -554,6 +556,61 @@ t_evdev(void)
     ioctl_tree_free(tree);
 }
 
+static void
+t_ethtool(void)
+{
+    ioctl_tree *tree = NULL, *t;
+    FILE *f;
+    char contents[1000];
+    struct ethtool_wolinfo wolinfo = { ETHTOOL_GWOL, 1, 42, "s3kr1t" };
+    int ret;
+
+    /* create tree from ioctl */
+    tree = ioctl_tree_new_from_bin(SIOCETHTOOL, &wolinfo, 0);
+    g_assert(tree != NULL);
+    g_assert(ioctl_tree_insert(NULL, tree) == NULL);
+
+    /* insert duplicate, should be recognized as such */
+    t = ioctl_tree_new_from_bin(SIOCETHTOOL, &wolinfo, 0);
+    g_assert(t != NULL);
+    g_assert(ioctl_tree_insert(tree, t) == tree);
+
+    /* write it */
+    f = tmpfile();
+    ioctl_tree_write(f, tree);
+    rewind(f);
+    ioctl_tree_free(tree);
+
+    /* check text representation */
+    memset(contents, 0, sizeof(contents));
+    g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
+    g_assert_cmpstr(contents, ==,
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		    "SIOCETHTOOL 0 05000000010000002A00000073336B723174\n"
+#else
+		    "SIOCETHTOOL 0 00000005000000010000002A73336B723174\n"
+#endif
+    );
+    rewind(f);
+
+    /* read it back */
+    tree = ioctl_tree_read(f);
+    fclose(f);
+
+    /* execute ETHTOOL_GWOL */
+    memset(&wolinfo, 0xAA, sizeof(wolinfo));
+    wolinfo.cmd = ETHTOOL_GWOL;
+    g_assert(ioctl_tree_execute(tree, NULL, SIOCETHTOOL, &wolinfo, &ret));
+    g_assert(ret == 0);
+    g_assert_cmpuint(wolinfo.cmd, ==, ETHTOOL_GWOL);
+    g_assert_cmpuint(wolinfo.supported, ==, 1);
+    g_assert_cmpuint(wolinfo.wolopts, ==, 42);
+    g_assert(memcmp(wolinfo.sopass, "s3kr1t", 6) == 0);
+    /* does not write into padding (if we have any) */
+    if (sizeof(wolinfo) > tree->type->get_data_size(tree->id, tree->data))
+	g_assert_cmpuint(wolinfo.sopass[6], ==, 0xAA);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -571,6 +628,7 @@ main(int argc, char **argv)
     g_test_add_func("/umockdev-ioctl-tree/execute_unknown", t_execute_unknown);
 
     g_test_add_func("/umockdev-ioctl-tree/evdev", t_evdev);
+    g_test_add_func("/umockdev-ioctl-tree/ethtool", t_ethtool);
 
     return g_test_run();
 }
