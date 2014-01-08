@@ -1122,7 +1122,7 @@ int ioctl(int d, unsigned long request, void *arg);
 int
 ioctl(int d, unsigned long request, void *arg)
 {
-    libc_func(ioctl, int, int, unsigned long, void *);
+    libc_func(ioctl, int, int, unsigned long, ...);
     int result;
 
     result = ioctl_emulate(d, request, arg);

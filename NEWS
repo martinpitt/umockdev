@@ -4,6 +4,9 @@
   substructs. Definitions of such ioctls must provide a get_data_size()
   function which returns the number of bytes based on the ioctl number and the
   data pointer.
+- Declare libc ioctl type correctly using varargs. On some architectures (e.g.
+  ppc64el) the calling convention for varargs is sufficiently different that
+  the previous declaration caused stack corruption. Thanks Colin Watson!
 
 0.4.7 (2013-11-14)
 ------------------
