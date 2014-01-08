@@ -1,4 +1,4 @@
-0.5 (UNRELEASED)
+0.5 (2014-01-08)
 ----------------
 - Add generic support for variable length structs without pointers to
   substructs. Definitions of such ioctls must provide a get_data_size()
