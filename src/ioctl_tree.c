@@ -70,8 +70,8 @@ ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret)
 ioctl_tree *
 ioctl_tree_new_from_text(const char *line)
 {
-    static char lead_ws[1000];
-    static char ioctl_name[100];
+    static char lead_ws[1001];
+    static char ioctl_name[101];
     int ret, offset;
     unsigned long id;
     const ioctl_type *type;
@@ -568,7 +568,7 @@ ioctl_varlenstruct_init_from_text(ioctl_tree * node, const char *data)
     size_t size = node->type->get_data_size(node->id, node->data);
 
     if (size != data_len) {
-	fprintf(stderr, "ioctl_varlenstruct_init_from_text: ioctl %lX: expected data length %zi, but got %zu bytes from text data\n",
+	fprintf(stderr, "ioctl_varlenstruct_init_from_text: ioctl %lX: expected data length %zu, but got %zu bytes from text data\n",
 		node->id, size, data_len);
 	free(node->data);
 	return FALSE;
