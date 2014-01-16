@@ -1,3 +1,9 @@
+0.5.1 (UNRELEASED)
+------------------
+- Update devices/cameras/canon-powershot-sx200.ioctl with ioctls from
+  libgphoto2 2.5.3, to make the /umockdev-run/integration/gphoto-* tests work
+  with that version.
+
 0.5 (2014-01-08)
 ----------------
 - Add generic support for variable length structs without pointers to
