@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+export LD_LIBRARY_PATH=.libs
+
+USB=$(lsusb | sed -rn '/PowerShot/ { s/[^ ]+ ([0-9]+) [^ ]+ ([0-9]+): .*/\1\/\2/; p}')
+
+if [ -z "$USB" ]; then
+    echo "no PowerShot camera found in lsusb!" >&2
+    exit 1
+fi
+
+src/umockdev-record -i /dev/bus/usb/$USB=devices/cameras/canon-powershot-sx200.ioctl -- sh -c 'gphoto2 --auto-detect; gphoto2 -l; gphoto2 -L; gphoto2 -T; gphoto2 -P'
+rm -f *.jpg *.JPG
+
