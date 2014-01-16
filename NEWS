@@ -1,4 +1,4 @@
-0.5.1 (UNRELEASED)
+0.5.1 (2014-01-16)
 ------------------
 - Update devices/cameras/canon-powershot-sx200.ioctl with ioctls from
   libgphoto2 2.5.3, to make the /umockdev-run/integration/gphoto-* tests work
