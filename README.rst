@@ -1,12 +1,12 @@
 umockdev
 ========
-umockdev mocks hardware devices for creating unit tests for libraries and
-programs that handle Linux hardware devices. It also provides tools to record
-the properties and behaviour of particular devices,  and to run a program or
-test suite under a test bed with the previously recorded devices loaded. This
-also allows developers of software like gphoto or libmtp to receive these
-records in bug reports and recreate the problem on their system without having
-access to the affected hardware.
+umockdev mocks Linux devices for creating integration tests for hardware
+related libraries and programs. It also provides tools to record the properties
+and behaviour of particular devices, and to run a program or test suite under
+a test bed with the previously recorded devices loaded. This allows
+developers of software like gphoto or libmtp to receive these records in bug
+reports and recreate the problem on their system without having access to the
+affected hardware.
 
 The ``UMockdevTestbed`` class builds a temporary sandbox for mock devices.
 You can add a number of devices including arbitrary sysfs attributes and udev
@@ -38,7 +38,7 @@ Right now umockdev supports the following features:
   match what is actually being sent from the tested application.
 
 - Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
-  Wacom tablets, etc.) ioctls
+  Wacom tablets, etc.) ioctls.
 
 Other aspects and functionality will be added in the future as use cases arise.
 
