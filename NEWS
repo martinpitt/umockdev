@@ -1,3 +1,7 @@
+0.5.2 (UNRELEASED)
+------------------
+- Also send DEVNAME in uevent when available. Thanks Chris Halse Rogers!
+
 0.5.1 (2014-01-16)
 ------------------
 - Update devices/cameras/canon-powershot-sx200.ioctl with ioctls from
