@@ -135,11 +135,31 @@ t_testbed_add_devicev(UMockdevTestbedFixture * fixture, gconstpointer data)
     gchar *syspath;
     gchar *attributes[] = { "idVendor", "0815", "idProduct", "AFFE", NULL };
     gchar *properties[] = { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL };
+    struct udev *udev;
+    struct udev_monitor *udev_mon;
+    struct udev_device *device;
+
+    /* Set up Udev monitor to check for added event */
+    udev = udev_new();
+    g_assert(udev != NULL);
+    udev_mon = udev_monitor_new_from_netlink(udev, "udev");
+    g_assert(udev_mon != NULL);
+    g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
+    g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
 
     syspath = umockdev_testbed_add_devicev(fixture->testbed, "usb", "extkeyboard1", NULL, attributes, properties);
     g_assert_cmpstr(syspath, ==, "/sys/devices/extkeyboard1");
 
     _t_testbed_check_extkeyboard1(syspath);
+
+    device = udev_monitor_receive_device(udev_mon);
+    g_assert(device != NULL);
+    g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
+    g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    udev_device_unref(device);
+    udev_monitor_unref(udev_mon);
+    udev_unref(udev);
+
     g_free(syspath);
 }
 
@@ -148,6 +168,17 @@ static void
 t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
+    struct udev *udev;
+    struct udev_monitor *udev_mon;
+    struct udev_device *device;
+
+    /* Set up Udev monitor to check for added event */
+    udev = udev_new();
+    g_assert(udev != NULL);
+    udev_mon = udev_monitor_new_from_netlink(udev, "udev");
+    g_assert(udev_mon != NULL);
+    g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
+    g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
 
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "extkeyboard1", NULL,
 					  /* attributes */
@@ -158,6 +189,15 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(g_str_has_suffix(syspath, "/sys/devices/extkeyboard1"));
 
     _t_testbed_check_extkeyboard1(syspath);
+
+    device = udev_monitor_receive_device(udev_mon);
+    g_assert(device != NULL);
+    g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
+    g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    udev_device_unref(device);
+    udev_monitor_unref(udev_mon);
+    udev_unref(udev);
+
     g_free(syspath);
 }
 

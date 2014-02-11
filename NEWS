@@ -1,6 +1,7 @@
 0.5.2 (UNRELEASED)
 ------------------
 - Also send DEVNAME in uevent when available. Thanks Chris Halse Rogers!
+- Send an "add" uevent when adding a device
 
 0.5.1 (2014-01-16)
 ------------------
