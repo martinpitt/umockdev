@@ -181,7 +181,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   Posix.close (fd);
   try {
       tb.load_ioctl ("/dev/001", tmppath);
-  } catch (FileError e) {
+  } catch (Error e) {
       stderr.printf ("Cannot load ioctls: %s\n", e.message);
       Process.abort ();
   }
@@ -251,6 +251,107 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 }
 
 void
+t_usbfs_ioctl_tree_with_default_device ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb_add_from_string (tb, """P: /devices/mycam
+N: 001
+E: SUBSYSTEM=usb
+""");
+
+  // add simple ioctl tree
+  string test_tree;
+  if (BYTE_ORDER == ByteOrder.LITTLE_ENDIAN)
+      test_tree = """# little-endian test ioctls
+@DEV /dev/001
+USBDEVFS_CONNECTINFO 0 0B00000000000000
+""";
+  else
+      test_tree = """# big-endian test ioctls
+@DEV /dev/001
+USBDEVFS_CONNECTINFO 0 0000000B00000000
+""";
+
+  string tmppath;
+  int fd;
+  try {
+      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
+  } catch (Error e) { Process.abort (); }
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+
+  Posix.close (fd);
+
+  try {
+      tb.load_ioctl (null, tmppath);
+  } catch (Error e) {
+      stderr.printf ("Cannot load ioctls: %s\n", e.message);
+      Process.abort ();
+  }
+  FileUtils.unlink (tmppath);
+
+  fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, Op.GE, 0);
+
+  // loaded ioctl
+  var ci = Ioctl.usbdevfs_connectinfo();
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
+}
+
+void
+t_usbfs_ioctl_tree_override_default_device ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb_add_from_string (tb, """P: /devices/mycam
+N: 002
+E: SUBSYSTEM=usb
+""");
+
+  // add simple ioctl tree
+  string test_tree;
+  if (BYTE_ORDER == ByteOrder.LITTLE_ENDIAN)
+      test_tree = """# little-endian test ioctls
+@DEV /dev/001
+USBDEVFS_CONNECTINFO 0 0B00000000000000
+""";
+  else
+      test_tree = """# big-endian test ioctls
+@DEV /dev/001
+USBDEVFS_CONNECTINFO 0 0000000B00000000
+""";
+
+  string tmppath;
+  int fd;
+  try {
+      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
+  } catch (Error e) { Process.abort (); }
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+
+  Posix.close (fd);
+
+  try {
+      tb.load_ioctl ("/dev/002", tmppath);
+  } catch (Error e) {
+      stderr.printf ("Cannot load ioctls: %s\n", e.message);
+      Process.abort ();
+  }
+  FileUtils.unlink (tmppath);
+
+  fd = Posix.open ("/dev/002", Posix.O_RDWR, 0);
+  assert_cmpint (fd, Op.GE, 0);
+
+  // loaded ioctl
+  var ci = Ioctl.usbdevfs_connectinfo();
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
+}
+
+
+void
 t_usbfs_ioctl_tree_xz ()
 {
   var tb = new UMockdev.Testbed ();
@@ -289,7 +390,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   assert_cmpint (exit, Op.EQ, 0);
   try {
       tb.load_ioctl ("/dev/001", tmppath);
-  } catch (FileError e) {
+  } catch (Error e) {
       stderr.printf ("Cannot load ioctls: %s\n", e.message);
       Process.abort ();
   }
@@ -389,6 +490,8 @@ main (string[] args)
   /* tests for mocking ioctls */
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree", t_usbfs_ioctl_tree);
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_with_default_device", t_usbfs_ioctl_tree_with_default_device);
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_override_default_device", t_usbfs_ioctl_tree_override_default_device);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_xz", t_usbfs_ioctl_tree_xz);
 
   /* tests for mocking TTYs */
