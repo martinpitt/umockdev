@@ -202,6 +202,10 @@ ioctl_tree_read(FILE * f)
 	if (line[0] == '\n' || line[0] == '#')
 	    continue;
 
+        /* skip lines with metadata */
+        if (line[0] == '@')
+            continue;
+
 	node = ioctl_tree_new_from_text(line);
 	if (node == NULL) {
 	    DBG("ioctl_tree_read: failure to parse line: %s", line);

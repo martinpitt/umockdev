@@ -638,6 +638,8 @@ public class Testbed: GLib.Object {
      * umockdev_testbed_load_ioctl:
      * @self: A #UMockdevTestbed.
      * @dev: Device path (/dev/...) for which to load the ioctl record.
+     *       %NULL is valid; in this case the ioctl record is associated with
+     *       the device node it was recorded from.
      * @recordfile: Path of the ioctl record file.
      * @error: return location for a GError, or %NULL
      *
@@ -649,12 +651,9 @@ public class Testbed: GLib.Object {
      * Returns: %TRUE on success, %FALSE if the data is invalid and an error
      *          occurred.
      */
-    public bool load_ioctl (string dev, string recordfile) throws FileError
+    public bool load_ioctl (string? dev, string recordfile) throws FileError
     {
-        string dest = Path.build_filename(this.root_dir, "ioctl", dev);
         string contents;
-
-        assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
 
         if (recordfile.has_suffix (".xz")) {
             try {
@@ -672,7 +671,32 @@ public class Testbed: GLib.Object {
         } else
             assert (FileUtils.get_contents(recordfile, out contents));
 
-        return FileUtils.set_contents(dest, contents);
+        if (dev != null) {
+            string dest = Path.build_filename(this.root_dir, "ioctl", dev);
+            assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
+
+            return FileUtils.set_contents(dest, contents);
+        } else {
+            // Use file header comment to set default device node
+            int start_index = 0;
+            while (contents[start_index] == '#') {
+                // Skip leading comments
+                start_index = contents.index_of_char('\n', start_index) + 1;
+            }
+            int end_index = contents.index_of_char('\n', start_index) + 1;
+            string dev_header = contents.substring(start_index, end_index);
+            // Need to initialise this, as vala doesn't understand that
+            // the scanf call will populate it.
+            string device_name = "";
+            if (dev_header.scanf("@DEV %ms\n", &device_name) != 1)
+                error ("NULL passed for device node, but ioctl recording does not " +
+                       "have a @DEV header specifying the default device node");
+
+            string dest = Path.build_filename(this.root_dir, "ioctl", device_name);
+            assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
+
+            return FileUtils.set_contents(dest, contents);
+        }
     }
 
     /**

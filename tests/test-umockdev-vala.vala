@@ -251,6 +251,121 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 }
 
 void
+t_usbfs_ioctl_tree_with_default_device ()
+{
+  var tb = new UMockdev.Testbed ();
+  tb_add_from_string (tb, """P: /devices/mycam
+N: 001
+E: SUBSYSTEM=usb
+""");
+
+  // add simple ioctl tree
+  string test_tree;
+  if (BYTE_ORDER == ByteOrder.LITTLE_ENDIAN)
+      test_tree = """# little-endian test ioctls
+@DEV /dev/001
+USBDEVFS_CONNECTINFO 0 0B00000000000000
+USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
+
+# another connect info
+USBDEVFS_CONNECTINFO 42 0C00000001000000
+""";
+  else
+      test_tree = """# big-endian test ioctls
+@DEV /dev/001
+USBDEVFS_CONNECTINFO 0 0000000B00000000
+USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
+
+# another connect info
+USBDEVFS_CONNECTINFO 42 0000000C01000000
+""";
+
+  string tmppath;
+  int fd;
+  try {
+      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
+  } catch (Error e) { Process.abort (); }
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+
+  // ioctl emulation does not get in the way of non-/dev fds
+  int i = 1;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, -1);
+  // usually ENOTTY, but seem to be EINVAL
+  assert_cmpint (Posix.errno, Op.GE, 22);
+
+  Posix.close (fd);
+  try {
+      tb.load_ioctl (null, tmppath);
+  } catch (FileError e) {
+      stderr.printf ("Cannot load ioctls: %s\n", e.message);
+      Process.abort ();
+  }
+  FileUtils.unlink (tmppath);
+
+  fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, Op.GE, 0);
+
+  // static ioctl
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+
+  // loaded ioctl
+  var ci = Ioctl.usbdevfs_connectinfo();
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
+
+  /* loaded ioctl: URB */
+  var urb_buffer = new uint8[4];
+  Ioctl.usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (urb.status, Op.EQ, 0);
+  assert_cmpint (urb_buffer[0], Op.EQ, 0);
+
+  Ioctl.usbdevfs_urb* urb_reap = null;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert (urb_reap == &urb);
+  assert_cmpint (urb.status, Op.EQ, -1);
+  assert_cmpuint (urb.buffer[0], Op.EQ, 0x99);
+  assert_cmpuint (urb.buffer[1], Op.EQ, 0x02);
+  assert_cmpuint (urb.buffer[2], Op.EQ, 0xAA);
+  assert_cmpuint (urb.buffer[3], Op.EQ, 0xFF);
+
+  // open the device a second time
+  int fd2 = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd2, Op.GE, 0);
+
+  // exercise ioctl on fd2, should iterate from beginning
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 11);
+  assert_cmpuint (ci.slow, Op.EQ, 0);
+
+  // should still work on first fd, and continue with original tree state
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 12);
+  assert_cmpuint (ci.slow, Op.EQ, 1);
+
+  // should work after closing first fd, advancing position
+  Posix.close (fd);
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
+  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpuint (ci.devnum, Op.EQ, 12);
+  assert_cmpuint (ci.slow, Op.EQ, 1);
+  Posix.close (fd2);
+}
+
+void
 t_usbfs_ioctl_tree_xz ()
 {
   var tb = new UMockdev.Testbed ();
@@ -389,6 +504,7 @@ main (string[] args)
   /* tests for mocking ioctls */
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree", t_usbfs_ioctl_tree);
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_with_default_device", t_usbfs_ioctl_tree_with_default_device);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_xz", t_usbfs_ioctl_tree_xz);
 
   /* tests for mocking TTYs */

@@ -418,10 +418,15 @@ ioctl_record_open(int fd)
     /* lazily open the record file */
     if (ioctl_record_log == NULL) {
 	const char *path = getenv("UMOCKDEV_IOCTL_RECORD_FILE");
+	const char *device_path = getenv("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH");
 	struct sigaction act_int;
 
 	if (path == NULL) {
 	    fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_FILE not set\n");
+	    exit(1);
+	}
+	if (device_path == NULL) {
+	    fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_DEVICE_PATH not set\n");
 	    exit(1);
 	}
 	if (getenv("UMOCKDEV_DIR") != NULL) {
@@ -432,6 +437,28 @@ ioctl_record_open(int fd)
 	if (ioctl_record_log == NULL) {
 	    perror("umockdev: failed to open ioctl record file");
 	    exit(1);
+	}
+	if (ftell(ioctl_record_log) > 0) {
+	    /* Check that we're recording the same device as the previous log */
+	    char *existing_device_path;
+	    fseek(ioctl_record_log, 0, SEEK_SET);
+
+	    /* Start by skipping any leading comments */
+	    while (fgetc(ioctl_record_log) == '#')
+		while (fgetc(ioctl_record_log) != '\n')
+		    ;
+
+	    if (fscanf(ioctl_record_log, "@DEV %ms\n", &existing_device_path) == 1)
+	    {
+		/* We have an existing "@DEV /dev/something" directive, check it matches */
+		if (!strcmp(device_path, existing_device_path)) {
+		    perror("umockdev: attempt to record two different devices to the same ioctl recording");
+		    exit(1);
+		}
+	    }
+	    fseek(ioctl_record_log, 0, SEEK_END);
+	} else {
+	    fprintf(ioctl_record_log, "@DEV %s\n", device_path);
 	}
 
 	/* load an already existing log */
