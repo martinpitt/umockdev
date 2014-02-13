@@ -452,7 +452,7 @@ ioctl_record_open(int fd)
 	    {
 		/* We have an existing "@DEV /dev/something" directive, check it matches */
 		if (!strcmp(device_path, existing_device_path)) {
-		    perror("umockdev: attempt to record two different devices to the same ioctl recording");
+		    fprintf(stderr, "umockdev: attempt to record two different devices to the same ioctl recording");
 		    exit(1);
 		}
 	    }
