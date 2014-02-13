@@ -438,8 +438,13 @@ ioctl_record_open(int fd)
 	    perror("umockdev: failed to open ioctl record file");
 	    exit(1);
 	}
+	/* We record the device node for later loading without specifying
+	 * the devpath in umockdev_testbed_load_ioctl.
+	 */
 	if (ftell(ioctl_record_log) > 0) {
-	    /* Check that we're recording the same device as the previous log */
+	    /* We're appending to a previous log; don't write the devnode header again,
+	     * but check that we're recording the same device as the previous log.
+	     */
 	    char *existing_device_path;
 	    fseek(ioctl_record_log, 0, SEEK_SET);
 
@@ -458,6 +463,7 @@ ioctl_record_open(int fd)
 	    }
 	    fseek(ioctl_record_log, 0, SEEK_END);
 	} else {
+	    /* New log, add devnode header */
 	    fprintf(ioctl_record_log, "@DEV %s\n", device_path);
 	}
 
