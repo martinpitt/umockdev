@@ -460,6 +460,7 @@ ioctl_record_open(int fd)
 		    fprintf(stderr, "umockdev: attempt to record two different devices to the same ioctl recording");
 		    exit(1);
 		}
+		free(existing_device_path);
 	    }
 	    fseek(ioctl_record_log, 0, SEEK_END);
 	} else {
