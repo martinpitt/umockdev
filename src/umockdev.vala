@@ -671,12 +671,7 @@ public class Testbed: GLib.Object {
         } else
             assert (FileUtils.get_contents(recordfile, out contents));
 
-        if (dev != null) {
-            string dest = Path.build_filename(this.root_dir, "ioctl", dev);
-            assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
-
-            return FileUtils.set_contents(dest, contents);
-        } else {
+        if (dev == null) {
             // Use file header comment to set default device node
             int start_index = 0;
             while (contents[start_index] == '#') {
@@ -687,16 +682,15 @@ public class Testbed: GLib.Object {
             string dev_header = contents.substring(start_index, end_index);
             // Need to initialise this, as vala doesn't understand that
             // the scanf call will populate it.
-            string device_name = "";
-            if (dev_header.scanf("@DEV %ms\n", &device_name) != 1)
+            dev = "";
+            if (dev_header.scanf("@DEV %ms\n", &dev) != 1)
                 error ("NULL passed for device node, but ioctl recording does not " +
                        "have a @DEV header specifying the default device node");
-
-            string dest = Path.build_filename(this.root_dir, "ioctl", device_name);
-            assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
-
-            return FileUtils.set_contents(dest, contents);
         }
+        string dest = Path.build_filename(this.root_dir, "ioctl", dev);
+        assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
+
+        return FileUtils.set_contents(dest, contents);
     }
 
     /**
