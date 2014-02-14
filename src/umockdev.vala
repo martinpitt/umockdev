@@ -658,20 +658,20 @@ public class Testbed: GLib.Object {
         // variable when we assign to it, so we need an explicit copy here.
         string owned_dev = dev;
 
-        if (recordfile.has_suffix (".xz")) {
+        if (recordfile.has_suffix(".xz")) {
             try {
                 string contents;
                 int exit;
-                Process.spawn_sync (null, {"xz", "-cd", recordfile}, null,
-                                    SpawnFlags.SEARCH_PATH,
-                                    null,
-                                    out contents,
-                                    null,
-                                    out exit);
-                assert (exit == 0);
+                Process.spawn_sync(null, {"xz", "-cd", recordfile}, null,
+                                   SpawnFlags.SEARCH_PATH,
+                                   null,
+                                   out contents,
+                                   null,
+                                   out exit);
+                assert(exit == 0);
                 recording = new DataInputStream(new MemoryInputStream.from_data(contents.data, null));
             } catch (SpawnError e) {
-                error ("Cannot call xz to decompress %s: %s", recordfile, e.message);
+                error("Cannot call xz to decompress %s: %s", recordfile, e.message);
             }
         } else
             recording = new DataInputStream(File.new_for_path(recordfile).read());
