@@ -265,19 +265,11 @@ E: SUBSYSTEM=usb
       test_tree = """# little-endian test ioctls
 @DEV /dev/001
 USBDEVFS_CONNECTINFO 0 0B00000000000000
-USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
-
-# another connect info
-USBDEVFS_CONNECTINFO 42 0C00000001000000
 """;
   else
       test_tree = """# big-endian test ioctls
 @DEV /dev/001
 USBDEVFS_CONNECTINFO 0 0000000B00000000
-USBDEVFS_REAPURB 0 1 129 -1 0 4 4 0 9902AAFF
-
-# another connect info
-USBDEVFS_CONNECTINFO 42 0000000C01000000
 """;
 
   string tmppath;
@@ -287,13 +279,8 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   } catch (Error e) { Process.abort (); }
   assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
 
-  // ioctl emulation does not get in the way of non-/dev fds
-  int i = 1;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, -1);
-  // usually ENOTTY, but seem to be EINVAL
-  assert_cmpint (Posix.errno, Op.GE, 22);
-
   Posix.close (fd);
+
   try {
       tb.load_ioctl (null, tmppath);
   } catch (Error e) {
@@ -305,16 +292,13 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
   assert_cmpint (fd, Op.GE, 0);
 
-  // static ioctl
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
   assert_cmpint (Posix.errno, Op.EQ, 0);
   assert_cmpuint (ci.devnum, Op.EQ, 11);
   assert_cmpuint (ci.slow, Op.EQ, 0);
+}
 
   /* loaded ioctl: URB */
   var urb_buffer = new uint8[4];
