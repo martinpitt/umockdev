@@ -194,6 +194,7 @@ src_umockdev_run_VALAFLAGS =		\
 	--vapidir $(top_builddir)/src	\
 	--pkg umockdev-1.0		\
 	--pkg glib-2.0			\
+	--pkg gio-2.0			\
 	--pkg posix			\
 	$(AM_VALAFLAGS)			\
 	$(NULL)
@@ -290,6 +291,7 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	--vapidir $(top_builddir)/src	\
 	--pkg umockdev-1.0		\
 	--pkg glib-2.0			\
+	--pkg gio-2.0			\
 	--pkg gudev-1.0			\
 	$(AM_VALAFLAGS)			\
 	$(NULL)
@@ -305,6 +307,7 @@ tests_test_umockdev_run_LDADD = $(GLIB_LIBS)
 tests_test_umockdev_run_VALAFLAGS =	\
 	--vapidir tests			\
 	--pkg glib-2.0			\
+	--pkg gio-2.0			\
 	--pkg posix			\
 	$(AM_VALAFLAGS)			\
 	$(NULL)

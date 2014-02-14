@@ -262,12 +262,12 @@ dump_devices(string[] devices)
 
 // split a devname=filename argument into a device number and a file name
 static void
-split_devfile_arg(string arg, out string devnum, out string fname)
+split_devfile_arg(string arg, out string dev, out string devnum, out string fname)
 {
     string[] parts = arg.split ("=", 2); // devname, ioctlfilename
     if (parts.length != 2)
         exit_error("--ioctl argument must be devname=filename");
-    string dev = parts[0];
+    dev = parts[0];
     fname = parts[1];
 
     // build device major/minor
@@ -299,10 +299,11 @@ split_devfile_arg(string arg, out string devnum, out string fname)
 static void
 record_ioctl(string arg)
 {
-    string devnum, outfile;
-    split_devfile_arg(arg, out devnum, out outfile);
+    string dev, devnum, outfile;
+    split_devfile_arg(arg, out dev, out devnum, out outfile);
     Environment.set_variable("UMOCKDEV_IOCTL_RECORD_FILE", outfile, true);
     Environment.set_variable("UMOCKDEV_IOCTL_RECORD_DEV", devnum, true);
+    Environment.set_variable("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH", dev, true);
 }
 
 // Record reads/writes for given device into outfile
@@ -310,8 +311,8 @@ static uint record_script_counter = 0;
 static void
 record_script(string arg)
 {
-    string devnum, outfile;
-    split_devfile_arg(arg, out devnum, out outfile);
+    string dev, devnum, outfile;
+    split_devfile_arg(arg, out dev, out devnum, out outfile);
     string c = record_script_counter.to_string();
 
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile, true);

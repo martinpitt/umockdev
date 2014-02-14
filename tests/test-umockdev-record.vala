@@ -281,7 +281,7 @@ t_system_ioctl_log ()
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
     assert (FileUtils.test (log, FileTest.EXISTS));
-    assert_cmpstr (file_contents (log), Op.EQ, "");
+    assert_cmpstr (file_contents (log), Op.EQ, "@DEV /dev/zero\n");
 
     FileUtils.remove (log);
 
