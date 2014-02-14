@@ -181,7 +181,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   Posix.close (fd);
   try {
       tb.load_ioctl ("/dev/001", tmppath);
-  } catch (FileError e) {
+  } catch (Error e) {
       stderr.printf ("Cannot load ioctls: %s\n", e.message);
       Process.abort ();
   }
@@ -296,7 +296,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   Posix.close (fd);
   try {
       tb.load_ioctl (null, tmppath);
-  } catch (FileError e) {
+  } catch (Error e) {
       stderr.printf ("Cannot load ioctls: %s\n", e.message);
       Process.abort ();
   }
@@ -404,7 +404,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   assert_cmpint (exit, Op.EQ, 0);
   try {
       tb.load_ioctl ("/dev/001", tmppath);
-  } catch (FileError e) {
+  } catch (Error e) {
       stderr.printf ("Cannot load ioctls: %s\n", e.message);
       Process.abort ();
   }

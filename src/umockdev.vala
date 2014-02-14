@@ -651,12 +651,16 @@ public class Testbed: GLib.Object {
      * Returns: %TRUE on success, %FALSE if the data is invalid and an error
      *          occurred.
      */
-    public bool load_ioctl (string? dev, string recordfile) throws FileError
+    public bool load_ioctl (string? dev, string recordfile) throws GLib.Error, FileError, IOError, RegexError
     {
-        string contents;
+        DataInputStream recording;
+        // Apparently valac isn't smart enough to turn a parameter into an owned
+        // variable when we assign to it, so we need an explicit copy here.
+        string owned_dev = dev;
 
         if (recordfile.has_suffix (".xz")) {
             try {
+                string contents;
                 int exit;
                 Process.spawn_sync (null, {"xz", "-cd", recordfile}, null,
                                     SpawnFlags.SEARCH_PATH,
@@ -665,32 +669,35 @@ public class Testbed: GLib.Object {
                                     null,
                                     out exit);
                 assert (exit == 0);
+                recording = new DataInputStream(new MemoryInputStream.from_data(contents.data, null));
             } catch (SpawnError e) {
                 error ("Cannot call xz to decompress %s: %s", recordfile, e.message);
             }
         } else
-            assert (FileUtils.get_contents(recordfile, out contents));
+            recording = new DataInputStream(File.new_for_path(recordfile).read());
 
-        if (dev == null) {
+        if (owned_dev == null) {
             // Use file header comment to set default device node
-            int start_index = 0;
-            while (contents[start_index] == '#') {
-                // Skip leading comments
-                start_index = contents.index_of_char('\n', start_index) + 1;
-            }
-            int end_index = contents.index_of_char('\n', start_index) + 1;
-            string dev_header = contents.substring(start_index, end_index);
-            // Need to initialise this, as vala doesn't understand that
-            // the scanf call will populate it.
-            dev = "";
-            if (dev_header.scanf("@DEV %ms\n", &dev) != 1)
-                error ("NULL passed for device node, but ioctl recording does not " +
-                       "have a @DEV header specifying the default device node");
+
+            // Ignore any leading comments
+            string line = recording.read_line();
+            while (line != null && line.has_prefix("#"))
+                line = recording.read_line();
+
+            // Next must be our @DEV <devicenode> header
+            if (line == null)
+                error("ioctl recording file %s has no non-comment content", recordfile);
+
+            MatchInfo header_matcher;
+            if (!(new Regex("^@DEV (.*)(\n|$)")).match(line, 0, out header_matcher))
+                error("null passed for device node, but recording %s has no @DEV header", recordfile);
+            owned_dev = header_matcher.fetch(1);
+            recording.seek(0, SeekType.SET);
         }
-        string dest = Path.build_filename(this.root_dir, "ioctl", dev);
+        string dest = Path.build_filename(this.root_dir, "ioctl", owned_dev);
         assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
 
-        return FileUtils.set_contents(dest, contents);
+        return FileUtils.set_contents(dest, recording.read_upto("", 0, null));
     }
 
     /**
