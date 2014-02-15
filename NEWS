@@ -1,5 +1,5 @@
-0.5.2 (UNRELEASED)
-------------------
+0.6 (UNRELEASED)
+----------------
 - Also send DEVNAME in uevent when available. Thanks Chris Halse Rogers!
 - Send an "add" uevent when adding a device
 - umockdev-record --ioctl now stores the name of the device node recorded
