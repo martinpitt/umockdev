@@ -5,7 +5,7 @@
 - umockdev-record --ioctl now stores the name of the device node recorded
   in the trace. umockdev_testbed_load_ioctl(testbed, NULL, "device.ioctl")
   now automatically associates the ioctl trace with the original device
-  node.
+  node. (issue #33)
 
 0.5.1 (2014-01-16)
 ------------------
