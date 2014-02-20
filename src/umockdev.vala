@@ -905,6 +905,7 @@ public class Testbed: GLib.Object {
         ios.c_iflag &= ~(Posix.IGNCR | Posix.INLCR | Posix.ICRNL);
         ios.c_oflag &= ~(Posix.ONLCR | Posix.OCRNL);
         ios.c_lflag &= ~(Posix.ICANON | Posix.ECHO);
+        Posix.cfmakeraw(ref ios);
         assert (Posix.tcsetattr (ptym, Posix.TCSANOW, ios) == 0);
 
         assert (FileUtils.symlink (ptyname, node_path) == 0);

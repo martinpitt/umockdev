@@ -1,3 +1,8 @@
+0.6.1 (UNRELEASED)
+------------------
+- Set PTYs into raw mode to get more accurate read() semantics,
+  specifically how many bytes each read() slurps.
+
 0.6 (2014-02-15)
 ----------------
 - Also send DEVNAME in uevent when available. Thanks Chris Halse Rogers!
