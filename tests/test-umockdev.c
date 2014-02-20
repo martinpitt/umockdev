@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <linux/usbdevice_fs.h>
+#include <linux/input.h>
 
 #include <libudev.h>
 #include <gudev/gudev.h>
@@ -1090,6 +1091,78 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
   errno = 0;
 
 static void
+t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  char *tmppath;
+  int fd;
+  char buf[1024];
+
+  struct timeval dummy = {0};
+  /* Simple evdev stream - x coordinate followed by SYN, times 2 */
+  struct input_event dummy_events[] = {
+      {dummy, 0003, 0000, 2534},
+      {dummy, 0000, 0000, 0000},
+      {dummy, 0003, 0000, 2200},
+      {dummy, 0000, 0000, 0000}
+  };
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/event1\nN: input/event1\n"
+          "E: DEVNAME=/dev/input/event1\nE: SUBSYSTEM=input\n", &error);
+  g_assert_no_error(error);
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_simple.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, "r 0 ", strlen("r 0 ")), ==, strlen("r 0 "));
+  for (int i = 0; i < sizeof dummy_events; ++i) {
+    char cur = ((char *)dummy_events)[i];
+    if (cur < 32) {
+      g_assert_cmpint(write(fd, "^", 1), ==, 1);
+      cur += 64;
+    } else if (cur == '^') {
+      g_assert_cmpint(write(fd, "^", 1), ==, 1);
+      cur = '`';
+    }
+    g_assert_cmpint(write(fd, &cur, 1), ==, 1);
+  }
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_script(fixture->testbed, "/dev/input/event1", tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* start communication */
+  fd = g_open("/dev/input/event1", O_RDWR | O_NONBLOCK, 0);
+  g_assert_cmpint(fd, >=, 0);
+
+  /* Evdev guarantees that we only read whole events
+   * We should do the same
+   */
+  ssize_t bytes_read = 0;
+  while (bytes_read < sizeof dummy_events) {
+    ssize_t tmp = read(fd, buf, sizeof buf);
+    if (tmp < 0) {
+      g_assert_cmpint(errno, ==, EAGAIN);
+      errno = 0;
+      continue;
+    }
+    bytes_read += tmp;
+    g_assert_cmpint(bytes_read % sizeof(struct input_event), ==, 0);
+  }
+  g_assert_cmpint(memcmp(buf, dummy_events, sizeof dummy_events), ==, 0);
+
+  /* end of script */
+  ASSERT_EOF;
+
+  close(fd);
+}
+
+static void
 t_testbed_script_replay_simple(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
   gboolean success;
@@ -1529,6 +1602,8 @@ main(int argc, char **argv)
     /* tests for script replay */
     g_test_add("/umockdev-testbed/script_replay_simple", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_simple, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/script_replay_evdev_event_framing", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_script_replay_evdev_event_framing, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_socket_stream", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_socket_stream, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_fuzz", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
