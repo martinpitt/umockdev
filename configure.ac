@@ -31,6 +31,7 @@ AC_SYS_LARGEFILE
 AM_SILENT_RULES([yes])
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Werror -Wno-portability silent-rules subdir-objects tar-pax no-dist-gzip dist-xz])
 AM_PROG_CC_C_O
+AC_PROG_CC_C99
 AM_PROG_AR
 
 LT_PREREQ(2.2)
