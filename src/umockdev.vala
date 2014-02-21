@@ -707,6 +707,8 @@ public class Testbed: GLib.Object {
      * umockdev_testbed_load_script:
      * @self: A #UMockdevTestbed.
      * @dev: Device path (/dev/...) for which to load the script record.
+     *       %NULL is valid; in this case the script is associated with
+     *       the device node it was recorded from.
      * @recordfile: Path of the script record file.
      * @error: return location for a GError, or %NULL
      *
