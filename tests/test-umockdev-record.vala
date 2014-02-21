@@ -320,13 +320,20 @@ t_system_script_log_simple ()
     assert_cmpstr (sout, Op.EQ, "\0");
     assert_cmpstr (file_contents (log), Op.EQ, "");
 
-    // should log one read
+    // should log the header plus one read
     spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
-    string[] logwords = file_contents (log).split(" ");
+    string[] loglines = file_contents (log).split("\n");
+    assert_cmpuint (loglines.length, Op.EQ, 2);
+    string[] logheader = loglines[0].split(" ");
+    assert_cmpuint (logheader.length, Op.EQ, 3);
+    assert_cmpstr (logheader[0], Op.EQ, "d");
+    assert_cmpstr (logheader[1], Op.EQ, "0");
+    assert_cmpstr (logheader[2], Op.EQ, "/dev/zero");
+    string[] logwords = loglines[1].split(" ");
     assert_cmpuint (logwords.length, Op.EQ, 3);
     assert_cmpstr (logwords[0], Op.EQ, "r");
     // should be quick, give it 5 ms at most
@@ -416,7 +423,10 @@ t_system_script_log_chatter ()
 
     // evaluate log
     var log_stream = FileStream.open (log, "r");
+    char[] buf = new char[8192];
     int time = 0;
+    assert_cmpint (log_stream.scanf ("d 0 %s\n", buf), Op.EQ, 1);
+    assert_cmpstr ((string)buf, Op.EQ, (string)ptyname);
     assert_cmpint (log_stream.scanf ("w %d Hello world!^JWhat is your name?^J\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.LE, 20);
     assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);

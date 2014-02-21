@@ -716,16 +716,35 @@ public class Testbed: GLib.Object {
      * Returns: %TRUE on success, %FALSE if @recordfile is invalid and an error
      *          occurred.
      */
-    public bool load_script (string dev, string recordfile)
-        throws FileError
+    public bool load_script (string? dev, string recordfile)
+        throws GLib.Error, FileError, IOError, RegexError
     {
-        assert (!this.dev_script_runner.contains (dev));
+        string? owned_dev = dev;
+        if (owned_dev == null) {
+            var recording = new DataInputStream(File.new_for_path(recordfile).read());
 
-        int fd = this.get_dev_fd (dev);
+            // Ignore any leading comments
+            string line = recording.read_line();
+            while (line != null && line.has_prefix("#"))
+                line = recording.read_line();
+
+            // Next must be our d 0 <devicenode> header
+            if (line == null)
+                error("script recording %s has no non-comment content", recordfile);
+
+            MatchInfo header_matcher;
+            if (!(new Regex("^d 0 (.*)(\n|$)")).match(line, 0, out header_matcher))
+                error("null passed for device node, but recording %s has no d 0 header", recordfile);
+            owned_dev = header_matcher.fetch(1);
+        }
+
+        assert (!this.dev_script_runner.contains (owned_dev));
+
+        int fd = this.get_dev_fd (owned_dev);
         if (fd < 0)
-            throw new FileError.INVAL (dev + " is not a device suitable for scripts");
+            throw new FileError.INVAL (owned_dev + " is not a device suitable for scripts");
 
-        this.dev_script_runner.insert (dev, new ScriptRunner (dev, recordfile, fd));
+        this.dev_script_runner.insert (owned_dev, new ScriptRunner (owned_dev, recordfile, fd));
         return true;
     }
 
@@ -1206,6 +1225,10 @@ private class ScriptRunner {
                                this.device, delta);
                     this.fuzz = delta;
                     debug ("ScriptRunner[%s]: setting fuzz level to %u%%", this.device, this.fuzz);
+                    break;
+
+                case 'd':
+                    // We ignore the device specifier; it's handled before run()
                     break;
 
                 default:
