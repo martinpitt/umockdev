@@ -317,6 +317,7 @@ record_script(string arg)
 
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile, true);
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEV_" + c, devnum, true);
+    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_" + c, dev, true);
 
     record_script_counter++;
 }

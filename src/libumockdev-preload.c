@@ -611,6 +611,7 @@ ioctl_emulate(int fd, unsigned long request, void *arg)
 #define MAX_SCRIPT_SOCKET_LOGFILE 50
 
 static fd_map script_dev_logfile_map;	/* maps a st_rdev to a log file name */
+static fd_map script_dev_devpath_map;   /* maps a st_rdev to a device path */
 static int script_dev_logfile_map_inited = 0;
 const char* script_socket_logfile[2*MAX_SCRIPT_SOCKET_LOGFILE]; /* list of socket name, log file name */
 size_t script_socket_logfile_len = 0;
@@ -648,9 +649,18 @@ init_script_dev_logfile_map(void)
 	dev = strtol(devname, &endptr, 10);
 	if (dev != 0 && *endptr == '\0') {
 	    /* if it's a number, then it is an rdev of a device */
+	    /* ...and we should record its path */
+	    const char *devpath;
+	    snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_%i", i);
+	    devpath = getenv(varname);
+	    if (devpath == NULL) {
+		fprintf(stderr, "umockdev: $%s not set\n", varname);
+		exit(1);
+	    }
 	    DBG("init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev),
 	    logname);
 	    fd_map_add(&script_dev_logfile_map, dev, logname);
+	    fd_map_add(&script_dev_devpath_map, dev, devpath);
 	} else {
 	    /* if it's a path, then we record a socket */
 	    if (script_socket_logfile_len < MAX_SCRIPT_SOCKET_LOGFILE) {
@@ -667,7 +677,7 @@ init_script_dev_logfile_map(void)
 }
 
 static void
-script_start_record(int fd, const char *logname)
+script_start_record(int fd, const char *logname, const char *recording_path)
 {
     FILE *log;
     struct script_record_info *srinfo;
@@ -683,9 +693,35 @@ script_start_record(int fd, const char *logname)
 	exit(1);
     }
 
-    /* if we have a previous record, make sure that we start a new line */
-    if (ftell(log) > 0)
+    /* if we have a previous record... */
+    if (ftell(log) > 0) {
+	/* ...and we're going to record the device name... */
+	if (recording_path) {
+	    /* ... ensure we're recording the same device... */
+	    char *existing_device_path;
+	    fseek(log, 0, SEEK_SET);
+
+	    /* Start by skipping any leading comments */
+	    while (fgetc(log) == '#')
+		while (fgetc(log) != '\n')
+		    ;
+
+	    if (fscanf(log, "d %ms\n", &existing_device_path) == 1)
+	    {
+		/* We have an existing "d /dev/something" directive, check it matches */
+		if (!strcmp(recording_path, existing_device_path)) {
+		    fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
+		    exit(1);
+		}
+		free(existing_device_path);
+	    }
+	    fseek(log, 0, SEEK_END);
+	}
+	/* ...finally, make sure that we start a new line */
 	putc('\n', log);
+    } else if (recording_path) { /* this is a new record, start by recording the device path */
+	fprintf(log, "d 0 %s\n", recording_path);
+    }
 
     srinfo = malloc(sizeof(struct script_record_info));
     srinfo->log = log;
@@ -698,7 +734,7 @@ static void
 script_record_open(int fd)
 {
     dev_t fd_dev;
-    const char *logname;
+    const char *logname, *recording_path;
 
     if (!script_dev_logfile_map_inited)
 	init_script_dev_logfile_map();
@@ -709,10 +745,11 @@ script_record_open(int fd)
 	DBG("script_record_open: fd %i on device %i:%i is not recorded\n", fd, major(fd_dev), minor(fd_dev));
 	return;
     }
+    assert (fd_map_get(&script_dev_devpath_map, fd_dev, (const void **)&recording_path));
 
     DBG("script_record_open: start recording fd %i on device %i:%i into %s\n",
 	fd, major(fd_dev), minor(fd_dev), logname);
-    script_start_record(fd, logname);
+    script_start_record(fd, logname, recording_path);
 }
 
 static void
@@ -730,7 +767,7 @@ script_record_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen
 	for (i = 0; i < script_socket_logfile_len; ++i) {
 	    if (strcmp(script_socket_logfile[2*i], sock_path) == 0) {
 		DBG("script_record_connect: starting recording of unix socket %s on fd %i\n", sock_path, sockfd);
-		script_start_record(sockfd, script_socket_logfile[2*i+1]);
+		script_start_record(sockfd, script_socket_logfile[2*i+1], NULL);
 	    }
 	}
     }

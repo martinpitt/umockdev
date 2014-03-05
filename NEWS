@@ -2,6 +2,10 @@
 ------------------
 - Set PTYs into raw mode to get more accurate read() semantics,
   specifically how many bytes each read() slurps.
+- umockdev-record --script=/dev/device now also stores the name of the
+  device node recorded in the script.
+  umockdev_testbed_load_script(testbed, NULL, "device.script")
+  now automatically associates the script with the original device node.
 
 0.6 (2014-02-15)
 ----------------

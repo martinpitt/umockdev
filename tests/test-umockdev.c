@@ -1277,6 +1277,86 @@ r 0 ^@^^^`^@a\n";
 }
 
 static void
+t_testbed_script_replay_default_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  char *tmppath;
+  int fd;
+  char buf[1024];
+
+  static const char* test_script = "d 0 /dev/greeter\n\
+r 0 OK\n";
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/greeter\nN: greeter\n"
+          "E: DEVNAME=/dev/greeter\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
+  g_assert_no_error(error);
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_simple.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_script(fixture->testbed, NULL, tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* start communication */
+  fd = g_open("/dev/greeter", O_RDWR, 0);
+  g_assert_cmpint(fd, >=, 0);
+
+  /* check that we've got the right thing on the other end */
+  g_assert_cmpint(read(fd, buf, 2), ==, 2);
+  g_assert_cmpint(memcmp(buf, "OK", 2), ==, 0);
+
+  close(fd);
+}
+
+static void
+t_testbed_script_replay_override_default_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  char *tmppath;
+  int fd;
+  char buf[1024];
+
+  static const char* test_script = "d 0 /dev/bananas\n\
+r 0 OK\n";
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/greeter\nN: greeter\n"
+          "E: DEVNAME=/dev/greeter\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
+  g_assert_no_error(error);
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_simple.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_script(fixture->testbed, "/dev/greeter", tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* start communication */
+  fd = g_open("/dev/greeter", O_RDWR, 0);
+  g_assert_cmpint(fd, >=, 0);
+
+  /* check that we've got the right thing on the other end */
+  g_assert_cmpint(read(fd, buf, 2), ==, 2);
+  g_assert_cmpint(memcmp(buf, "OK", 2), ==, 0);
+
+  close(fd);
+}
+
+static void
 t_testbed_script_replay_socket_stream(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
   gboolean success;
@@ -1602,6 +1682,10 @@ main(int argc, char **argv)
     /* tests for script replay */
     g_test_add("/umockdev-testbed/script_replay_simple", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_simple, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/script_replay_default_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_script_replay_default_device, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/script_replay_override_default_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_script_replay_override_default_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_evdev_event_framing", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_script_replay_evdev_event_framing, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_socket_stream", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
