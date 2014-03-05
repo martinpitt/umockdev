@@ -1,5 +1,5 @@
-0.6.1 (UNRELEASED)
-------------------
+0.7 (UNRELEASED)
+----------------
 - Set PTYs into raw mode to get more accurate read() semantics,
   specifically how many bytes each read() slurps.
 - umockdev-record --script=/dev/device now also stores the name of the
