@@ -1,3 +1,9 @@
+0.7.1 (UNRELEASED)
+------------------
+- Add umockdev_in_mock_environment(). This function returns whether
+  or not the current process is running in a umockdev testbed
+  environment.
+
 0.7 (2014-03-05)
 ----------------
 - Set PTYs into raw mode to get more accurate read() semantics,

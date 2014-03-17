@@ -478,9 +478,55 @@ A: dev=4:74
   Posix.close (client_fd);
 }
 
+void
+t_detects_running_in_testbed ()
+{
+    assert (UMockdev.in_mock_environment());
+}
+
+void
+t_detects_not_running_in_testbed ()
+{
+    int pipefds[2];
+    assert_cmpint (Posix.pipe(pipefds), Op.EQ, 0);
+
+    Posix.pid_t pid = Posix.fork();
+    assert_cmpint (pid, Op.NE, -1);
+
+    if (pid == 0) {
+        Posix.close(pipefds[0]);
+        GLib.Environment.unset_variable("LD_PRELOAD");
+        string[] argv = { "--test-outside-testbed", pipefds[1].to_string() };
+        Posix.execv("/proc/self/exe", argv);
+    }
+    Posix.close(pipefds[1]);
+
+    char buf[1];
+    assert_cmpint ((int) Posix.read(pipefds[0], buf, 1), Op.EQ, 1);
+    assert_cmpstr ((string) buf, Op.EQ, "0");
+
+    Posix.close(pipefds[0]);
+}
+
+int
+is_test_inside_testbed (int pipefd)
+{
+    char buf[1];
+    buf[0] = '0';
+    if (UMockdev.in_mock_environment())
+        buf[0] = '1';
+
+    Posix.write(pipefd, buf, 1);
+    return int.parse((string) buf);
+}
+
 int
 main (string[] args)
 {
+  for (int i = 0; i < args.length; i++) {
+      if (args[i] == "--test-outside-testbed")
+          return is_test_inside_testbed(int.parse(args[i+1]));
+  }
   Test.init (ref args);
   /* tests for mocking /sys */
   Test.add_func ("/umockdev-testbed-vala/empty", t_testbed_empty);
@@ -497,5 +543,10 @@ main (string[] args)
   /* tests for mocking TTYs */
   Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);
   Test.add_func ("/umockdev-testbed-vala/tty_data", t_tty_data);
+
+  /* test for umockdev-preload detection */
+  Test.add_func ("/umockdev-testbed-vala/detects_running_in_testbed", t_detects_running_in_testbed);
+  Test.add_func ("/umockdev-testbed-vala/detects_running_outside_testbed", t_detects_not_running_in_testbed);
+
   return Test.run();
 }

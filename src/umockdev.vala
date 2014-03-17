@@ -28,7 +28,23 @@ namespace UMockdev {
  * they fit together.
  */
 
+[CCode (cname = "umockdev_preload_provides_open", cheader="preload_detect.h")]
+private extern bool umockdev_preload_provides_open();
+
 /**
+ * umockdev_in_mock_environment():
+ *
+ * Returns: Whether the current process is running under a umockdev
+ *          environment. If this returns false, any tests will be running
+ *          against the live system rather than this testbed
+ */
+public bool in_mock_environment()
+{
+    return umockdev_preload_provides_open();
+}
+
+
+    /**
  * UMockdevTestbed:
  *
  * The #UMockdevTestbed class builds a temporary sandbox for mock devices.
