@@ -3,6 +3,9 @@
 - Add umockdev_in_mock_environment(). This function returns whether
   or not the current process is running in a umockdev testbed
   environment.
+- Only send a "add" uevent from add_device if running in a umockdev
+  testbed environment. Fixes error messages when loading devices from
+  the umockdev-run commandline.
 
 0.7 (2014-03-05)
 ----------------

@@ -427,7 +427,8 @@ public class Testbed: GLib.Object {
         if (attributes.length % 2 != 0)
             warning("add_devicev: Ignoring attribute key '%s' without value", attributes[attributes.length-1]);
 
-        uevent(dev_path, "add");
+        if (in_mock_environment ())
+            uevent(dev_path, "add");
 
         return dev_path;
     }
