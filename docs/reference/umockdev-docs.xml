@@ -16,7 +16,7 @@
       -->
     </releaseinfo>
     <copyright>
-      <year>2012</year>
+      <year>2012 - 2014</year>
       <holder>Canonical Ltd.</holder>
     </copyright>
   </bookinfo>
@@ -24,6 +24,7 @@
   <chapter>
     <title>API reference</title>
         <xi:include href="xml/umockdev.xml"/>
+        <xi:include href="xml/functions.xml"/>
         <xi:include href="xml/umockdeverror.xml"/>
 
   </chapter>

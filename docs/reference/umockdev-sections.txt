@@ -40,6 +40,12 @@ umockdev_testbed_get_type
 </SECTION>
 
 <SECTION>
+<FILE>functions</FILE>
+<TITLE>global functions</TITLE>
+umockdev_in_mock_environment
+</SECTION>
+
+<SECTION>
 <FILE>umockdeverror</FILE>
 UMockdevError
 <SUBSECTION Standard>

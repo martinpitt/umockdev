@@ -142,7 +142,7 @@ libumockdev_la_LDFLAGS =	\
 	$(AM_LDFLAGS)		\
 	-version-info 3:0:3	\
 	-export-dynamic -no-undefined \
-	-export-symbols-regex '^umockdev_(testbed|error).*' \
+	-export-symbols-regex '^umockdev_(testbed|error|in_mock_environment).*' \
 	$(NULL)
 
 girdir = $(datadir)/gir-1.0

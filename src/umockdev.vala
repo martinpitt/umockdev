@@ -411,7 +411,8 @@ public class Testbed: GLib.Object {
         if (attributes.length % 2 != 0)
             warning("add_devicev: Ignoring attribute key '%s' without value", attributes[attributes.length-1]);
 
-        uevent(dev_path, "add");
+        if (in_mock_environment ())
+            uevent(dev_path, "add");
 
         return dev_path;
     }
@@ -1599,6 +1600,31 @@ private class SocketServer {
     private bool running;
     private int ctrl_r;
     private int ctrl_w;
+}
+
+/**
+ * SECTION:functions
+ * @title: global functions
+ * @short_description: Global functions
+ *
+ * These work independently from #Testbed objects.
+ */
+
+/**
+ * umockdev_in_mock_environment:
+ *
+ * Check whether the current process is running under umockdev-wrapper, i. e.
+ * the umockdev preload library.
+ *
+ * Returns: %TRUE if running under preload with mocked devices, %FALSE if
+ *          running against the real system.
+ */
+public bool in_mock_environment()
+{
+    string? preload = Environment.get_variable ("LD_PRELOAD");
+    if (preload == null)
+        return false;
+    return preload.contains ("libumockdev-preload");
 }
 
 /**
