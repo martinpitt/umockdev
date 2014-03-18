@@ -19,6 +19,6 @@
 #ifndef __PRELOAD_DETECT_
 #define __PRELOAD_DETECT_
 
-int umockdev_preload_provides_open(void);
+int umockdev_is_preloaded(void);
 
 #endif

@@ -27,17 +27,8 @@
 
 #include "preload_detect.h"
 
-int umockdev_preload_provides_open()
+int umockdev_is_preloaded()
 {
-    Dl_info info;
-
-    /* Clear last dlerror */
-    dlerror();
-    
-    if (dladdr(&open, &info) == 0) {
-        fprintf(stderr, "Failed to find shared object providing open(): %s\n", dlerror());
-        exit(1);
-    }
-
-    return strstr(info.dli_fname, "libumockdev-preload") != NULL;
+    const char *preload_env = getenv("LD_PRELOAD");
+    return preload_env ? strstr(preload_env, "libumockdev-preload") != NULL : 0;
 }

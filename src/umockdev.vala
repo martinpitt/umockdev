@@ -28,8 +28,8 @@ namespace UMockdev {
  * they fit together.
  */
 
-[CCode (cname = "umockdev_preload_provides_open", cheader="preload_detect.h")]
-private extern bool umockdev_preload_provides_open();
+[CCode (cname = "umockdev_is_preloaded", cheader="preload_detect.h")]
+private extern bool umockdev_is_preloaded();
 
 /**
  * umockdev_in_mock_environment():
@@ -40,7 +40,7 @@ private extern bool umockdev_preload_provides_open();
  */
 public bool in_mock_environment()
 {
-    return umockdev_preload_provides_open();
+    return umockdev_is_preloaded();
 }
 
 
