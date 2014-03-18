@@ -1478,6 +1478,99 @@ r 0 OK\n";
   close(fd);
 }
 
+/* assert that difference between first and second is "ms" milliseconds, ±20 ms */
+static void
+assert_delta_t(const struct timeval * first, const struct timeval * second, int ms)
+{
+    int delta = (second->tv_sec - first->tv_sec) * 1000;
+    delta += (second->tv_usec - first->tv_usec) / 1000;
+    g_assert_cmpint(delta, >=, ms - 20);
+    g_assert_cmpint(delta, <=, ms + 20);
+}
+
+static void
+t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+  gboolean success;
+  GError *error = NULL;
+  int fd;
+  char *tmppath;
+  struct timeval tv_begin, tv_end;
+  struct input_event ev;
+  static const char* test_data = "E: 1234.500000 0000 0000 0\n"   /* SYN */
+                                 "E: 1234.650000 0002 0000 5\n"   /* REL X */
+                                 "# some comment\n"
+                                 "E: 1234.650000 0002 0001 -11\n" /* REL Y */
+                                 "E: 1235.200000 0001 0174 1\n";  /* KEY_ZOOM */
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/event1\nN: input/event1\n"
+          "E: DEVNAME=/dev/input/event1\nE: SUBSYSTEM=input\n", &error);
+  g_assert_no_error(error);
+
+  /* write evemu events file */
+  fd = g_file_open_tmp("test_evemu.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_data, strlen(test_data)), ==, strlen(test_data));
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_evemu_events(fixture->testbed, "/dev/input/event1", tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* start communication */
+  fd = g_open("/dev/input/event1", O_RDONLY, 0);
+  g_assert_cmpint(fd, >=, 0);
+
+  g_assert_cmpint(gettimeofday(&tv_begin, NULL), ==, 0);
+
+  /* read SYN event; that should happen immediately */
+  g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
+  g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
+  assert_delta_t(&tv_begin, &tv_end, 10);
+  tv_begin = tv_end;
+  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
+  g_assert_cmpint(ev.time.tv_usec, ==, 500000);
+  g_assert_cmpint(ev.type, ==, 0);
+  g_assert_cmpint(ev.code, ==, 0);
+  g_assert_cmpint(ev.value, ==, 0);
+
+  /* read RELX event, should happen after 150 ms */
+  g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
+  g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
+  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
+  g_assert_cmpint(ev.time.tv_usec, ==, 650000);
+  g_assert_cmpint(ev.type, ==, 2);
+  g_assert_cmpint(ev.code, ==, 0);
+  g_assert_cmpint(ev.value, ==, 5);
+  assert_delta_t(&tv_begin, &tv_end, 150);
+  tv_begin = tv_end;
+
+  /* read RELY event, should happen immediately after */
+  g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
+  g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
+  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
+  g_assert_cmpint(ev.time.tv_usec, ==, 650000);
+  g_assert_cmpint(ev.type, ==, 2);
+  g_assert_cmpint(ev.code, ==, 1);
+  g_assert_cmpint(ev.value, ==, -11);
+  assert_delta_t(&tv_begin, &tv_end, 0);
+  tv_begin = tv_end;
+
+  /* read KEY_ZOOM event, should happen after 550 ms */
+  g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
+  g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
+  g_assert_cmpint(ev.time.tv_sec, ==, 1235);
+  g_assert_cmpint(ev.time.tv_usec, ==, 200000);
+  g_assert_cmpint(ev.type, ==, 1);
+  g_assert_cmpint(ev.code, ==, 0x174);
+  g_assert_cmpint(ev.value, ==, 1);
+  assert_delta_t(&tv_begin, &tv_end, 550);
+
+  close(fd);
+}
 
 static void
 t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
@@ -1692,6 +1785,8 @@ main(int argc, char **argv)
 	       t_testbed_script_replay_socket_stream, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_fuzz", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_fuzz, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/replay_evemu_events", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_replay_evemu_events, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

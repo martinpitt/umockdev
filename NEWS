@@ -1,3 +1,9 @@
+0.8 (UNRELEASED)
+----------------
+- Add new method umockdev_testbed_load_evemu_events() to replay an evemu events
+  file into an emulated evdev device. These are platform independent and thus
+  more portable than a script record.
+
 0.7 (2014-03-05)
 ----------------
 - Set PTYs into raw mode to get more accurate read() semantics,

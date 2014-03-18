@@ -785,6 +785,76 @@ public class Testbed: GLib.Object {
         return true;
     }
 
+    /**
+     * umockdev_testbed_load_evemu_events:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) for which to load the evemu events.
+     * @eventsfile: Path of the evemu events file.
+     * @error: return location for a GError, or %NULL
+     *
+     * Load an evemu event file for a particular device into the testbed. These
+     * have a very simple line-based format with 4 fields that represent the
+     * data in a struct input_event:
+     *
+     *  E: sec.usec evtype(hex) evcode(hex) evvalue
+     *
+     * The timestamps in those are absolute, and are usually as they were at
+     * record time. When loading them into umockdev they are interpreted
+     * relatively: the first event happens immediately, and the time to the
+     * next event is the difference between the corresponding timestamps in the
+     * .event file.
+     *
+     * Returns: %TRUE on success, %FALSE if @eventsfile is invalid and an error
+     *          occurred.
+     */
+    public bool load_evemu_events (string dev, string eventsfile)
+        throws GLib.Error, FileError, IOError, RegexError
+    {
+        File f_ev = File.new_for_path(eventsfile);
+        var s_ev = new DataInputStream(f_ev.read());
+        string line;
+        size_t len;
+        MatchInfo match;
+        Linux.Input.Event ev = {};
+        var line_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *$");
+
+        string script_file;
+        int script_fd = FileUtils.open_tmp ("evemu.XXXXXX.script", out script_file);
+        int delay = 0;
+        bool first = true;
+
+        while ((line = s_ev.read_line(out len)) != null) {
+            if (!line_re.match(line, 0, out match)) {
+                if (!line.has_prefix("#"))
+                    warning("Ignoring invalid line in %s: %s", eventsfile, line);
+                continue;
+            }
+            time_t ev_sec = (time_t) uint64.parse(match.fetch(1));
+            time_t ev_usec = (time_t) uint64.parse(match.fetch(2));
+            if (first) {
+                delay = 0;
+                first = false;
+            } else {
+                delay = (int) (ev_sec - ev.time.tv_sec) * 1000 + (int) (ev_usec - ev.time.tv_usec) / 1000;
+            }
+            ev.time.tv_sec = ev_sec;
+            ev.time.tv_usec = ev_usec;
+            ev.type = (uint16) match.fetch(3).to_ulong(null, 16);
+            ev.code = (uint16) match.fetch(4).to_ulong(null, 16);
+            ev.value = int.parse(match.fetch(5));
+
+            uint8[] ev_data = new uint8[sizeof(Linux.Input.Event)];
+            Posix.memcpy(ev_data, &ev, ev_data.length);
+            string script_line = "r " + delay.to_string() + " " + ScriptRunner.encode(ev_data) + "\n";
+            Posix.write(script_fd, script_line, script_line.length);
+        }
+
+        Posix.close (script_fd);
+        bool ret = load_script(dev, script_file);
+        FileUtils.unlink(script_file);
+        return ret;
+    }
+
     private string add_dev_from_string (string data) throws UMockdev.Error
     {
         char type;
@@ -1354,7 +1424,7 @@ private class ScriptRunner {
         return data;
     }
 
-    private static string encode (uint8[] data)
+    public static string encode (uint8[] data)
     {
         uint8[] quoted = {};
         for (int i = 0; i < data.length; ++i) {
