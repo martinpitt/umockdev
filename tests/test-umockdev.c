@@ -1498,9 +1498,9 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   struct timeval tv_begin, tv_end;
   struct input_event ev;
   static const char* test_data = "E: 1234.500000 0000 0000 0\n"   /* SYN */
-                                 "E: 1234.650000 0002 0000 5\n"   /* REL X */
+                                 "E: 1234.650000 0002 0000 5  # comment\n"   /* REL X */
                                  "# some comment\n"
-                                 "E: 1234.650000 0002 0001 -11\n" /* REL Y */
+                                 "E: 1234.650000 0002 0001 -11	# comment #2\n" /* REL Y */
                                  "E: 1235.200000 0001 0174 1\n";  /* KEY_ZOOM */
 
   umockdev_testbed_add_from_string(fixture->testbed,

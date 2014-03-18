@@ -816,7 +816,7 @@ public class Testbed: GLib.Object {
         size_t len;
         MatchInfo match;
         Linux.Input.Event ev = {};
-        var line_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *$");
+        var line_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *#?");
 
         string script_file;
         int script_fd = FileUtils.open_tmp ("evemu.XXXXXX.script", out script_file);
