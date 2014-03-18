@@ -3,6 +3,8 @@
 - Add new method umockdev_testbed_load_evemu_events() to replay an evemu events
   file into an emulated evdev device. These are platform independent and thus
   more portable than a script record.
+- Add -e/--evemu-events=devname=eventsfilename option to umockdev-run, to load
+  an evemu .events file. (Issue #5)
 
 0.7 (2014-03-05)
 ----------------

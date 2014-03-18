@@ -585,6 +585,84 @@ t_input_evtest ()
     assert_in ("type 1 (EV_KEY), code 42 (KEY_LEFTSHIFT), value 0\n", output);
 }
 
+static void
+t_input_evtest_evemu ()
+{
+    if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
+        stdout.printf ("[SKIP: this test only works on little endian machines] ");
+        return;
+    }
+
+    if (!have_program ("evtest")) {
+        stdout.printf ("[SKIP: evtest not installed] ");
+        return;
+    }
+
+    Pid evtest_pid;
+    int outfd, errfd;
+
+    // create evemu events file
+    string evemu_file;
+    try {
+        int fd = FileUtils.open_tmp ("evemu.XXXXXX.events", out evemu_file);
+        Posix.close (fd);
+        FileUtils.set_contents (evemu_file,
+"""E: 0.000000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 0.200000 0004 0004 458756	# EV_MSC / MSC_SCAN             458756
+E: 0.200000 0001 001e 0001	# EV_KEY / KEY_A                1
+E: 0.200000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 0.500000 0004 0004 458756	# EV_MSC / MSC_SCAN             458756
+E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
+""");
+    } catch (FileError e) {
+        stderr.printf ("cannot create temporary file: %s\n", e.message);
+        Process.abort();
+    }
+
+    try {
+        Process.spawn_async_with_pipes (null, {"umockdev-run",
+            "-d", rootdir + "/devices/input/usbkbd.umockdev",
+            "-i", "/dev/input/event5=" + rootdir + "/devices/input/usbkbd.evtest.ioctl",
+            "-e", "/dev/input/event5=" + evemu_file,
+            "evtest", "/dev/input/event5"},
+            null, SpawnFlags.SEARCH_PATH, null,
+            out evtest_pid, null, out outfd, out errfd);
+    } catch (SpawnError e) {
+        stderr.printf ("cannot call evtest: %s\n", e.message);
+        Process.abort();
+    }
+
+    // our script covers 0.5 seconds, give it some slack
+    Posix.sleep (1);
+    FileUtils.remove (evemu_file);
+    Posix.kill (evtest_pid, Posix.SIGTERM);
+    var sout = new uint8[10000];
+    var serr = new uint8[10000];
+    ssize_t sout_len = Posix.read (outfd, sout, sout.length);
+    ssize_t serr_len = Posix.read (errfd, serr, sout.length);
+    int status;
+    Posix.waitpid (evtest_pid, out status, 0);
+    Process.close_pid (evtest_pid);
+
+    if (serr_len > 0) {
+        serr[serr_len] = 0;
+        stderr.printf ("evtest error: %s\n", (string) serr);
+        Process.abort();
+    }
+
+    assert_cmpint ((int) sout_len, Op.GT, 10);
+    sout[sout_len] = 0;
+    string output = (string) sout;
+
+    assert_in ("""Event: time 0.000000, -------------- SYN_REPORT ------------
+Event: time 0.200000, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004
+Event: time 0.200000, type 1 (EV_KEY), code 30 (KEY_A), value 1
+Event: time 0.200000, -------------- SYN_REPORT ------------
+Event: time 0.500000, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004
+Event: time 0.500000, type 1 (EV_KEY), code 30 (KEY_A), value 0
+""", output);
+}
+
 int
 main (string[] args)
 {
@@ -622,6 +700,7 @@ main (string[] args)
   // input devices
   Test.add_func ("/umockdev-run/integration/input-touchpad", t_input_touchpad);
   Test.add_func ("/umockdev-run/integration/input-evtest", t_input_evtest);
+  Test.add_func ("/umockdev-run/integration/input-evtest-evemu", t_input_evtest_evemu);
 
   return Test.run();
 }
