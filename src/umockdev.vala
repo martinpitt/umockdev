@@ -28,7 +28,23 @@ namespace UMockdev {
  * they fit together.
  */
 
+[CCode (cname = "umockdev_is_preloaded", cheader="preload_detect.h")]
+private extern bool umockdev_is_preloaded();
+
 /**
+ * umockdev_in_mock_environment():
+ *
+ * Returns: Whether the current process is running under a umockdev
+ *          environment. If this returns false, any tests will be running
+ *          against the live system rather than this testbed
+ */
+public bool in_mock_environment()
+{
+    return umockdev_is_preloaded();
+}
+
+
+    /**
  * UMockdevTestbed:
  *
  * The #UMockdevTestbed class builds a temporary sandbox for mock devices.
@@ -411,7 +427,8 @@ public class Testbed: GLib.Object {
         if (attributes.length % 2 != 0)
             warning("add_devicev: Ignoring attribute key '%s' without value", attributes[attributes.length-1]);
 
-        uevent(dev_path, "add");
+        if (in_mock_environment ())
+            uevent(dev_path, "add");
 
         return dev_path;
     }
