@@ -16,14 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _GNU_SOURCE
-#include <dlfcn.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
 
 #include "preload_detect.h"
 
