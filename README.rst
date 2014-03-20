@@ -33,12 +33,17 @@ Right now umockdev supports the following features:
 
 - Recording and replay of read()s/recv()s and write()s/send()s from/to a
   character device (e. g. for emulating modems) or an Unix socket (e. g. for
-  Android's /dev/socket/rild). Replay can optionally use a configurable fuzz
-  factor in case the expected (previously recorded) data doesn't perfectly
-  match what is actually being sent from the tested application.
+  Android's /dev/socket/rild). These records are called ``scripts``. Replay can
+  optionally use a configurable fuzz factor in case the expected (previously
+  recorded) script data doesn't perfectly match what is actually being sent
+  from the tested application.
 
 - Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
   Wacom tablets, etc.) ioctls.
+
+- Recording and replay of evdev input events using the evemu events format
+  (https://github.com/bentiss/evemu/blob/master/README.md). Unlike recorded
+  evdev scripts these are architecture independent and human readable.
 
 Other aspects and functionality will be added in the future as use cases arise.
 
@@ -210,6 +215,39 @@ through ``/dev/socket/rild``.
   you can of course create the socket in <testbed root>/<socket path> and
   handle the bind/accept/communication yourself.
 
+Record and replay input devices
+-------------------------------
+For those the "evemu" format is preferrable as it is platform independent
+(scripts depend on the architecture endianess and size of time_t) and human
+readable. ioctls need to be recorded as well, as they specify the input
+device's capability beyond what it is already exposed in sysfs, particularly
+for multi-touch devices.
+
+This uses the "evtest" program, but you can use anything which listens to evdev
+devices.
+
+- Record the static device data, ioctls, and some events. This needs to run as
+  root:
+
+  ::
+
+    umockdev-record /dev/input/event3 > mouse.umockdev
+    umockdev-record -i /dev/input/event3=mouse.ioctl -e /dev/input/event3=mouse.events \
+        -- evtest /dev/input/event3
+
+  Now cause some events on the devices (key presses, mouse clicks, touch
+  clicks, etc.), and stop evtest with Control-C.
+
+- Replay is straightforward. It does not need root privileges:
+
+  ::
+
+    umockdev-run -d mouse.umockdev -i /dev/input/event3=mouse.ioctl \
+        -e /dev/input/event3=mouse.events - evtest /dev/input/event3
+
+  Press Control-C again to stop evtest.
+
+
 Build, Test, Run
 ================
 If you want to build umockdev from a git checkout, run ./autogen.sh to build
@@ -269,7 +307,7 @@ I'll answer your question there.
 
 License
 =======
-Copyright (C) 2012 - 2013 Canonical Ltd.
+Copyright (C) 2012 - 2014 Canonical Ltd.
 
 umockdev is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by
