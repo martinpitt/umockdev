@@ -708,24 +708,26 @@ script_start_record(int fd, const char *logname, const char *recording_path)
 	if (recording_path) {
 	    /* ... ensure we're recording the same device... */
 	    char *existing_device_path;
-	    char c;
+	    char line[1000];
+	    libc_func(fgets, char *, char *, int, FILE *);
+
 	    fseek(log, 0, SEEK_SET);
-
-	    /* Start by skipping any leading comments */
-	    while ((c = fgetc(log)) == '#')
-		while (fgetc(log) != '\n')
-		    ;
-	    ungetc(c, log);
-
-	    if (fscanf(log, "d 0 %ms\n", &existing_device_path) == 1)
-	    {
-		DBG("script_start_record: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
-		/* We have an existing "d /dev/something" directive, check it matches */
-		if (strcmp(recording_path, existing_device_path) != 0) {
-		    fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
-		    exit(1);
+	    while (_fgets(line, sizeof(line), log)) {
+		/* Start by skipping any leading comments */
+		if (line[0] == '#')
+		    continue;
+		if (sscanf(line, "d 0 %ms\n", &existing_device_path) == 1)
+		{
+		    DBG("script_start_record: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
+		    /* We have an existing "d /dev/something" directive, check it matches */
+		    if (strcmp(recording_path, existing_device_path) != 0) {
+			fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
+			exit(1);
+		    }
+		    free(existing_device_path);
 		}
-		free(existing_device_path);
+		// device specification must be on the first non-comment line
+		break;
 	    }
 	    fseek(log, 0, SEEK_END);
 	}
