@@ -309,7 +309,7 @@ record_ioctl(string arg)
 // Record reads/writes for given device into outfile
 static uint record_script_counter = 0;
 static void
-record_script(string arg)
+record_script(string arg, string format)
 {
     string dev, devnum, outfile;
     split_devfile_arg(arg, out dev, out devnum, out outfile);
@@ -318,6 +318,7 @@ record_script(string arg)
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile, true);
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEV_" + c, devnum, true);
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_" + c, dev, true);
+    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FORMAT_" + c, format, true);
 
     record_script_counter++;
 }
@@ -328,6 +329,8 @@ static bool opt_all = false;
 static string? opt_ioctl = null;
 [CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_script;
+[CCode (array_length=false, array_null_terminated=true)]
+static string[] opt_evemu_events;
 static bool opt_version = false;
 
 static const GLib.OptionEntry[] options = {
@@ -336,6 +339,8 @@ static const GLib.OptionEntry[] options = {
      "Trace ioctls on the device, record into given file. In this case, all positional arguments are a command (and its arguments) to run that gets traced.", "devname=FILE"},
     {"script", 's', 0, OptionArg.FILENAME_ARRAY, ref opt_script,
      "Trace reads and writes on the device, record into given file. In this case, all positional arguments are a command (and its arguments) to run that gets traced. Can be specified multiple times.", "devname=FILE"},
+    {"evemu-events", 'e', 0, OptionArg.FILENAME_ARRAY, ref opt_evemu_events,
+     "Trace evdev event reads on the device, record into given file in EVEMU event format. In this case, all positional arguments are a command (and its arguments) to run that gets traced. Can be specified multiple times.", "devname=FILE"},
     {"", 0, 0, OptionArg.STRING_ARRAY, ref opt_devices, "Path of a device in /dev or /sys, or command and arguments with --ioctl.", "DEVICE [...]"},
     {"version", 0, 0, OptionArg.NONE, ref opt_version, "Output version information and exit"},
     { null }
@@ -362,11 +367,12 @@ main (string[] args)
         exit_error("Specifying a device list together with --all is invalid.");
     if (!opt_all && opt_devices.length == 0)
         exit_error("Need to specify at least one device or --all.");
-    if ((opt_ioctl != null || opt_script.length > 0) && (opt_all || opt_devices.length < 1))
+    if ((opt_ioctl != null || opt_script.length > 0 || opt_evemu_events.length > 0) &&
+        (opt_all || opt_devices.length < 1))
         exit_error("For recording ioctls or scripts you have to specify a command to run");
 
     // device dump mode
-    if (opt_ioctl == null && opt_script.length == 0) {
+    if (opt_ioctl == null && opt_script.length == 0 && opt_evemu_events.length == 0) {
         // Evaluate --all and resolve devices
         if (opt_all)
             opt_devices = all_devices();
@@ -391,7 +397,9 @@ main (string[] args)
     if (opt_ioctl != null)
         record_ioctl(opt_ioctl);
     foreach (string s in opt_script)
-        record_script(s);
+        record_script(s, "default");
+    foreach (string s in opt_evemu_events)
+        record_script(s, "evemu");
 
     Posix.execvp(opt_devices[0], opt_devices);
     exit_error("Cannot run program %s: %s", opt_devices[0], strerror(errno));

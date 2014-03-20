@@ -666,6 +666,65 @@ t_system_script_log_chatter_socket_stream ()
     FileUtils.remove (log);
 }
 
+/*
+ * umockdev-record --evemu-events recording to a file
+ *
+ * Note that this cannot test actual events, as we cannot inject events into a
+ * device without root privileges; but we can at least ensure that the preload
+ * lib gets loaded, the log gets created, the header written, and recording
+ * happens on the right device.
+ */
+static void
+t_system_evemu_log ()
+{
+    string sout;
+    string serr;
+    int exit;
+
+    string workdir;
+    try {
+        workdir = DirUtils.make_tmp ("evemu_log_test.XXXXXX");
+    } catch (Error e) { Process.abort (); }
+    string log = Path.build_filename (workdir, "log");
+
+    spawn (umockdev_record_path + " --evemu-events=/dev/null=" + log + " -- head -c1 /dev/null",
+           out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n");
+
+    // appending a record for the same device should work
+    spawn (umockdev_record_path + " --evemu-events=/dev/null=" + log + " -- head -c1 /dev/null",
+           out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    // appends an extra NL at the end
+    assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
+
+    // appending a record for a different device should fail
+    spawn (umockdev_record_path + " --evemu-events=/dev/zero=" + log + " -- head -c1 /dev/zero",
+           out sout, out serr, out exit);
+    assert (serr.contains ("two different devices"));
+    assert_cmpint (exit, Op.EQ, 256);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    // unchanged
+    assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
+
+    FileUtils.remove (log);
+
+    // invalid syntax
+    spawn (umockdev_record_path + " --evemu-events /dev/null -- true",
+           out sout, out serr, out exit);
+    assert_cmpint (exit, Op.NE, 1);
+    assert_cmpstr (sout, Op.EQ, "");
+    assert (serr.contains ("--ioctl"));
+    assert (serr.contains ("="));
+    assert (!FileUtils.test (log, FileTest.EXISTS));
+
+    DirUtils.remove (workdir);
+}
 static void
 t_run_invalid_args ()
 {
@@ -772,6 +831,7 @@ main (string[] args)
     Test.add_func ("/umockdev-record/script-log-append-dev-mismatch", t_system_script_log_append_dev_mismatch);
     Test.add_func ("/umockdev-record/script-log-chatter", t_system_script_log_chatter);
     Test.add_func ("/umockdev-record/script-log-socket", t_system_script_log_chatter_socket_stream);
+    Test.add_func ("/umockdev-record/evemu-log", t_system_evemu_log);
 
     // error conditions
     Test.add_func ("/umockdev-record/invalid-args", t_run_invalid_args);

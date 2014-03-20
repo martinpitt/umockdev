@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <signal.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/inotify.h>
@@ -43,6 +44,7 @@
 #include <sys/ioctl.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
+#include <linux/input.h>
 #include <unistd.h>
 
 #include "ioctl_tree.h"
@@ -617,8 +619,11 @@ ioctl_emulate(int fd, unsigned long request, void *arg)
 
 #define MAX_SCRIPT_SOCKET_LOGFILE 50
 
+enum script_record_format {FMT_DEFAULT, FMT_EVEMU};
+
 static fd_map script_dev_logfile_map;	/* maps a st_rdev to a log file name */
 static fd_map script_dev_devpath_map;   /* maps a st_rdev to a device path */
+static fd_map script_dev_format_map;   /* maps a st_rdev to a script_record_format */
 static int script_dev_logfile_map_inited = 0;
 const char* script_socket_logfile[2*MAX_SCRIPT_SOCKET_LOGFILE]; /* list of socket name, log file name */
 size_t script_socket_logfile_len = 0;
@@ -628,6 +633,7 @@ struct script_record_info {
     FILE *log;			/* output file */
     struct timespec time;	/* time of last operation */
     char op;			/* last operation: 0: none, 'r': read, 'w': write */
+    enum script_record_format fmt;
 };
 
 /* read UMOCKDEV_SCRIPT_* environment variables and set up dev_logfile_map
@@ -637,7 +643,7 @@ init_script_dev_logfile_map(void)
 {
     int i, dev;
     char varname[100];
-    const char *devname, *logname;
+    const char *devname, *logname, *format;
     char *endptr;
 
     script_dev_logfile_map_inited = 1;
@@ -650,6 +656,12 @@ init_script_dev_logfile_map(void)
 	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEV_%i", i);
 	devname = getenv(varname);
 	if (devname == NULL) {
+	    fprintf(stderr, "umockdev: $%s not set\n", varname);
+	    exit(1);
+	}
+	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_FORMAT_%i", i);
+	format = getenv(varname);
+	if (format == NULL) {
 	    fprintf(stderr, "umockdev: $%s not set\n", varname);
 	    exit(1);
 	}
@@ -668,7 +680,21 @@ init_script_dev_logfile_map(void)
 	    logname);
 	    fd_map_add(&script_dev_logfile_map, dev, logname);
 	    fd_map_add(&script_dev_devpath_map, dev, devpath);
+
+	    if (strcmp(format, "default") == 0)
+		fd_map_add(&script_dev_format_map, dev, (void*) FMT_DEFAULT);
+	    else if (strcmp(format, "evemu") == 0)
+		fd_map_add(&script_dev_format_map, dev, (void*) FMT_EVEMU);
+	    else {
+		fprintf(stderr, "umockdev: unknown device script record format '%s'\n", format);
+		exit(1);
+	    }
 	} else {
+	    if (strcmp(format, "default") != 0) {
+		fprintf(stderr, "umockdev: unknown socket script record format '%s'\n", format);
+		exit(1);
+	    }
+
 	    /* if it's a path, then we record a socket */
 	    if (script_socket_logfile_len < MAX_SCRIPT_SOCKET_LOGFILE) {
 		DBG("init_script_dev_logfile_map: will record script of socket %s into %s\n", devname, logname);
@@ -684,7 +710,7 @@ init_script_dev_logfile_map(void)
 }
 
 static void
-script_start_record(int fd, const char *logname, const char *recording_path)
+script_start_record(int fd, const char *logname, const char *recording_path, enum script_record_format fmt)
 {
     FILE *log;
     struct script_record_info *srinfo;
@@ -703,7 +729,7 @@ script_start_record(int fd, const char *logname, const char *recording_path)
     /* if we have a previous record... */
     fseek(log, 0, SEEK_END);
     if (ftell(log) > 0) {
-	DBG("script_start_record: Appending to existing record for path %s\n", recording_path);
+	DBG("script_start_record: Appending to existing record of format %i for path %s\n", fmt, recording_path);
 	/* ...and we're going to record the device name... */
 	if (recording_path) {
 	    /* ... ensure we're recording the same device... */
@@ -713,35 +739,71 @@ script_start_record(int fd, const char *logname, const char *recording_path)
 
 	    fseek(log, 0, SEEK_SET);
 	    while (_fgets(line, sizeof(line), log)) {
-		/* Start by skipping any leading comments */
-		if (line[0] == '#')
-		    continue;
-		if (sscanf(line, "d 0 %ms\n", &existing_device_path) == 1)
-		{
-		    DBG("script_start_record: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
-		    /* We have an existing "d /dev/something" directive, check it matches */
-		    if (strcmp(recording_path, existing_device_path) != 0) {
-			fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
-			exit(1);
-		    }
-		    free(existing_device_path);
+		switch (fmt) {
+		    case FMT_DEFAULT:
+			/* Start by skipping any leading comments */
+			if (line[0] == '#')
+			    continue;
+			if (sscanf(line, "d 0 %ms\n", &existing_device_path) == 1)
+			{
+			    DBG("script_start_record: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
+			    /* We have an existing "d /dev/something" directive, check it matches */
+			    if (strcmp(recording_path, existing_device_path) != 0) {
+				fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
+				exit(1);
+			    }
+			    free(existing_device_path);
+			}
+			// device specification must be on the first non-comment line
+			break;
+
+		    case FMT_EVEMU:
+			if (strncmp(line, "E: ", 3) == 0)
+			    break;
+			if (sscanf(line, "# device %ms\n", &existing_device_path) == 1) {
+			    DBG("script_start_record evemu format: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
+			    /* We have an existing "/dev/something" directive, check it matches */
+			    if (strcmp(recording_path, existing_device_path) != 0) {
+				fprintf(stderr, "umockdev: attempt to record two different devices to the same evemu recording\n");
+				exit(1);
+			    }
+			    free(existing_device_path);
+			}
+			break;
+
+		    default:
+			fprintf(stderr, "umockdev: unknown script format %i\n", fmt);
+			abort();
 		}
-		// device specification must be on the first non-comment line
-		break;
 	    }
+
 	    fseek(log, 0, SEEK_END);
 	}
+
 	/* ...finally, make sure that we start a new line */
 	putc('\n', log);
     } else if (recording_path) { /* this is a new record, start by recording the device path */
-	DBG("script_start_record: Starting new record\n");
-	fprintf(log, "d 0 %s\n", recording_path);
+	DBG("script_start_record: Starting new record of format %i\n", fmt);
+	switch (fmt) {
+	    case FMT_DEFAULT:
+		fprintf(log, "d 0 %s\n", recording_path);
+		break;
+
+	    case FMT_EVEMU:
+		fprintf(log, "# EVEMU 1.2\n# device %s\n", recording_path);
+		break;
+
+	    default:
+		fprintf(stderr, "umockdev: unknown script format %i\n", fmt);
+		abort();
+	}
     }
 
     srinfo = malloc(sizeof(struct script_record_info));
     srinfo->log = log;
     assert(clock_gettime(CLOCK_MONOTONIC, &srinfo->time) == 0);
     srinfo->op = 0;
+    srinfo->fmt = fmt;
     fd_map_add(&script_recorded_fds, fd, srinfo);
 }
 
@@ -750,6 +812,8 @@ script_record_open(int fd)
 {
     dev_t fd_dev;
     const char *logname, *recording_path;
+    const void* data;
+    enum script_record_format fmt;
 
     if (!script_dev_logfile_map_inited)
 	init_script_dev_logfile_map();
@@ -761,10 +825,12 @@ script_record_open(int fd)
 	return;
     }
     assert (fd_map_get(&script_dev_devpath_map, fd_dev, (const void **)&recording_path));
+    assert (fd_map_get(&script_dev_format_map, fd_dev, &data));
+    fmt = (enum script_record_format) data;
 
-    DBG("script_record_open: start recording fd %i on device %i:%i into %s\n",
-	fd, major(fd_dev), minor(fd_dev), logname);
-    script_start_record(fd, logname, recording_path);
+    DBG("script_record_open: start recording fd %i on device %i:%i into %s (format %i)\n",
+	fd, major(fd_dev), minor(fd_dev), logname, fmt);
+    script_start_record(fd, logname, recording_path, fmt);
 }
 
 static void
@@ -782,7 +848,7 @@ script_record_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen
 	for (i = 0; i < script_socket_logfile_len; ++i) {
 	    if (strcmp(script_socket_logfile[2*i], sock_path) == 0) {
 		DBG("script_record_connect: starting recording of unix socket %s on fd %i\n", sock_path, sockfd);
-		script_start_record(sockfd, script_socket_logfile[2*i+1], NULL);
+		script_start_record(sockfd, script_socket_logfile[2*i+1], NULL, FMT_DEFAULT);
 	    }
 	}
     }
@@ -830,35 +896,61 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 	return;
     if (size <= 0)
 	return;
-    DBG("script_record_op %c: got %zi bytes on fd %i\n", op, size, fd);
+    DBG("script_record_op %c: got %zi bytes on fd %i (format %i)\n", op, size, fd, srinfo->fmt);
 
-    delta = update_msec(&srinfo->time);
-    DBG("  %lu ms since last operation %c\n", delta, srinfo->op);
+    switch (srinfo->fmt) {
+	case FMT_DEFAULT:
+	    delta = update_msec(&srinfo->time);
+	    DBG("  %lu ms since last operation %c\n", delta, srinfo->op);
 
-    /* for negligible time deltas, append to the previous stanza, otherwise
-     * create a new record */
-    if (delta >= 10 || srinfo->op != op) {
-	if (srinfo->op != 0)
-	    putc('\n', srinfo->log);
-	snprintf(header, sizeof(header), "%c %lu ", op, delta);
-	assert(_fwrite(header, strlen(header), 1, srinfo->log) == 1);
-    }
+	    /* for negligible time deltas, append to the previous stanza, otherwise
+	     * create a new record */
+	    if (delta >= 10 || srinfo->op != op) {
+		if (srinfo->op != 0)
+		    putc('\n', srinfo->log);
+		snprintf(header, sizeof(header), "%c %lu ", op, delta);
+		assert(_fwrite(header, strlen(header), 1, srinfo->log) == 1);
+	    }
 
-    /* escape ASCII control chars */
-    for (i = 0, cur = buf; i < size; ++i, ++cur) {
-	if (*cur < 32) {
-	    putc('^', srinfo->log);
-	    putc(*cur + 64, srinfo->log);
-	    continue;
-	}
-	if (*cur == '^') {
-	    /* we cannot encode ^ as ^^, as we need that for 0x1E already; so
-	     * take the next free code which is 0x60 */
-	    putc('^', srinfo->log);
-	    putc('`', srinfo->log);
-	    continue;
-	}
-	putc(*cur, srinfo->log);
+	    /* escape ASCII control chars */
+	    for (i = 0, cur = buf; i < size; ++i, ++cur) {
+		if (*cur < 32) {
+		    putc('^', srinfo->log);
+		    putc(*cur + 64, srinfo->log);
+		    continue;
+		}
+		if (*cur == '^') {
+		    /* we cannot encode ^ as ^^, as we need that for 0x1E already; so
+		     * take the next free code which is 0x60 */
+		    putc('^', srinfo->log);
+		    putc('`', srinfo->log);
+		    continue;
+		}
+		putc(*cur, srinfo->log);
+	    }
+	    break;
+
+	case FMT_EVEMU:
+	    if (op != 'r') {
+		fprintf(stderr, "libumockdev-preload: evemu format only supports reads from the device\n");
+		abort();
+	    }
+	    if (size % sizeof(struct input_event) != 0) {
+		fprintf(stderr, "libumockdev-preload: evemu format only supports reading input_event structs\n");
+		abort();
+	    }
+	    const struct input_event *e = buf;
+	    while (size > 0) {
+		fprintf(srinfo->log, "E: %li.%06li %04"PRIX16" %04"PRIX16 " %"PRIi32"\n",
+			e->time.tv_sec, e->time.tv_usec, e->type, e->code, e->value);
+		size -= sizeof(struct input_event);
+		e++;
+	    }
+	    break;
+
+	default:
+	    fprintf(stderr, "libumockdev-preload script_record_op(): unsupported format %i\n", srinfo->fmt);
+	    abort();
     }
 
     fflush(srinfo->log);

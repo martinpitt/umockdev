@@ -6,6 +6,8 @@ New features:
   more portable than a script record.
 - Add -e/--evemu-events=devname=eventsfilename option to umockdev-run, to load
   an evemu .events file. (Issue #5)
+- Add -e/--evemu-events=devname=eventsfilename option to umockdev-record, to
+  record reads from an evdev device into an evemu .events file. (Issue #5)
 - Add umockdev_in_mock_environment(). This function returns whether
   or not the current process is running in a umockdev testbed
   environment. Thanks Chris Halse Rogers!
