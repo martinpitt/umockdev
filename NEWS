@@ -1,5 +1,6 @@
 0.8 (UNRELEASED)
 ----------------
+New features:
 - Add new method umockdev_testbed_load_evemu_events() to replay an evemu events
   file into an emulated evdev device. These are platform independent and thus
   more portable than a script record.
@@ -8,9 +9,13 @@
 - Add umockdev_in_mock_environment(). This function returns whether
   or not the current process is running in a umockdev testbed
   environment. Thanks Chris Halse Rogers!
+
+Bug fixes:
 - Only send a "add" uevent from add_device if running in a umockdev
   testbed environment. Fixes error messages when loading devices from
   the umockdev-run commandline. Thanks Chris Halse Rogers!
+- Fix detection of mismatching devices when recording into an already existing
+  ioctl or script record file.
 
 0.7 (2014-03-05)
 ----------------

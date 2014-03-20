@@ -442,22 +442,27 @@ ioctl_record_open(int fd)
 	/* We record the device node for later loading without specifying
 	 * the devpath in umockdev_testbed_load_ioctl.
 	 */
+	fseek(ioctl_record_log, 0, SEEK_END);
 	if (ftell(ioctl_record_log) > 0) {
 	    /* We're appending to a previous log; don't write the devnode header again,
 	     * but check that we're recording the same device as the previous log.
 	     */
 	    char *existing_device_path;
+	    char c;
+	    DBG("ioctl_record_open: Appending to existing record for path %s\n", path);
 	    fseek(ioctl_record_log, 0, SEEK_SET);
 
 	    /* Start by skipping any leading comments */
-	    while (fgetc(ioctl_record_log) == '#')
+	    while ((c = fgetc(ioctl_record_log)) == '#')
 		while (fgetc(ioctl_record_log) != '\n')
 		    ;
+	    ungetc(c, ioctl_record_log);
 
 	    if (fscanf(ioctl_record_log, "@DEV %ms\n", &existing_device_path) == 1)
 	    {
 		/* We have an existing "@DEV /dev/something" directive, check it matches */
-		if (!strcmp(device_path, existing_device_path)) {
+		DBG("ioctl_record_open: recording %s, existing device spec in record %s\n", device_path, existing_device_path);
+		if (strcmp(device_path, existing_device_path) != 0) {
 		    fprintf(stderr, "umockdev: attempt to record two different devices to the same ioctl recording\n");
 		    exit(1);
 		}
@@ -466,6 +471,7 @@ ioctl_record_open(int fd)
 	    fseek(ioctl_record_log, 0, SEEK_END);
 	} else {
 	    /* New log, add devnode header */
+	    DBG("ioctl_record_open: Starting new record %s\n", path);
 	    fprintf(ioctl_record_log, "@DEV %s\n", device_path);
 	}
 
@@ -684,33 +690,38 @@ script_start_record(int fd, const char *logname, const char *recording_path)
     struct script_record_info *srinfo;
 
     if (fd_map_get(&script_recorded_fds, fd, NULL)) {
-	fprintf(stderr, "script_record_open: internal error: fd %i is already being recorded\n", fd);
+	fprintf(stderr, "script_start_record: internal error: fd %i is already being recorded\n", fd);
 	abort();
     }
 
-    log = fopen(logname, "a");
+    log = fopen(logname, "a+");
     if (log == NULL) {
 	perror("umockdev: failed to open script record file");
 	exit(1);
     }
 
     /* if we have a previous record... */
+    fseek(log, 0, SEEK_END);
     if (ftell(log) > 0) {
+	DBG("script_start_record: Appending to existing record for path %s\n", recording_path);
 	/* ...and we're going to record the device name... */
 	if (recording_path) {
 	    /* ... ensure we're recording the same device... */
 	    char *existing_device_path;
+	    char c;
 	    fseek(log, 0, SEEK_SET);
 
 	    /* Start by skipping any leading comments */
-	    while (fgetc(log) == '#')
+	    while ((c = fgetc(log)) == '#')
 		while (fgetc(log) != '\n')
 		    ;
+	    ungetc(c, log);
 
-	    if (fscanf(log, "d %ms\n", &existing_device_path) == 1)
+	    if (fscanf(log, "d 0 %ms\n", &existing_device_path) == 1)
 	    {
+		DBG("script_start_record: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
 		/* We have an existing "d /dev/something" directive, check it matches */
-		if (!strcmp(recording_path, existing_device_path)) {
+		if (strcmp(recording_path, existing_device_path) != 0) {
 		    fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
 		    exit(1);
 		}
@@ -721,6 +732,7 @@ script_start_record(int fd, const char *logname, const char *recording_path)
 	/* ...finally, make sure that we start a new line */
 	putc('\n', log);
     } else if (recording_path) { /* this is a new record, start by recording the device path */
+	DBG("script_start_record: Starting new record\n");
 	fprintf(log, "d 0 %s\n", recording_path);
     }
 
