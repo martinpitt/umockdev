@@ -790,6 +790,8 @@ public class Testbed: GLib.Object {
      * umockdev_testbed_load_evemu_events:
      * @self: A #UMockdevTestbed.
      * @dev: Device path (/dev/...) for which to load the evemu events.
+     *       %NULL is valid; in this case the events are associated with
+     *       the device node it was recorded from.
      * @eventsfile: Path of the evemu events file.
      * @error: return location for a GError, or %NULL
      *
@@ -808,16 +810,18 @@ public class Testbed: GLib.Object {
      * Returns: %TRUE on success, %FALSE if @eventsfile is invalid and an error
      *          occurred.
      */
-    public bool load_evemu_events (string dev, string eventsfile)
+    public bool load_evemu_events (string? dev, string eventsfile)
         throws GLib.Error, FileError, IOError, RegexError
     {
         File f_ev = File.new_for_path(eventsfile);
         var s_ev = new DataInputStream(f_ev.read());
         string line;
+        string? recorded_dev = null;
         size_t len;
         MatchInfo match;
         Linux.Input.Event ev = {};
-        var line_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *#?");
+        var default_dev_re = new Regex("^# device (.*)$");
+        var event_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *#?");
 
         string script_file;
         int script_fd = FileUtils.open_tmp ("evemu.XXXXXX.script", out script_file);
@@ -825,7 +829,12 @@ public class Testbed: GLib.Object {
         bool first = true;
 
         while ((line = s_ev.read_line(out len)) != null) {
-            if (!line_re.match(line, 0, out match)) {
+            if (default_dev_re.match(line, 0, out match)) {
+                recorded_dev = match.fetch(1);
+                continue;
+            }
+
+            if (!event_re.match(line, 0, out match)) {
                 if (!line.has_prefix("#"))
                     warning("Ignoring invalid line in %s: %s", eventsfile, line);
                 continue;
@@ -851,7 +860,15 @@ public class Testbed: GLib.Object {
         }
 
         Posix.close (script_fd);
-        bool ret = load_script(dev, script_file);
+
+        string? owned_dev = dev;
+        if (owned_dev == null) {
+            if (recorded_dev == null)
+                error("null passed for device node, but recording %s has no '# device' header", eventsfile);
+            owned_dev = recorded_dev;
+        }
+
+        bool ret = load_script(owned_dev, script_file);
         FileUtils.unlink(script_file);
         return ret;
     }
