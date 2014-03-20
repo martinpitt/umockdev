@@ -501,9 +501,9 @@ t_detects_not_running_in_testbed ()
     }
     Posix.close(pipefds[1]);
 
-    char buf[1];
-    assert_cmpint ((int) Posix.read(pipefds[0], buf, 1), Op.EQ, 1);
-    assert_cmpstr ((string) buf, Op.EQ, "0");
+    char buf = 'x';
+    assert_cmpint ((int) Posix.read(pipefds[0], &buf, 1), Op.EQ, 1);
+    assert_cmpint (buf, Op.EQ, '0');
 
     Posix.close(pipefds[0]);
 }
