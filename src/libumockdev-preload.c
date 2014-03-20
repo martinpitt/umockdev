@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
 #include <unistd.h>
@@ -1184,17 +1185,22 @@ fclose(FILE * stream)
     return _fclose(stream);
 }
 
-/* note, the actual definition of ioctl is a varargs function; one cannot
- * reliably forward arbitrary varargs (http://c-faq.com/varargs/handoff.html),
- * but we know that ioctl gets at most one extra argument, and almost all of
- * them are pointers or ints, both of which fit into a void*.
- */
-int ioctl(int d, unsigned long request, void *arg);
 int
-ioctl(int d, unsigned long request, void *arg)
+ioctl(int d, unsigned long request, ...)
 {
     libc_func(ioctl, int, int, unsigned long, ...);
     int result;
+    va_list ap;
+    void* arg;
+
+    /* one cannot reliably forward arbitrary varargs
+     * (http://c-faq.com/varargs/handoff.html), but we know that ioctl gets at
+     * most one extra argument, and almost all of them are pointers or ints,
+     * both of which fit into a void*.
+     */
+    va_start(ap, request);
+    arg = va_arg(ap, void*);
+    va_end(ap);
 
     result = ioctl_emulate(d, request, arg);
     if (result != -2) {
