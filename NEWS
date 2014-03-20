@@ -1,4 +1,4 @@
-0.8 (UNRELEASED)
+0.8 (2014-03-20)
 ----------------
 New features:
 - Add new method umockdev_testbed_load_evemu_events() to replay an evemu events
