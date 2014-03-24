@@ -586,6 +586,135 @@ t_input_evtest ()
 }
 
 static void
+t_input_evemu_roundtrip ()
+{
+    if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
+        stdout.printf ("[SKIP: this test only works on little endian machines] ");
+        return;
+    }
+
+    if (!have_program ("evemu-record")) {
+        stdout.printf ("[SKIP: evemu-record not installed] ");
+        return;
+    }
+
+    Pid evemu_record_pid;
+    int outfd, errfd;
+
+    // create evemu events file
+    string evemu_file;
+    string evemu_script =
+"""E: 1.000000 0003 0039 9080	# EV_ABS / ABS_MT_TRACKING_ID   9080
+E: 1.000000 0003 0035 1899	# EV_ABS / ABS_MT_POSITION_X    1899
+E: 1.000000 0003 0036 1612	# EV_ABS / ABS_MT_POSITION_Y    1612
+E: 1.000000 0003 003a 0085	# EV_ABS / ABS_MT_PRESSURE      85
+E: 1.000000 0001 014a 0001	# EV_KEY / BTN_TOUCH            1
+E: 1.000000 0003 0000 1899	# EV_ABS / ABS_X                1899
+E: 1.000000 0003 0001 1612	# EV_ABS / ABS_Y                1612
+E: 1.000000 0003 0018 0085	# EV_ABS / ABS_PRESSURE         85
+E: 1.000000 0001 0145 0001	# EV_KEY / BTN_TOOL_FINGER      1
+E: 1.000000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 1.011878 0003 0036 1632	# EV_ABS / ABS_MT_POSITION_Y    1632
+E: 1.011878 0003 003a 0086	# EV_ABS / ABS_MT_PRESSURE      86
+E: 1.011878 0003 0001 1632	# EV_ABS / ABS_Y                1632
+E: 1.011878 0003 0018 0086	# EV_ABS / ABS_PRESSURE         86
+E: 1.011878 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 1.024007 0003 0036 1649	# EV_ABS / ABS_MT_POSITION_Y    1649
+E: 1.024007 0003 003a 0088	# EV_ABS / ABS_MT_PRESSURE      88
+E: 1.024007 0003 0001 1649	# EV_ABS / ABS_Y                1649
+E: 1.024007 0003 0018 0088	# EV_ABS / ABS_PRESSURE         88
+E: 1.024007 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 1.039226 0003 0036 1709	# EV_ABS / ABS_MT_POSITION_Y    1709
+E: 1.039226 0003 003a 0091	# EV_ABS / ABS_MT_PRESSURE      91
+E: 1.039226 0003 0001 1709	# EV_ABS / ABS_Y                1709
+E: 1.039226 0003 0018 0091	# EV_ABS / ABS_PRESSURE         91
+E: 1.039226 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 1.052198 0003 0036 1747	# EV_ABS / ABS_MT_POSITION_Y    1747
+E: 1.052198 0003 003a 0090	# EV_ABS / ABS_MT_PRESSURE      90
+E: 1.052198 0003 0001 1747	# EV_ABS / ABS_Y                1747
+E: 1.052198 0003 0018 0090	# EV_ABS / ABS_PRESSURE         90
+E: 1.052198 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 1.063961 0003 0036 1776	# EV_ABS / ABS_MT_POSITION_Y    1776
+E: 1.063961 0003 003a 0091	# EV_ABS / ABS_MT_PRESSURE      91
+E: 1.063961 0003 0001 1776	# EV_ABS / ABS_Y                1776
+E: 1.063961 0003 0018 0091	# EV_ABS / ABS_PRESSURE         91
+E: 1.063961 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+E: 1.076269 0003 0036 1810	# EV_ABS / ABS_MT_POSITION_Y    1810
+E: 1.076269 0003 0001 1810	# EV_ABS / ABS_Y                1810
+E: 1.076269 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
+""";
+    try {
+        int fd = FileUtils.open_tmp ("evemu.XXXXXX.events", out evemu_file);
+        Posix.close (fd);
+        FileUtils.set_contents (evemu_file, evemu_script);
+    } catch (FileError e) {
+        stderr.printf ("cannot create temporary file: %s\n", e.message);
+        Process.abort();
+    }
+
+    try {
+        Process.spawn_async_with_pipes (null, {"umockdev-run",
+            "-d", rootdir + "/devices/input/synaptics-touchpad.umockdev",
+            "-i", "/dev/input/event12=" + rootdir + "/devices/input/synaptics-touchpad.evemu-record.ioctl",
+            "-e", "/dev/input/event12=" + evemu_file,
+            "evemu-record", "/dev/input/event12"},
+            null, SpawnFlags.SEARCH_PATH, null,
+            out evemu_record_pid, null, out outfd, out errfd);
+    } catch (SpawnError e) {
+        stderr.printf ("cannot call evemu-record: %s\n", e.message);
+        Process.abort();
+    }
+
+    Posix.sleep (3);
+    FileUtils.remove (evemu_file);
+    Posix.kill (evemu_record_pid, Posix.SIGTERM);
+    var sout = new uint8[10000];
+    var serr = new uint8[10000];
+    ssize_t sout_len = Posix.read (outfd, sout, sout.length);
+    /* For some reason this read() blocks?! We should be checking for no-stderr*/
+//    ssize_t serr_len = Posix.read (errfd, serr, serr.length);
+    int status;
+    Posix.waitpid (evemu_record_pid, out status, 0);
+    Process.close_pid (evemu_record_pid);
+/*
+    if (serr_len > 0) {
+        serr[serr_len] = 0;
+        stderr.printf ("evemu-record error: %s\n", (string) serr);
+        Process.abort();
+    }
+*/
+    string[] output_lines = ((string)sout).split("\n");
+    string[] input_lines = evemu_script.split("\n");
+    int output_offset = 0;
+
+    // Find the start of the events in evemu-record output
+    foreach (var line in ((string)sout).split("\n")) {
+        if (line.has_prefix("E:"))
+            break;
+        output_offset++;
+    }
+
+    // XXX: Debug output while the test is failing...
+    stdout.printf("Output is:\n%s\n", (string)sout);
+
+    // We should have exactly the same number of events
+    assert_cmpint(output_lines.length - output_offset, Op.EQ, input_lines.length);
+    
+    var event_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *#?");
+    MatchInfo input_match, output_match;
+    for (int i = 0; i < output_lines.length; i++) {
+        assert (event_re.match(input_lines[i], 0, out input_match));
+        assert (event_re.match(output_lines[i + output_offset], 0, out output_match));
+
+        // We care to match device ID, event type, and event value
+        // Because the timestamps are so fine-grained, they probably won't match exactly
+        assert_cmpstr(input_match.fetch(3), Op.EQ, output_match.fetch(3));
+        assert_cmpstr(input_match.fetch(4), Op.EQ, output_match.fetch(4));
+        assert_cmpstr(input_match.fetch(5), Op.EQ, output_match.fetch(5));        
+    }
+}
+
+static void
 t_input_evtest_evemu ()
 {
     if (BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
@@ -701,6 +830,7 @@ main (string[] args)
   Test.add_func ("/umockdev-run/integration/input-touchpad", t_input_touchpad);
   Test.add_func ("/umockdev-run/integration/input-evtest", t_input_evtest);
   Test.add_func ("/umockdev-run/integration/input-evtest-evemu", t_input_evtest_evemu);
+  Test.add_func ("/umockdev-run/integration/input-evemu-roundtrip", t_input_evemu_roundtrip);
 
   return Test.run();
 }
