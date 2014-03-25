@@ -1500,7 +1500,8 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   static const char* test_data = "E: 1234.500000 0000 0000 0\n"   /* SYN */
                                  "E: 1234.650000 0002 0000 5  # comment\n"   /* REL X */
                                  "# some comment\n"
-                                 "E: 1234.650000 0002 0001 -11	# comment #2\n" /* REL Y */
+                                 /* slightly go back in time here */
+                                 "E: 1234.649000 0002 0001 -11	# comment #2\n" /* REL Y */
                                  "E: 1235.200000 0001 0174 1\n";  /* KEY_ZOOM */
 
   umockdev_testbed_add_from_string(fixture->testbed,
@@ -1552,7 +1553,7 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
   g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
   g_assert_cmpint(ev.time.tv_sec, ==, 1234);
-  g_assert_cmpint(ev.time.tv_usec, ==, 650000);
+  g_assert_cmpint(ev.time.tv_usec, ==, 649000);
   g_assert_cmpint(ev.type, ==, 2);
   g_assert_cmpint(ev.code, ==, 1);
   g_assert_cmpint(ev.value, ==, -11);

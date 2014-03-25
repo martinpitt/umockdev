@@ -1,3 +1,8 @@
+0.8.1 (UNRELEASED)
+------------------
+- Fix eternal hang due to negative delays when playing back evemu scripts with
+  timestamps that go backwards.
+
 0.8 (2014-03-20)
 ----------------
 New features:

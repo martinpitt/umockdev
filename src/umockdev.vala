@@ -846,6 +846,8 @@ public class Testbed: GLib.Object {
                 first = false;
             } else {
                 delay = (int) (ev_sec - ev.time.tv_sec) * 1000 + (int) (ev_usec - ev.time.tv_usec) / 1000;
+                if (delay < 0)
+                    delay = 0;
             }
             ev.time.tv_sec = ev_sec;
             ev.time.tv_usec = ev_usec;
