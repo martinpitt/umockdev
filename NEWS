@@ -1,3 +1,8 @@
+0.8.2 (UNRELEASED)
+------------------
+- Fix ioctl recording of multiple device open/close cycles. This regressed in
+  0.6 to only keep the data of the last cycle.
+
 0.8.1 (2014-03-31)
 ------------------
 - Fix eternal hang due to negative delays when playing back evemu scripts with

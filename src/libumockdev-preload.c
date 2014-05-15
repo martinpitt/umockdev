@@ -446,12 +446,12 @@ ioctl_record_open(int fd)
 	 */
 	fseek(ioctl_record_log, 0, SEEK_END);
 	if (ftell(ioctl_record_log) > 0) {
-	    /* We're appending to a previous log; don't write the devnode header again,
+	    /* We're updating a previous log; don't write the devnode header again,
 	     * but check that we're recording the same device as the previous log.
 	     */
 	    char *existing_device_path;
 	    char c;
-	    DBG("ioctl_record_open: Appending to existing record for path %s\n", path);
+	    DBG("ioctl_record_open: Updating existing record for path %s\n", path);
 	    fseek(ioctl_record_log, 0, SEEK_SET);
 
 	    /* Start by skipping any leading comments */
@@ -470,15 +470,15 @@ ioctl_record_open(int fd)
 		}
 		free(existing_device_path);
 	    }
-	    fseek(ioctl_record_log, 0, SEEK_END);
+
+	    /* load an already existing log */
+	    fseek(ioctl_record_log, 0, SEEK_SET);
+	    ioctl_record = ioctl_tree_read(ioctl_record_log);
 	} else {
 	    /* New log, add devnode header */
 	    DBG("ioctl_record_open: Starting new record %s\n", path);
 	    fprintf(ioctl_record_log, "@DEV %s\n", device_path);
 	}
-
-	/* load an already existing log */
-	ioctl_record = ioctl_tree_read(ioctl_record_log);
 
 	/* ensure that we write the file also on Control-C */
 	act_int.sa_handler = ioctl_record_sigint_handler;
