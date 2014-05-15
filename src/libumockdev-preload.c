@@ -505,6 +505,7 @@ ioctl_record_close(int fd)
     if (ioctl_record != NULL) {
 	rewind(ioctl_record_log);
 	assert(ftruncate(fileno(ioctl_record_log), 0) == 0);
+	fprintf(ioctl_record_log, "@DEV %s\n", getenv("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH"));
 	ioctl_tree_write(ioctl_record_log, ioctl_record);
 	fflush(ioctl_record_log);
     }

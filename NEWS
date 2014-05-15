@@ -5,6 +5,7 @@
 - Update devices/cameras/canon-powershot-sx200.ioctl with ioctls from
   libgphoto2 2.5.4, to make the /umockdev-run/integration/gphoto-* tests work
   with that version.
+- On ioctl recording, also record the device name on close().
 
 0.8.1 (2014-03-31)
 ------------------
