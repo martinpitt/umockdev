@@ -569,6 +569,62 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
+t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    gchar *syspath;
+    struct udev *udev;
+    struct udev_monitor *mon;
+    struct udev_device *device;
+    const int num_events = 10;
+    int i;
+
+    /* set up monitor */
+    udev = udev_new();
+    g_assert(udev != NULL);
+    mon = udev_monitor_new_from_netlink(udev, "udev");
+    g_assert(mon != NULL);
+    g_assert_cmpint(udev_monitor_get_fd(mon), >, 0);
+    g_assert_cmpint(udev_monitor_filter_add_match_subsystem_devtype(mon, "pci", "fancy"), ==, 0);
+    g_assert_cmpint(udev_monitor_filter_update(mon), ==, 0);
+    g_assert_cmpint(udev_monitor_enable_receiving(mon), ==, 0);
+
+    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
+					  /* attributes */
+					  "idVendor", "0815", NULL,
+					  /* properties */
+					  "ID_INPUT", "1", "DEVTYPE", "fancy", NULL);
+    g_assert(syspath);
+
+    /* queue a bunch of events */
+    for (i = 0; i < num_events; ++i)
+        umockdev_testbed_uevent(fixture->testbed, syspath, "change");
+
+    /* check that they are on the monitors */
+    /* first, the add event from add_device() */
+    device = udev_monitor_receive_device(mon);
+    g_assert(device != NULL);
+    g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
+    g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    g_assert_cmpstr(udev_device_get_subsystem(device), ==, "pci");
+    g_assert_cmpstr(udev_device_get_devtype(device), ==, "fancy");
+    udev_device_unref(device);
+    /* now the change events */
+    for (i = 0; i < num_events; ++i) {
+        device = udev_monitor_receive_device(mon);
+        g_assert(device != NULL);
+        g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
+        g_assert_cmpstr(udev_device_get_action(device), ==, "change");
+        g_assert_cmpstr(udev_device_get_subsystem(device), ==, "pci");
+        g_assert_cmpstr(udev_device_get_devtype(device), ==, "fancy");
+        udev_device_unref(device);
+    }
+    g_assert(udev_monitor_receive_device(mon) == NULL);
+
+    udev_monitor_unref(mon);
+    udev_unref(udev);
+}
+
+static void
 t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GUdevClient *client;
@@ -1797,6 +1853,8 @@ main(int argc, char **argv)
     /* tests for mocking uevents */
     g_test_add("/umockdev-testbed/uevent/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_uevent_libudev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/uevent/libudev-filter", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_uevent_libudev_filter, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_uevent_gudev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/no_listener", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
