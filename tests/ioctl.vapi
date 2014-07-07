@@ -12,6 +12,8 @@ namespace Ioctl {
     public const int USBDEVFS_REAPURB;
     [CCode (cheader_filename = "linux/usbdevice_fs.h")]
     public const int USBDEVFS_REAPURBNDELAY;
+    [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int TIOCSBRK;
 
     [CCode (cname="struct usbdevfs_connectinfo", cheader_filename = "linux/usbdevice_fs.h")]
     public struct usbdevfs_connectinfo {

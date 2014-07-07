@@ -13,6 +13,7 @@
   supposed to be a TTY. Fixes regression with X.org synaptics >= 1.8 device
   emulation as that uses xf86OpenSerial() to open evdev devices (which is
   wrong, but reality).
+- Don't fall back to real ioctls on emulated fds.
 
 0.8.2 (2014-05-15)
 ------------------

@@ -600,17 +600,33 @@ static int
 ioctl_emulate(int fd, unsigned long request, void *arg)
 {
     ioctl_tree *ret;
-    int ioctl_result = -2;
+    int ioctl_result = -1;
+    int orig_errno;
     struct ioctl_fd_info *fdinfo;
 
     if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
+	/* we default to erroring and an appropriate error code before
+	 * tree_execute, as handlers might change errno; if they succeed, we
+	 * reset errno */
+	orig_errno = errno;
+	/* evdev ioctls default to ENOENT; FIXME: record that instead of
+	 * hardcoding, and handle in ioctl_tree */
+	if (_IOC_TYPE(request) == 'E')
+	    errno = ENOENT;
+	else
+	    errno = ENOTTY;
+
 	/* check our ioctl tree */
 	ret = ioctl_tree_execute(fdinfo->tree, fdinfo->last, request, arg, &ioctl_result);
+	DBG(DBG_IOCTL, "ioctl_emulate: tree execute ret %p, result %i, errno %i (%m); orig errno: %i\n", ret, ioctl_result, errno, orig_errno);
 	if (ret != NULL)
 	    fdinfo->last = ret;
+	if (ioctl_result != -1 && errno != 0)
+	    errno = orig_errno;
+    } else {
+	ioctl_result = UNHANDLED;
     }
 
-    /* -2 means "unhandled" */
     return ioctl_result;
 }
 
@@ -1345,7 +1361,7 @@ ioctl(int d, unsigned long request, ...)
     va_end(ap);
 
     result = ioctl_emulate(d, request, arg);
-    if (result != -2) {
+    if (result != UNHANDLED) {
 	DBG(DBG_IOCTL, "ioctl fd %i request %lX: emulated, result %i\n", d, request, result);
 	return result;
     }
