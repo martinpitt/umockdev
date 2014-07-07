@@ -207,6 +207,43 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_get_property:
+     * @self: A #UMockdevTestbed.
+     * @devpath: The full device path, as returned by #umockdev_testbed_add_device()
+     * @name: Property name
+     *
+     * Get a string udev property for a device. Note that this is mostly for
+     * testing umockdev itself; for real application testing, use
+     * libudev/gudev.
+     *
+     * Returns: property value, or %NULL if it does not exist
+     */
+    public new string? get_property(string devpath, string name)
+    {
+        var uevent_path = Path.build_filename(this.root_dir, devpath, "uevent");
+        string? ret = null;
+
+        File f = File.new_for_path(uevent_path);
+        string prefix = name + "=";
+        try {
+            var inp = new DataInputStream(f.read());
+            string line;
+            size_t len;
+            while ((line = inp.read_line(out len)) != null) {
+                if (line.has_prefix(prefix)) {
+                    ret = line.substring(prefix.length);
+                    break;
+                }
+            }
+            inp.close();
+        } catch (GLib.Error e) {
+            error("Cannot read uevent file: %s", e.message);
+        }
+
+        return ret;
+    }
+
+    /**
      * umockdev_testbed_set_property:
      * @self: A #UMockdevTestbed.
      * @devpath: The full device path, as returned by #umockdev_testbed_add_device()

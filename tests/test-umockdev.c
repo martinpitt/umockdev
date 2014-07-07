@@ -465,9 +465,13 @@ t_testbed_set_property(UMockdevTestbedFixture * fixture, gconstpointer data)
 					  "ID_INPUT", "1", NULL);
 
     /* change an existing property */
+    g_assert_cmpstr(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_INPUT"), ==, "1");
     umockdev_testbed_set_property(fixture->testbed, syspath, "ID_INPUT", "0");
+    g_assert_cmpstr(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_INPUT"), ==, "0");
     /* add a new one */
+    g_assert(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_COLOR") == NULL);
     umockdev_testbed_set_property(fixture->testbed, syspath, "ID_COLOR", "green");
+    g_assert_cmpstr(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_COLOR"), ==, "green");
     /* int properties */
     umockdev_testbed_set_property_int(fixture->testbed, syspath, "COUNT", 1000);
     umockdev_testbed_set_property_hex(fixture->testbed, syspath, "ADDR", 0x1a01);

@@ -1,3 +1,9 @@
+0.8.3 (UNRELEASED)
+------------------
+- Add umockdev_testbed_get_property() method. This is mostly for internal
+  umockdev testing, umockdev users should use libudev/gudev get_property
+  functions.
+
 0.8.2 (2014-05-15)
 ------------------
 - Fix ioctl recording of multiple device open/close cycles. This regressed in
