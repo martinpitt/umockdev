@@ -46,6 +46,7 @@
 #include <linux/netlink.h>
 #include <linux/input.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "ioctl_tree.h"
 
@@ -111,12 +112,19 @@ static inline int
 path_exists(const char *path)
 {
     int orig_errno, res;
+    libc_func(access, int, const char*, int);
 
     orig_errno = errno;
-    res = access(path, F_OK);
+    res = _access(path, F_OK);
     errno = orig_errno;
     return res;
 }
+
+/* multi-thread locking for trap_path users */
+pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
+
+#define TRAP_PATH_LOCK pthread_mutex_lock (&trap_path_lock)
+#define TRAP_PATH_UNLOCK pthread_mutex_unlock (&trap_path_lock)
 
 static const char *
 trap_path(const char *path)
@@ -972,10 +980,15 @@ rettype name(const char *path)		    \
 { \
     const char *p;			    \
     libc_func(name, rettype, const char*);  \
+    rettype r;				    \
+    TRAP_PATH_LOCK;			    \
     p = trap_path(path);		    \
     if (p == NULL)			    \
-	return failret;			    \
-    return (*_ ## name)(p);		    \
+	r = failret;			    \
+    else				    \
+	r = (*_ ## name)(p);		    \
+    TRAP_PATH_UNLOCK;			    \
+    return r;				    \
 }
 
 /* wrapper template for a function with "const char* path" and another argument */
@@ -984,22 +997,32 @@ rettype name(const char *path, arg2t arg2) \
 { \
     const char *p;					\
     libc_func(name, rettype, const char*, arg2t);	\
+    rettype r;						\
+    TRAP_PATH_LOCK;					\
     p = trap_path(path);				\
     if (p == NULL)					\
-	return failret;					\
-    return (*_ ## name)(p, arg2);			\
+	r = failret;					\
+    else						\
+	r = (*_ ## name)(p, arg2);			\
+    TRAP_PATH_UNLOCK;					\
+    return r;						\
 }
 
 /* wrapper template for a function with "const char* path" and two other arguments */
 #define WRAP_3ARGS(rettype, failret, name, arg2t, arg3t) \
 rettype name(const char *path, arg2t arg2, arg3t arg3) \
 { \
-    const char *p;						    \
-    libc_func(name, rettype, const char*, arg2t, arg3t);	    \
-    p = trap_path(path);					    \
-    if (p == NULL)						    \
-	return failret;						    \
-    return (*_ ## name)(p, arg2, arg3);				    \
+    const char *p;						\
+    libc_func(name, rettype, const char*, arg2t, arg3t);	\
+    rettype r;							\
+    TRAP_PATH_LOCK;						\
+    p = trap_path(path);					\
+    if (p == NULL)						\
+	r = failret;						\
+    else							\
+	r = (*_ ## name)(p, arg2, arg3);			\
+    TRAP_PATH_UNLOCK;						\
+    return r;							\
 }
 
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
@@ -1011,11 +1034,15 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
     const char *p;								\
     libc_func(prefix ## stat ## suffix, int, int, const char*, struct stat ## suffix *); \
     int ret;									\
+    TRAP_PATH_LOCK;								\
     p = trap_path(path);							\
-    if (p == NULL)								\
+    if (p == NULL) {								\
+	TRAP_PATH_UNLOCK;							\
 	return -1;								\
+    }										\
     DBG("testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
     ret = _ ## prefix ## stat ## suffix(ver, p, st);				\
+    TRAP_PATH_UNLOCK;								\
     if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
 	&& is_emulated_device(p, st->st_mode)) {				\
 	st->st_mode &= ~S_IFREG;						\
@@ -1038,9 +1065,12 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
     const char *p;						    \
     libc_func(prefix ## open ## suffix, int, const char*, int, ...);\
     int ret;							    \
+    TRAP_PATH_LOCK;						    \
     p = trap_path(path);					    \
-    if (p == NULL)						    \
+    if (p == NULL) {						    \
+	TRAP_PATH_UNLOCK;					    \
 	return -1;						    \
+    }								    \
     DBG("testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
     if (flags & O_CREAT) {					    \
 	mode_t mode;						    \
@@ -1051,13 +1081,14 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 	ret = _ ## prefix ## open ## suffix(p, flags, mode);   	    \
     } else							    \
 	ret =  _ ## prefix ## open ## suffix(p, flags);		    \
+    TRAP_PATH_UNLOCK;						    \
     if (path != p)						    \
 	ioctl_emulate_open(ret, path);				    \
     else {							    \
 	ioctl_record_open(ret);					    \
 	script_record_open(ret);				    \
     }								    \
-    return ret;						    	    \
+    return ret;							    \
 }
 
 #define WRAP_OPEN2(prefix, suffix) \
@@ -1066,11 +1097,15 @@ int prefix ## open ## suffix (const char *path, int flags)	    \
     const char *p;						    \
     libc_func(prefix ## open ## suffix, int, const char*, int);	    \
     int ret;							    \
+    TRAP_PATH_LOCK;						    \
     p = trap_path(path);					    \
-    if (p == NULL)						    \
+    if (p == NULL) {						    \
+	TRAP_PATH_UNLOCK;					    \
 	return -1;						    \
+    }								    \
     DBG("testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
     ret =  _ ## prefix ## open ## suffix(p, flags);		    \
+    TRAP_PATH_UNLOCK;						    \
     if (path != p)						    \
 	ioctl_emulate_open(ret, path);				    \
     else {							    \
@@ -1112,12 +1147,16 @@ inotify_add_watch(int fd, const char *path, uint32_t mask)
 {
     const char *p;
     libc_func(inotify_add_watch, int, int, const char*, uint32_t);
+    int r;
 
+    TRAP_PATH_LOCK;
     p = trap_path(path);
     if (p == NULL)
-    return -1;
-
-    return _inotify_add_watch(fd, p, mask);
+	r = -1;
+    else
+	r = _inotify_add_watch(fd, p, mask);
+    TRAP_PATH_UNLOCK;
+    return r;
 }
 
 ssize_t
@@ -1247,6 +1286,7 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     /* playback */
     if (addr->sa_family == AF_UNIX) {
 	const char *sock_path = ((struct sockaddr_un *) addr)->sun_path;
+	TRAP_PATH_LOCK;
 	const char *p = trap_path(sock_path);
 	struct sockaddr_un trapped_addr;
 
@@ -1256,6 +1296,7 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	    strncpy(trapped_addr.sun_path, p, sizeof(trapped_addr.sun_path));
 	    addr = (struct sockaddr*) &trapped_addr;
 	}
+	TRAP_PATH_UNLOCK;
     }
 
     res = _connect(sockfd, addr, addrlen);

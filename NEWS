@@ -3,6 +3,9 @@
 - Add umockdev_testbed_get_property() method. This is mostly for internal
   umockdev testing, umockdev users should use libudev/gudev get_property
   functions.
+- preload: Make path redirection to testbed thread-safe for wrapped functions.
+  This does NOT address all multi-thread issues, but should work for simple
+  cases. (https://launchpad.net/bugs/1336671)
 
 0.8.2 (2014-05-15)
 ------------------

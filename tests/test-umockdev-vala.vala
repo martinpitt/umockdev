@@ -520,6 +520,126 @@ is_test_inside_testbed (int pipefd)
     return int.parse((string) buf);
 }
 
+class AttributeCounterThread {
+
+    public AttributeCounterThread (UMockdev.Testbed tb, string syspath, string name, uint max) {
+        this.tb = tb;
+        this.syspath = syspath;
+        this.name = name;
+        this.count = max;
+    }
+
+    public void* run () {
+        string attr_path = Path.build_filename (this.syspath, this.name);
+        for (; this.count > 0; --this.count) {
+            string cur_value;
+            try {
+                FileUtils.get_contents (attr_path, out cur_value);
+            } catch (FileError e) {
+                error ("(count %u) failed to read %s: %s", this.count, attr_path, e.message);
+            }
+            tb.set_attribute_int (this.syspath, name, int.parse(cur_value) + 1);
+        }
+
+        return null;
+    }
+
+    private UMockdev.Testbed tb;
+    private string name;
+    private string syspath;
+    private uint count;
+}
+
+/* set attributes in parallel; every thread handles a different
+ * attribute, so no locking required */
+void
+t_mt_parallel_attr_distinct ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  string syspath = tb.add_devicev ("changelings", "rapid", null,
+                                   { "c1", "0", "c2", "0", "c3", "0"},
+                                   {});
+  var t1d = new AttributeCounterThread (tb, syspath, "c1", 100);
+  var t2d = new AttributeCounterThread (tb, syspath, "c2", 100);
+  var t3d = new AttributeCounterThread (tb, syspath, "c3", 100);
+  var t1 = new Thread<void*> ("t_c1", t1d.run);
+  var t2 = new Thread<void*> ("t_c2", t2d.run);
+  var t3 = new Thread<void*> ("t_c3", t3d.run);
+  t1.join();
+  t2.join();
+  t3.join();
+
+  string val;
+  try {
+      FileUtils.get_contents(Path.build_filename(syspath, "c1"), out val);
+      assert_cmpstr (val, Op.EQ, "100");
+      FileUtils.get_contents(Path.build_filename(syspath, "c2"), out val);
+      assert_cmpstr (val, Op.EQ, "100");
+      FileUtils.get_contents(Path.build_filename(syspath, "c3"), out val);
+      assert_cmpstr (val, Op.EQ, "100");
+  } catch (FileError e) {
+      error ("failed to read attribute: %s", e.message);
+  }
+}
+
+
+void
+t_mt_uevent ()
+{
+  var tb = new UMockdev.Testbed ();
+  var gudev = new GUdev.Client ({"pci"});
+  var ml = new MainLoop ();
+  uint add_count = 0;
+  uint change_count = 0;
+  uint num_changes = 20;
+
+  gudev.uevent.connect((client, action, device) => {
+      if (action == "add")
+          add_count++;
+      else {
+          if (++change_count == num_changes)
+              ml.quit ();
+      }
+    });
+
+  // causes one "add" event
+  var syspath = tb.add_devicev ("pci", "dev1", null, {"a", "1"}, {"DEVTYPE", "fancy"});
+
+  // this thread is purely to create noise in the preload lib
+  var t_noise = new Thread<void*> ("noise", () => {
+      string contents;
+
+      while (ml.is_running ()) {
+          try {
+              FileUtils.get_contents ("/sys/devices/dev1/a", out contents);
+          } catch (FileError e) {
+              error ("(#changes: %u) Error opening attribute file: %s", change_count, e.message);
+          }
+          assert_cmpstr (contents, Op.EQ, "1");
+          tb.set_property (syspath, "ID_FOO", "1");
+      }
+      return null;
+  });
+
+  // synthesize num_changes "change" events
+  var t_emitter = new Thread<void*> ("emitter", () => {
+      for (uint i = 0; i < num_changes; ++i)
+          tb.uevent (syspath, "change");
+      return null;
+  });
+
+  // fallback timeout
+  Timeout.add(3000, () => { ml.quit(); return false; });
+  ml.run ();
+  t_emitter.join ();
+  t_noise.join ();
+
+  assert_cmpuint (add_count, Op.EQ, 1);
+  assert_cmpuint (change_count, Op.EQ, num_changes);
+}
+
+
 int
 main (string[] args)
 {
@@ -547,6 +667,10 @@ main (string[] args)
   /* test for umockdev-preload detection */
   Test.add_func ("/umockdev-testbed-vala/detects_running_in_testbed", t_detects_running_in_testbed);
   Test.add_func ("/umockdev-testbed-vala/detects_running_outside_testbed", t_detects_not_running_in_testbed);
+
+  /* tests for multi-thread safety */
+  Test.add_func ("/umockdev-testbed-vala/mt_parallel_attr_distinct", t_mt_parallel_attr_distinct);
+  Test.add_func ("/umockdev-testbed-vala/mt_uevent", t_mt_uevent);
 
   return Test.run();
 }
