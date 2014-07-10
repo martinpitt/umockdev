@@ -1360,4 +1360,53 @@ ioctl(int d, unsigned long request, ...)
     return result;
 }
 
+int
+isatty(int fd)
+{
+    libc_func(isatty, int, int);
+    libc_func(readlink, ssize_t, const char*, char*, size_t);
+    int result = _isatty(fd);
+    char ttyname[1024];
+    char ptymap[PATH_MAX];
+    char majmin[20];
+    char *cp;
+    int orig_errno, r;
+
+    if (result != 1) {
+	DBG(DBG_PATH, "isatty(%i): real function result: %i, returning that\n", fd, result);
+	return result;
+    }
+
+    /* isatty() succeeds for our emulated devices, but they should not
+     * necessarily appear as TTY; so map the tty name to a major/minor, and
+     * only return 1 if it is major 4. */
+    orig_errno = errno;
+    if (ttyname_r(fd, ttyname, sizeof(ttyname)) != 0) {
+	DBG(DBG_PATH, "isatty(%i): is a terminal, but ttyname() failed! %m\n", fd);
+	/* *shrug*, what can we do; return original result */
+	goto out;
+    }
+
+    DBG(DBG_PATH, "isatty(%i): is a terminal, ttyname %s\n", fd, ttyname);
+    for (cp = ttyname; *cp; ++cp)
+	if (*cp == '/')
+	    *cp = '_';
+    snprintf(ptymap, sizeof(ptymap), "%s/dev/.ptymap/%s", getenv("UMOCKDEV_DIR"), ttyname);
+    r = _readlink(ptymap, majmin, sizeof(majmin));
+    if (r < 0) {
+	/* failure here is normal for non-emulated devices */
+	DBG(DBG_PATH, "isatty(%i): readlink(%s) failed: %m\n", fd, ptymap);
+	goto out;
+    }
+    majmin[r] = '\0';
+    if (majmin[0] != '4' || majmin[1] != ':') {
+	DBG(DBG_PATH, "isatty(%i): major/minor is %s which is not a tty; returning 0\n", fd, majmin);
+	result = 0;
+    }
+
+out:
+    errno = orig_errno;
+    return result;
+}
+
 /* vim: set sw=4 noet: */

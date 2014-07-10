@@ -971,6 +971,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(S_ISCHR(st.st_mode));
     fd = g_open("/dev/zero", O_RDONLY, 0);
     g_assert_cmpint(fd, >, 0);
+    g_assert(!isatty(fd));
     g_assert_cmpint(read(fd, buf, 20), ==, 20);
     close(fd);
     g_assert_cmpint(buf[0], ==, 0);
@@ -992,6 +993,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(st.st_rdev, ==, 0);	/* we did not set anything */
     fd = g_open("/dev/zero", O_RDONLY, 0);
     g_assert_cmpint(fd, >, 0);
+    g_assert(!isatty(fd));
     g_assert_cmpint(read(fd, buf, 20), ==, 12);
     close(fd);
     g_assert_cmpint(buf[0], ==, 'z');
@@ -1019,6 +1021,12 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(devpath);
     g_assert_cmpint(g_lstat("/dev/usb", &st), ==, 0);
     g_assert(S_ISDIR(st.st_mode));
+
+    /* real TTY devices */
+    fd = g_open("/dev/tty", O_RDONLY, 0);
+    g_assert_cmpint(fd, >, 0);
+    g_assert(isatty(fd));
+    close(fd);
 
     g_free(devdir);
 }
@@ -1170,6 +1178,7 @@ t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, gc
 
   umockdev_testbed_add_from_string(fixture->testbed,
           "P: /devices/event1\nN: input/event1\n"
+          "A: dev=13:65\n"
           "E: DEVNAME=/dev/input/event1\nE: SUBSYSTEM=input\n", &error);
   g_assert_no_error(error);
 
@@ -1199,6 +1208,9 @@ t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, gc
   /* start communication */
   fd = g_open("/dev/input/event1", O_RDWR | O_NONBLOCK, 0);
   g_assert_cmpint(fd, >=, 0);
+
+  /* don't pretend that this is a tty, even though the mocked one is */
+  g_assert(!isatty(fd));
 
   /* Evdev guarantees that we only read whole events
    * We should do the same
@@ -1270,6 +1282,7 @@ r 0 ^@^^^`^@a\n";
   /* start communication */
   fd = g_open("/dev/greeter", O_RDWR | O_NONBLOCK, 0);
   g_assert_cmpint(fd, >=, 0);
+  g_assert(isatty(fd));
 
   /* should get initial greeting after 200 ms */
   ASSERT_EOF;

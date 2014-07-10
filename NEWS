@@ -8,6 +8,11 @@
   cases. (https://launchpad.net/bugs/1336671)
 - Make debug logging dynamically controllable with the $UMOCKDEV_DEBUG
   environment variable. See README.rst for details.
+- Emulate isatty(). It would previously return true for emulated devices as
+  PTYs are being used internally, but the actual emulated device is not always
+  supposed to be a TTY. Fixes regression with X.org synaptics >= 1.8 device
+  emulation as that uses xf86OpenSerial() to open evdev devices (which is
+  wrong, but reality).
 
 0.8.2 (2014-05-15)
 ------------------

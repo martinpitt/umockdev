@@ -919,6 +919,7 @@ public class Testbed: GLib.Object {
         string? val;
         string? devpath = null;
         string? subsystem = null;
+        string? majmin = null;
         string cur_data = data;
         string? devnode_path = null;
         uint8[] devnode_contents = {};
@@ -951,7 +952,10 @@ public class Testbed: GLib.Object {
 
                 case 'A':
                     attrs += key;
-                    attrs += val.compress();
+                    val = val.compress();
+                    attrs += val;
+                    if (key == "dev")
+                        majmin = val;
                     break;
 
                 case 'L':
@@ -1007,7 +1011,7 @@ public class Testbed: GLib.Object {
 
         /* create fake device node */
         if (devnode_path != null)
-            this.create_node_for_device(subsystem, devnode_path, devnode_contents);
+            this.create_node_for_device(subsystem, devnode_path, devnode_contents, majmin);
 
         /* skip over multiple blank lines */
         while (cur_data[0] != '\0' && cur_data[0] == '\n')
@@ -1017,7 +1021,7 @@ public class Testbed: GLib.Object {
     }
 
     private void
-    create_node_for_device (string subsystem, string node_path, uint8[] node_contents)
+    create_node_for_device (string subsystem, string node_path, uint8[] node_contents, string? majmin)
         throws UMockdev.Error
     {
         assert (DirUtils.create_with_parents(Path.get_dirname(node_path), 0755) == 0);
@@ -1057,6 +1061,16 @@ public class Testbed: GLib.Object {
         assert (Posix.tcsetattr (ptym, Posix.TCSANOW, ios) == 0);
 
         assert (FileUtils.symlink (ptyname, node_path) == 0);
+
+        // store link from pty name to emulated device major/minor, so that
+        // we can map from an fd -> ttyname -> device we emulate
+        if (majmin != null) {
+            string mapdir = Path.build_filename (this.root_dir, "dev", ".ptymap");
+            DirUtils.create_with_parents (mapdir, 0755);
+            string dest = Path.build_filename (mapdir, ptyname.replace("/", "_"));
+            debug ("create_node_for_device: creating ptymap symlink %s", dest);
+            assert (FileUtils.symlink(majmin, dest) == 0);
+        }
 
         // store ptym for controlling the master end
         string devname = node_path.substring (this.root_dir.length);
