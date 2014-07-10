@@ -1,4 +1,4 @@
-0.8.3 (UNRELEASED)
+0.8.3 (2014-07-10)
 ------------------
 - Add umockdev_testbed_get_property() method. This is mostly for internal
   umockdev testing, umockdev users should use libudev/gudev get_property
