@@ -179,11 +179,13 @@ t_system_single ()
     int exit;
 
     if (!FileUtils.test("/sys/dev/char/1:3", FileTest.EXISTS)) {
-        stderr.printf ("[SKIP: no real /sys on this system] ");
+        stdout.printf ("[SKIP: no real /sys on this system] ");
+        stdout.flush ();
         return;
     }
     if (!FileUtils.test("/sys/block/loop0", FileTest.EXISTS)) {
-        stderr.printf ("[SKIP: no /sys/block/loop0 on this system] ");
+        stdout.printf ("[SKIP: no /sys/block/loop0 on this system] ");
+        stdout.flush ();
         return;
     }
 
@@ -204,7 +206,8 @@ t_system_all ()
     int exit;
 
     if (!FileUtils.test("/sys/dev/char", FileTest.EXISTS)) {
-        stderr.printf ("[SKIP: no real /sys on this system] ");
+        stdout.printf ("[SKIP: no real /sys on this system] ");
+        stdout.flush ();
         return;
     }
 
@@ -230,7 +233,8 @@ t_system_invalid ()
     int exit;
 
     if (!FileUtils.test("/sys/block/loop0", FileTest.EXISTS)) {
-        stderr.printf ("[SKIP: no real /sys on this system] ");
+        stdout.printf ("[SKIP: no real /sys on this system] ");
+        stdout.flush ();
         return;
     }
 
@@ -749,7 +753,8 @@ t_gphoto2_record ()
     // check if we have gphoto2 and a camera
     spawn ("which gphoto2", out sout, out serr, out exit);
     if (exit != 0) {
-        stderr.printf ("[SKIP: gphoto2 not installed] ");
+        stdout.printf ("[SKIP: gphoto2 not installed] ");
+        stdout.flush ();
         return;
     }
     spawn ("gphoto2 --auto-detect", out sout, out serr, out exit);

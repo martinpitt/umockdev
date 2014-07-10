@@ -1,3 +1,7 @@
+0.8.4 (UNRELEASED)
+------------------
+- Make SKIP messages go to to stdout, like all the other the test suite output.
+
 0.8.3 (2014-07-10)
 ------------------
 - Add umockdev_testbed_get_property() method. This is mostly for internal
