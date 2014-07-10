@@ -1,4 +1,4 @@
-0.8.4 (UNRELEASED)
+0.8.4 (2014-07-10)
 ------------------
 - Make SKIP messages go to to stdout, like all the other the test suite output.
 - Fix test case failures when running tests without a controlling tty.
