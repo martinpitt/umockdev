@@ -1024,9 +1024,11 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     /* real TTY devices */
     fd = g_open("/dev/tty", O_RDONLY, 0);
-    g_assert_cmpint(fd, >, 0);
-    g_assert(isatty(fd));
-    close(fd);
+    if (fd > 0) {
+        /* we might not always have a tty, like in package builds */
+        g_assert(isatty(fd));
+        close(fd);
+    }
 
     g_free(devdir);
 }
