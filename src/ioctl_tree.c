@@ -25,15 +25,8 @@
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
 
+#include "debug.h"
 #include "ioctl_tree.h"
-
-#ifdef DEBUG
-#    define DBG(...) printf(__VA_ARGS__)
-#    define IFDBG(x) x
-#else
-#    define DBG(...) {}
-#    define IFDBG(x) {}
-#endif
 
 #define TRUE 1
 #define FALSE 0
@@ -52,7 +45,7 @@ ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret)
 
     type = ioctl_type_get_by_id(id);
     if (type == NULL) {
-	DBG("ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
+	DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
 	return NULL;
     }
     /* state independent ioctl? */
@@ -79,12 +72,12 @@ ioctl_tree_new_from_text(const char *line)
 
     if (line[0] == ' ') {
 	if (sscanf(line, "%1000[ ]%100s %i %n", lead_ws, ioctl_name, &ret, &offset) < 2) {
-	    DBG("ioctl_tree_new_from_text: failed to parse indent, ioctl name, and return value from '%s'\n", line);
+	    DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_text: failed to parse indent, ioctl name, and return value from '%s'\n", line);
 	    return NULL;
 	}
     } else {
 	if (sscanf(line, "%100s %i %n", ioctl_name, &ret, &offset) < 1) {
-	    DBG("ioctl_tree_new_from_text: failed to parse ioctl name and return value from '%s'\n", line);
+	    DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_text: failed to parse ioctl name and return value from '%s'\n", line);
 	    return NULL;
 	}
 	lead_ws[0] = '\0';
@@ -92,7 +85,7 @@ ioctl_tree_new_from_text(const char *line)
 
     type = ioctl_type_get_by_name(ioctl_name, &id);
     if (type == NULL) {
-	DBG("ioctl_tree_new_from_text: unknown ioctl %s\n", ioctl_name);
+	DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_text: unknown ioctl %s\n", ioctl_name);
 	return NULL;
     }
 
@@ -102,7 +95,7 @@ ioctl_tree_new_from_text(const char *line)
     t->ret = ret;
     t->id = id;
     if (!type->init_from_text(t, line + offset)) {
-	DBG("ioctl_tree_new_from_text: ioctl %s failed to initialize from data '%s'\n", ioctl_name, line + offset);
+	DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_text: ioctl %s failed to initialize from data '%s'\n", ioctl_name, line + offset);
 	free(t);
 	return NULL;
     }
@@ -158,7 +151,7 @@ ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
 
     existing = ioctl_tree_find_equal(tree, node);
     if (existing) {
-	DBG("ioctl_tree_insert: node of type %s ptr %p already exists\n", node->type->name, node);
+	DBG(DBG_IOCTL_TREE, "ioctl_tree_insert: node of type %s ptr %p already exists\n", node->type->name, node);
 	ioctl_node_list_append(tree->last_added, existing);
 	return existing;
     }
@@ -208,7 +201,7 @@ ioctl_tree_read(FILE * f)
 
 	node = ioctl_tree_new_from_text(line);
 	if (node == NULL) {
-	    DBG("ioctl_tree_read: failure to parse line: %s", line);
+	    DBG(DBG_IOCTL_TREE, "ioctl_tree_read: failure to parse line: %s", line);
 	    free(line);
 	    line = NULL;
 	    break;
@@ -353,12 +346,12 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void 
     ioctl_tree *i;
     int r, handled;
 
-    DBG("ioctl_tree_execute ioctl %lX\n", id);
+    DBG(DBG_IOCTL_TREE, "ioctl_tree_execute ioctl %lX\n", id);
 
     /* check if it's a hardware independent stateless ioctl */
     t = ioctl_type_get_by_id(id);
     if (t != NULL && t->insertion_parent == NULL) {
-	DBG("  ioctl_tree_execute: stateless\n");
+	DBG(DBG_IOCTL_TREE, "  ioctl_tree_execute: stateless\n");
 	if (t->execute(NULL, id, arg, &r))
 	    *ret = r;
 	else
@@ -374,12 +367,13 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void 
      * ioctls as much as possible (i. e. maintain it while the requests come in
      * at the same order as originally recorded) */
     for (;;) {
-	DBG("   ioctl_tree_execute: checking node %s(%lX, base id %lX) ", i->type->name, i->id, i->type->id);
-	IFDBG(i->type->write(i, stdout));
-	DBG("\n");
+	DBG(DBG_IOCTL_TREE, "   ioctl_tree_execute: checking node %s(%lX, base id %lX) ", i->type->name, i->id, i->type->id);
+	if (debug_categories & DBG_IOCTL_TREE)
+	    i->type->write(i, stderr);
+	DBG(DBG_IOCTL_TREE, "\n");
 	handled = i->type->execute(i, id, arg, &r);
 	if (handled) {
-	    DBG("    -> match, ret %i, adv: %i\n", r, handled);
+	    DBG(DBG_IOCTL_TREE, "    -> match, ret %i, adv: %i\n", r, handled);
 	    *ret = r;
 	    if (handled == 1)
 		return i;
@@ -389,7 +383,7 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void 
 
 	if (last != NULL && i == last) {
 	    /* we did a full circle */
-	    DBG("    -> full iteration, not found\n");
+	    DBG(DBG_IOCTL_TREE, "    -> full iteration, not found\n");
 	    break;
 	}
 
@@ -397,7 +391,7 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void 
 
 	if (last == NULL && i == tree) {
 	    /* we did a full circle */
-	    DBG("    -> full iteration with last == NULL, not found\n");
+	    DBG(DBG_IOCTL_TREE, "    -> full iteration with last == NULL, not found\n");
 	    break;
 	}
     }
@@ -433,13 +427,13 @@ read_hex(const char *hex, char *buf, size_t bufsize)
 
     while ((upper = hexdigit(hexptr[0])) >= 0) {
 	if (written >= bufsize) {
-	    DBG("read_hex: data is larger than buffer size %zu\n", bufsize);
+	    DBG(DBG_IOCTL_TREE, "read_hex: data is larger than buffer size %zu\n", bufsize);
 	    return FALSE;
 	}
 
 	lower = hexdigit(hexptr[1]);
 	if (lower < 0) {
-	    DBG("read_hex: data has odd number of digits: '%s'\n", hex);
+	    DBG(DBG_IOCTL_TREE, "read_hex: data has odd number of digits: '%s'\n", hex);
 	    return FALSE;
 	}
 	buf[written++] = upper << 4 | lower;
@@ -480,7 +474,7 @@ id_matches_type(unsigned long id, const ioctl_type *type)
 static void
 ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
-    DBG("ioctl_simplestruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, NSIZE(node));
+    DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, NSIZE(node));
     node->data = malloc(NSIZE(node));
     memcpy(node->data, data, NSIZE(node));
 }
@@ -495,13 +489,13 @@ ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
     node->data = malloc(data_len);
 
     if (NSIZE(node) != data_len) {
-	DBG("ioctl_simplestruct_init_from_text: adjusting ioctl ID %lX (size %lu) to actual data length %zu\n",
+	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: adjusting ioctl ID %lX (size %lu) to actual data length %zu\n",
 	    node->id, NSIZE(node), data_len);
 	node->id = _IOC(_IOC_DIR(node->id), _IOC_TYPE(node->id), _IOC_NR(node->id), data_len);
     }
 
     if (!read_hex(data, node->data, NSIZE(node))) {
-	DBG("ioctl_simplestruct_init_from_text: failed to parse '%s'\n", data);
+	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: failed to parse '%s'\n", data);
 	free(node->data);
 	return FALSE;
     }
@@ -550,7 +544,7 @@ static void
 ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
 {
     size_t size = node->type->get_data_size(node->id, data);
-    DBG("ioctl_varlenstruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, size);
+    DBG(DBG_IOCTL_TREE, "ioctl_varlenstruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, size);
     node->data = malloc(size);
     memcpy(node->data, data, size);
 }
@@ -640,7 +634,7 @@ usbdevfs_reapurb_init_from_text(ioctl_tree * node, const char *data)
 		    &info->actual_length, &info->error_count, &offset);
     /* ambiguity of counting or not %n */
     if (result < 7) {
-	DBG("usbdevfs_reapurb_init_from_text: failed to parse record '%s'\n", data);
+	DBG(DBG_IOCTL_TREE, "usbdevfs_reapurb_init_from_text: failed to parse record '%s'\n", data);
 	free(info);
 	return FALSE;
     }
@@ -650,7 +644,7 @@ usbdevfs_reapurb_init_from_text(ioctl_tree * node, const char *data)
     /* read buffer */
     info->buffer = calloc(info->buffer_length, 1);
     if (!read_hex(data + offset, info->buffer, info->buffer_length)) {
-	DBG("usbdevfs_reapurb_init_from_text: failed to parse buffer '%s'\n", data + offset);
+	DBG(DBG_IOCTL_TREE, "usbdevfs_reapurb_init_from_text: failed to parse buffer '%s'\n", data + offset);
 	free(info->buffer);
 	free(info);
 	return FALSE;
@@ -717,15 +711,15 @@ usbdevfs_reapurb_execute(const ioctl_tree * node, unsigned long id, void *arg, i
 	    n_urb->flags != a_urb->flags || n_urb->buffer_length != a_urb->buffer_length)
 	    return 0;
 
-	DBG("  usbdevfs_reapurb_execute: handling SUBMITURB, metadata match\n");
+	DBG(DBG_IOCTL_TREE, "  usbdevfs_reapurb_execute: handling SUBMITURB, metadata match\n");
 
 	/* for an output URB we also require the buffer contents to match; for
 	 * an input URB it can be uninitialized */
 	if ((n_urb->endpoint & 0x80) == 0 && memcmp(n_urb->buffer, a_urb->buffer, n_urb->buffer_length) != 0) {
-	    DBG("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer mismatch, rejecting\n");
+	    DBG(DBG_IOCTL_TREE, "  usbdevfs_reapurb_execute: handling SUBMITURB, buffer mismatch, rejecting\n");
 	    return 0;
 	}
-	DBG("  usbdevfs_reapurb_execute: handling SUBMITURB, buffer match, remembering\n");
+	DBG(DBG_IOCTL_TREE, "  usbdevfs_reapurb_execute: handling SUBMITURB, buffer match, remembering\n");
 
 	/* remember the node for the next REAP */
 	submit_node = node;
@@ -737,7 +731,7 @@ usbdevfs_reapurb_execute(const ioctl_tree * node, unsigned long id, void *arg, i
     if (id == node->type->id) {
 	struct usbdevfs_urb *orig_node_urb;
 	if (submit_node == NULL) {
-	    DBG("  usbdevfs_reapurb_execute: handling %s, but no submit node -> EAGAIN\n", node->type->name);
+	    DBG(DBG_IOCTL_TREE, "  usbdevfs_reapurb_execute: handling %s, but no submit node -> EAGAIN\n", node->type->name);
 	    *ret = -1;
 	    errno = EAGAIN;
 	    return 2;
@@ -753,12 +747,13 @@ usbdevfs_reapurb_execute(const ioctl_tree * node, unsigned long id, void *arg, i
 	submit_urb->status = orig_node_urb->status;
 	*((struct usbdevfs_urb **)arg) = submit_urb;
 
-	DBG("  usbdevfs_reapurb_execute: handling %s %u %u %i %u %i %i %i ",
+	DBG(DBG_IOCTL_TREE, "  usbdevfs_reapurb_execute: handling %s %u %u %i %u %i %i %i ",
 	    node->type->name, (unsigned)submit_urb->type,
 	    (unsigned)submit_urb->endpoint, submit_urb->status,
 	    (unsigned)submit_urb->flags, submit_urb->buffer_length, submit_urb->actual_length, submit_urb->error_count);
-	IFDBG(write_hex(stdout, submit_urb->buffer, submit_urb->endpoint & 0x80 ?
-			submit_urb->actual_length : submit_urb->buffer_length));
+	if (debug_categories & DBG_IOCTL_TREE)
+	    write_hex(stderr, submit_urb->buffer, submit_urb->endpoint & 0x80 ?
+		    submit_urb->actual_length : submit_urb->buffer_length);
 
 	submit_urb = NULL;
 	submit_node = NULL;

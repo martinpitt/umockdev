@@ -279,6 +279,30 @@ top-level directory of the umockdev tree:
   GI_TYPELIB_PATH=`pwd`:$GI_TYPELIB_PATH
   PATH=`pwd`/src:$PATH
 
+Debugging
+=========
+To debug umockdev itself and what it's doing, you can set the
+``$UMOCKDEV_DEBUG`` environment variable to a list (comma or space separated)
+of
+
+path
+   Redirection of paths in ``/sys``, ``/dev`` etc. to testbed
+
+netlink
+   Redirection of netlink socket and uevent synthesis
+
+script
+   Script (device reads/writes) recording and replay
+
+ioctl
+   ioctl recording and replay
+
+ioctl-tree
+   detailed parsing and traversal of recorded ioctl trees
+
+all
+   All debug categories
+
 Development
 ===========
 | Home page: https://github.com/martinpitt/umockdev

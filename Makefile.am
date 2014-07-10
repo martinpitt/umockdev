@@ -75,6 +75,8 @@ lib_LTLIBRARIES += libumockdev-preload.la
 libumockdev_preload_la_SOURCES = \
 	src/ioctl_tree.c	 \
 	src/ioctl_tree.h	 \
+	src/debug.h		 \
+	src/debug.c		 \
 	src/libumockdev-preload.c
 
 libumockdev_preload_la_CFLAGS = \

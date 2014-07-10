@@ -6,6 +6,8 @@
 - preload: Make path redirection to testbed thread-safe for wrapped functions.
   This does NOT address all multi-thread issues, but should work for simple
   cases. (https://launchpad.net/bugs/1336671)
+- Make debug logging dynamically controllable with the $UMOCKDEV_DEBUG
+  environment variable. See README.rst for details.
 
 0.8.2 (2014-05-15)
 ------------------
