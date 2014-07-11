@@ -452,6 +452,11 @@ t_input_touchpad ()
         return;
     }
 
+    if (long.MAX != int64.MAX) {
+        stdout.printf ("[SKIP: test only works on 64 bit architectures] ");
+        return;
+    }
+
     Pid xorg_pid;
     string logfile;
     try {
