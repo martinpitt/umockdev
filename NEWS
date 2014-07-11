@@ -3,6 +3,8 @@
 - Fix building with gcc 4.9 on 32 bit architectures.
 - Restrict input-touchpad test case to 64 bit architectures, as we don't
   currently have recorded ioctls for 32 bit.
+- Lower number of iterations in mt_uevent test case to avoid overflowing the
+  netlink buffer on loaded machines.
 
 0.8.4 (2014-07-10)
 ------------------

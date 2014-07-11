@@ -605,7 +605,7 @@ t_mt_uevent ()
   var ml = new MainLoop ();
   uint add_count = 0;
   uint change_count = 0;
-  uint num_changes = 20;
+  uint num_changes = 10;
 
   gudev.uevent.connect((client, action, device) => {
       if (action == "add")
