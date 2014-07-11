@@ -961,7 +961,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 	    const struct input_event *e = buf;
 	    while (size > 0) {
 		fprintf(srinfo->log, "E: %li.%06li %04"PRIX16" %04"PRIX16 " %"PRIi32"\n",
-			e->time.tv_sec, e->time.tv_usec, e->type, e->code, e->value);
+			(long) e->time.tv_sec, (long) e->time.tv_usec, e->type, e->code, e->value);
 		size -= sizeof(struct input_event);
 		e++;
 	    }
