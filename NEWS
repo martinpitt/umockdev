@@ -1,3 +1,7 @@
+0.8.5 (UNRELEASED)
+------------------
+- Fix building with gcc 4.9 on 32 bit architectures.
+
 0.8.4 (2014-07-10)
 ------------------
 - Make SKIP messages go to to stdout, like all the other the test suite output.

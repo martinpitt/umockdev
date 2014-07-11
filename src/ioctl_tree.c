@@ -544,7 +544,7 @@ static void
 ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
 {
     size_t size = node->type->get_data_size(node->id, data);
-    DBG(DBG_IOCTL_TREE, "ioctl_varlenstruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, size);
+    DBG(DBG_IOCTL_TREE, "ioctl_varlenstruct_init_from_bin: %s(%lX): size is %zu bytes\n", node->type->name, node->id, size);
     node->data = malloc(size);
     memcpy(node->data, data, size);
 }
