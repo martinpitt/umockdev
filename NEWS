@@ -1,4 +1,4 @@
-0.8.5 (UNRELEASED)
+0.8.5 (2014-07-11)
 ------------------
 - Fix building with gcc 4.9 on 32 bit architectures.
 - Restrict input-touchpad test case to 64 bit architectures, as we don't
