@@ -426,6 +426,8 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
     /* int attributes */
     umockdev_testbed_set_attribute_int(fixture->testbed, syspath, "count", 1000);
     umockdev_testbed_set_attribute_hex(fixture->testbed, syspath, "addr", 0x1a01);
+    /* subdir attribute */
+    umockdev_testbed_set_attribute(fixture->testbed, syspath, "knobs/red", "off");
 
     device = g_udev_client_query_by_sysfs_path(client, syspath);
     g_assert(device);
@@ -434,6 +436,7 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "color"), ==, "yellow");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "count"), ==, "1000");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "addr"), ==, "1a01");
+    g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "knobs/red"), ==, "off");
     g_assert_cmpstr(g_udev_device_get_driver(device), ==, "hub");
     g_object_unref(device);
 
@@ -744,6 +747,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 					       "H: binary_attr=41A9FF0005FF00\n"
 					       "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
 					       "A: simple_attr=1\n"
+					       "A: knobs/red=off\n"
 					       "L: driver=../../foo", &error);
     g_assert_no_error(error);
     g_assert(success);
@@ -760,6 +764,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(g_udev_device_get_parent(device) == NULL);
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "simple_attr"), ==, "1");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "multiline_attr"), ==, "a\\b\nc\\d\nlast");
+    g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "knobs/red"), ==, "off");
     g_assert_cmpstr(g_udev_device_get_property(device, "SIMPLE_PROP"), ==, "1");
     g_assert_cmpstr(g_udev_device_get_driver(device), ==, "foo");
     g_object_unref(device);

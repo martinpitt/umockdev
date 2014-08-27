@@ -1,6 +1,7 @@
 0.8.6 (UNRELEASED)
 ------------------
 - Fix compilation on sparc with gcc 4.9.
+- Support attributes with leading directory names, such as "queue/rotational".
 
 0.8.5 (2014-07-11)
 ------------------
