@@ -540,6 +540,10 @@ ioctl_simplestruct_in_execute(const ioctl_tree * node, unsigned long id, void *a
  *
  ***********************************/
 
+/* Note, we don't currently have any of those */
+
+#if 0
+
 static void
 ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
 {
@@ -602,6 +606,8 @@ ioctl_varlenstruct_in_execute(const ioctl_tree * node, unsigned long id, void *a
 
     return 0;
 }
+
+#endif
 
 /***********************************
  *
