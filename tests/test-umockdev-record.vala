@@ -84,10 +84,13 @@ t_testbed_one ()
 
     var tb = new UMockdev.Testbed ();
     var syspath = tb.add_devicev ("pci", "dev1", null,
-                                  {"simple_attr", "1", "multiline_attr", "a\\b\nc\\d\nlast"},
+                                  {"simple_attr", "1",
+                                   "multiline_attr", "a\\b\nc\\d\nlast",
+                                   "knobs/red", "off"},
                                   {"SIMPLE_PROP", "1"});
     tb.set_attribute_binary (syspath, "binary_attr", {0x41, 0xFF, 0, 5, 0xFF, 0});
     tb.set_attribute_link (syspath, "driver", "../../drivers/foo");
+    tb.set_attribute_link (syspath, "power/fiddle", "../some/where");
 
     spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
@@ -97,7 +100,9 @@ E: SIMPLE_PROP=1
 E: SUBSYSTEM=pci
 H: binary_attr=41FF0005FF00
 L: driver=../../drivers/foo
+A: knobs/red=off
 A: multiline_attr=a\\b\nc\\d\nlast
+L: power/fiddle=../some/where
 A: simple_attr=1
 
 """);
@@ -112,7 +117,9 @@ t_testbed_multiple ()
     int exit;
 
     var tb = new UMockdev.Testbed ();
-    var dev1 = tb.add_devicev ("pci", "dev1", null, {"dev1color", "green"}, {"DEV1COLOR", "GREEN"});
+    var dev1 = tb.add_devicev ("pci", "dev1", null,
+                               {"dev1color", "green", "knobs/red", "off"},
+                               {"DEV1COLOR", "GREEN"});
     var subdev1 = tb.add_devicev ("pci", "subdev1", dev1, {"subdev1color", "yellow"},
                                   {"SUBDEV1COLOR", "YELLOW"});
     tb.add_devicev ("pci", "dev2", null, {"dev2color", "brown"}, {"DEV2COLOR", "BROWN"});
@@ -130,6 +137,7 @@ P: /devices/dev1
 E: DEV1COLOR=GREEN
 E: SUBSYSTEM=pci
 A: dev1color=green
+A: knobs/red=off
 
 """);
 
@@ -141,6 +149,7 @@ A: dev1color=green
 E: DEV1COLOR=GREEN
 E: SUBSYSTEM=pci
 A: dev1color=green
+A: knobs/red=off
 
 """);
 

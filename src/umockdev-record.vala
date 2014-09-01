@@ -165,6 +165,58 @@ dev_contents(string dev)
 }
 
 static void
+print_device_attributes(string devpath, string subdir)
+{
+    Dir d;
+    var attr_dir = Path.build_filename(devpath, subdir);
+    try {
+        d = Dir.open(attr_dir);
+    } catch (Error e) {
+        if (subdir == "") {
+            exit_error("Cannot open directory %s: %s", attr_dir, e.message);
+        } else {
+            // we ignore this on subdirs, some might be transient or
+            // inaccessible
+            debug("Cannot open directory %s: %s", attr_dir, e.message);
+        }
+        return;
+    }
+
+    var attributes = new List<string>();
+    string entry;
+    // filter out the uninteresting attributes, sort the others
+    while ((entry = d.read_name()) != null)
+        if (entry != "subsystem" && entry != "firmware_node" && entry != "uevent")
+            attributes.append(entry);
+        else {
+            // don't look into subdirs which are devices by themselves
+            if (subdir != "")
+                return;
+        }
+    attributes.sort(strcmp);
+
+    foreach (var attr in attributes) {
+        string attr_path = Path.build_filename(attr_dir, attr);
+        string attr_name = Path.build_filename(subdir, attr);
+        if (FileUtils.test(attr_path, FileTest.IS_SYMLINK)) {
+            try {
+                stdout.printf("L: %s=%s\n", attr_name, FileUtils.read_link(attr_path));
+            } catch (Error e) {
+                exit_error("Cannot read link %s: %s", attr_path, e.message);
+            }
+        } else if (FileUtils.test(attr_path, FileTest.IS_REGULAR)) {
+            uint8[] contents;
+            try {
+                FileUtils.get_data(attr_path, out contents);
+                write_attr(attr_name, contents);
+            } catch (FileError e) {} // some attributes are EACCES, or "no such device", etc.
+        } else if (FileUtils.test(attr_path, FileTest.IS_DIR)) {
+            print_device_attributes(devpath, attr);
+        }
+    }
+}
+
+static void
 record_device(string dev)
 {
     debug("recording device %s", dev);
@@ -208,39 +260,7 @@ record_device(string dev)
     }
 
     // now append all attributes
-    Dir d;
-    try {
-        d = Dir.open(dev);
-    } catch (Error e) {
-        exit_error("Cannot open directory %s: %s", dev, e.message);
-        return; /* not reached, just to avoid warnings */
-    }
-    var attributes = new List<string>();
-    string entry;
-    // filter out the uninteresting attributes, sort the others
-    while ((entry = d.read_name()) != null)
-        if (entry != "subsystem" && entry != "firmware_node" && entry != "uevent")
-            attributes.append(entry);
-    attributes.sort(strcmp);
-
-    foreach (var attr in attributes) {
-        string attr_path = Path.build_filename(dev, attr);
-        // only look at files or symlinks
-        if (FileUtils.test(attr_path, FileTest.IS_SYMLINK)) {
-            try {
-                stdout.printf("L: %s=%s\n", attr, FileUtils.read_link(attr_path));
-            } catch (Error e) {
-                exit_error("Cannot read link %s: %s", attr, e.message);
-            }
-        } else if (FileUtils.test(attr_path, FileTest.IS_REGULAR)) {
-            uint8[] contents;
-            try {
-                FileUtils.get_data(attr_path, out contents);
-                write_attr(attr, contents);
-            } catch (FileError e) {} // some attributes are EACCES, or "no such device", etc.
-        }
-    }
-
+    print_device_attributes(dev, "");
     stdout.putc('\n');
 }
 

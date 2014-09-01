@@ -210,6 +210,9 @@ public class Testbed: GLib.Object {
     public void set_attribute_link(string devpath, string name, string value)
     {
         var path = Path.build_filename(this.root_dir, devpath, name);
+        var dir = Path.get_dirname(path);
+        if (DirUtils.create_with_parents(dir, 0755) != 0)
+            error("cannot create attribute dir '%s': %s", dir, strerror(errno));
         if (FileUtils.symlink(value, path) < 0) {
             error("Cannot create symlink %s: %s", path, strerror(errno));
         }
