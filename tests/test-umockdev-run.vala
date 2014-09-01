@@ -659,11 +659,14 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
     sout[sout_len] = 0;
     string output = (string) sout;
 
-    assert_in ("""Event: time 0.000000, -------------- SYN_REPORT ------------
-Event: time 0.200000, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004
+    // this can be followed by SYN_REPORT or EV_SYN depending on the evtest
+    // version
+    assert_in ("Event: time 0.000000, -------------- ", output);
+    assert_in ("""Event: time 0.200000, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004
 Event: time 0.200000, type 1 (EV_KEY), code 30 (KEY_A), value 1
-Event: time 0.200000, -------------- SYN_REPORT ------------
-Event: time 0.500000, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004
+""", output);
+    assert_in ("Event: time 0.200000, -------------- ", output);
+    assert_in ("""Event: time 0.500000, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70004
 Event: time 0.500000, type 1 (EV_KEY), code 30 (KEY_A), value 0
 """, output);
 }
