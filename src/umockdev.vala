@@ -412,6 +412,15 @@ public class Testbed: GLib.Object {
         assert(FileUtils.symlink(Path.build_filename("..", "..", dev_path_no_sys),
                                  Path.build_filename(class_dir, Path.get_basename(name))) == 0);
 
+        /* /sys/block symlink */
+        if (subsystem == "block") {
+            var block_dir = Path.build_filename(this.sys_dir, "block");
+            if (DirUtils.create_with_parents(block_dir, 0755) != 0)
+                error("cannot create block dir '%s': %s", block_dir, strerror(errno));
+            assert (FileUtils.symlink(Path.build_filename("..", dev_path_no_sys),
+                                     Path.build_filename(block_dir, Path.get_basename(name))) == 0);
+        }
+
         /* bus symlink */
         if (subsystem == "usb" || subsystem == "pci") {
             class_dir = Path.build_filename(this.sys_dir, "bus", subsystem, "devices");
