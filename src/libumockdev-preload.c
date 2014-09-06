@@ -1082,7 +1082,7 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
 	return -1;						    \
     }								    \
     DBG(DBG_PATH, "testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
-    if (flags & O_CREAT) {					    \
+    if (flags & (O_CREAT | O_TMPFILE)) {			    \
 	mode_t mode;						    \
 	va_list ap;						    \
 	va_start(ap, flags);				    	    \
