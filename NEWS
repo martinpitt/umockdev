@@ -2,6 +2,7 @@
 ------------------
 - /umockdev-run/integration/input-evtest-evemu test: Be more liberal in parsing
   evtest's SYN event output, as it changed in 1.32.
+- preload: Properly wrap open() with O_TMPFILE. Thanks Cemil Azizoglu.
 
 0.8.6 (2014-09-01)
 ------------------

@@ -18,6 +18,9 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* for O_TMPFILE */
+#define _GNU_SOURCE
+
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
@@ -1063,6 +1066,14 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
         g_assert(isatty(fd));
         close(fd);
     }
+
+    /* open() with O_TMPFILE */
+    errno = 0;
+    fd = g_open("/dev", O_TMPFILE|O_RDWR, 0644);
+    g_assert_cmpint(errno, ==, 0);
+    g_assert_cmpint(fd, >, 0);
+    g_assert_cmpint(write(fd, "hello", 5), ==, 5);
+    close(fd);
 
     g_free(devdir);
 }
