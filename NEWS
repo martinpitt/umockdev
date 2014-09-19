@@ -1,4 +1,4 @@
-0.8.7 (UNRELEASED)
+0.8.7 (2014-09-19)
 ------------------
 - /umockdev-run/integration/input-evtest-evemu test: Be more liberal in parsing
   evtest's SYN event output, as it changed in 1.32.
