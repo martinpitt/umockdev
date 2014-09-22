@@ -1067,13 +1067,21 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
         close(fd);
     }
 
-    /* open() with O_TMPFILE */
-    errno = 0;
-    fd = g_open("/dev", O_TMPFILE|O_RDWR, 0644);
-    g_assert_cmpint(errno, ==, 0);
-    g_assert_cmpint(fd, >, 0);
-    g_assert_cmpint(write(fd, "hello", 5), ==, 5);
-    close(fd);
+    /* open() with O_TMPFILE; this hasn't been supported in Linux for very long
+     * (>= 3.11), so check that it works in the testbed only if it also works
+     * in the "normal" file system. */
+    fd = g_open("/tmp", O_TMPFILE|O_RDWR, 0644);
+    if (fd >= 0) {
+        close(fd);
+        errno = 0;
+        fd = g_open("/dev", O_TMPFILE|O_RDWR, 0644);
+        g_assert_cmpint(errno, ==, 0);
+        g_assert_cmpint(fd, >, 0);
+        g_assert_cmpint(write(fd, "hello", 5), ==, 5);
+        close(fd);
+    } else {
+        g_printf("(Skipping O_TMPFILE test, not supported on this kernel: %m) ");
+    }
 
     g_free(devdir);
 }

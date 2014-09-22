@@ -1,3 +1,7 @@
+0.8.8 (UNRELEASED)
+------------------
+- Skip O_TMPFILE test on Linux versions which don't support that.
+
 0.8.7 (2014-09-19)
 ------------------
 - /umockdev-run/integration/input-evtest-evemu test: Be more liberal in parsing
