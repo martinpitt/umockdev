@@ -1,4 +1,4 @@
-0.8.8 (UNRELEASED)
+0.8.8 (2014-09-22)
 ------------------
 - Skip O_TMPFILE test on Linux versions which don't support that.
 
