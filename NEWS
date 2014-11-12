@@ -1,3 +1,8 @@
+0.8.9 (UNRELEASED)
+------------------
+- umockdev-record: Ignore stderr from udevadm info, to avoid udev debug
+  message spew on stderr if udev debugging is enabled. (Debian #767909)
+
 0.8.8 (2014-09-22)
 ------------------
 - Skip O_TMPFILE test on Linux versions which don't support that.

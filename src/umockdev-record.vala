@@ -222,7 +222,7 @@ record_device(string dev)
     debug("recording device %s", dev);
 
     // we start with udevadm dump of this device, which will include all udev properties
-    string u_out;
+    string u_out, u_err;
     int exitcode;
     try {
         Process.spawn_sync(null,
@@ -231,10 +231,10 @@ record_device(string dev)
                            SpawnFlags.SEARCH_PATH,
                            null,
                            out u_out,
-                           null,
+                           out u_err,
                            out exitcode);
         if (exitcode != 0)
-            throw new SpawnError.FAILED("udevadm exited with code %i".printf(exitcode));
+            throw new SpawnError.FAILED("udevadm exited with code %i\n%s".printf(exitcode, u_err));
     } catch (Error e) {
         exit_error("Cannot call udevadm: %s", e.message);
     }
