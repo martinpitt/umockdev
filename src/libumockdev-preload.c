@@ -195,6 +195,30 @@ get_rdev(const char *nodename)
     return makedev(major, minor);
 }
 
+static dev_t
+parse_dev_t(const char *value, const char *source, int error)
+{
+	unsigned long minor, major;
+	char *endptr;
+	major = strtoul(value, &endptr, 10);
+	if (endptr[0] != ':') {
+	    if (error) {
+		fprintf(stderr, "umockdev: $%s (%s) contains no ':'\n", source, value);
+		abort();
+	    } else
+		return (dev_t) -1;
+	}
+	minor = strtoul(endptr + 1, &endptr, 10);
+	if (endptr[0] != '\0') {
+	    if (error) {
+		fprintf(stderr, "umockdev: %s (%s) has invalid minor\n", source, value);
+		abort();
+	    } else
+		return (dev_t) -1;
+	}
+	return makedev(major, minor);
+}
+
 static int
 is_emulated_device(const char *path, const mode_t st_mode)
 {
@@ -393,9 +417,9 @@ ioctl_record_open(int fd)
     if (record_rdev == (dev_t) - 1) {
 	const char *dev = getenv("UMOCKDEV_IOCTL_RECORD_DEV");
 
-	if (dev != NULL) {
-	    record_rdev = (dev_t) atoi(dev);
-	} else {
+	if (dev != NULL)
+	    record_rdev = parse_dev_t(dev, "$UMOCKDEV_IOCTL_RECORD_DEV", 1);
+	else {
 	    /* not recording */
 	    record_rdev = 0;
 	}
@@ -660,10 +684,10 @@ struct script_record_info {
 static void
 init_script_dev_logfile_map(void)
 {
-    int i, dev;
+    int i;
+    dev_t dev;
     char varname[100];
     const char *devname, *logname, *format;
-    char *endptr;
 
     script_dev_logfile_map_inited = 1;
 
@@ -684,10 +708,9 @@ init_script_dev_logfile_map(void)
 	    fprintf(stderr, "umockdev: $%s not set\n", varname);
 	    exit(1);
 	}
-	dev = strtol(devname, &endptr, 10);
-	if (dev != 0 && *endptr == '\0') {
-	    /* if it's a number, then it is an rdev of a device */
-	    /* ...and we should record its path */
+	dev = parse_dev_t(devname, NULL, 0);
+	if (dev != (dev_t) -1) {
+	    /* if it's a dev_t, we should record its path */
 	    const char *devpath;
 	    snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_%i", i);
 	    devpath = getenv(varname);

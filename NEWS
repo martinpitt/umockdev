@@ -2,6 +2,8 @@
 ------------------
 - umockdev-record: Ignore stderr from udevadm info, to avoid udev debug
   message spew on stderr if udev debugging is enabled. (Debian #767909)
+- Fix recording of USB devices on recent kernels: Pass device as major:minor
+  instead of assuming that they are only 8 bit (which is not true any more).
 
 0.8.8 (2014-09-22)
 ------------------
