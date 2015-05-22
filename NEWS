@@ -1,4 +1,4 @@
-0.8.9 (UNRELEASED)
+0.8.9 (2015-05-22)
 ------------------
 - umockdev-record: Ignore stderr from udevadm info, to avoid udev debug
   message spew on stderr if udev debugging is enabled. (Debian #767909)
