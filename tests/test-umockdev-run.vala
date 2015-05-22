@@ -486,8 +486,8 @@ t_input_touchpad ()
             break;
     }
     if (timeout <= 0) {
-        stderr.printf ("Xorg failed to start up; please ensure you have the X.org dummy driver installed, and check the log file: %s\n", logfile);
-        Process.abort();
+        stderr.printf ("SKIP: Xorg failed to start up; please ensure you have the X.org dummy driver installed, and check the log file: %s\n", logfile);
+        return;
     }
 
     /* call xinput */
