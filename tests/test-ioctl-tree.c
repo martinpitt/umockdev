@@ -23,6 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
 

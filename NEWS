@@ -1,3 +1,7 @@
+0.8.10 (UNRELEASED)
+-------------------
+- Fix build failure of tests/test-ioctl-tree.c on powerpc with recent glibcs.
+
 0.8.9 (2015-05-22)
 ------------------
 - umockdev-record: Ignore stderr from udevadm info, to avoid udev debug
