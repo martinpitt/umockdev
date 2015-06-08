@@ -258,10 +258,10 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     path = g_build_filename(dev, "subsystem", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
-    path = g_build_filename(dev, "subsystem", "usb1", NULL);
+    path = g_build_filename(dev, "subsystem", "devices", "usb1", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
-    path = g_build_filename(dev, "subsystem", "usb1", "idVendor", NULL);
+    path = g_build_filename(dev, "subsystem", "devices", "usb1", "idVendor", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
 
@@ -294,10 +294,10 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     path = g_build_filename(iface, "subsystem", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
-    path = g_build_filename(iface, "subsystem", "1-1", NULL);
+    path = g_build_filename(iface, "subsystem", "devices", "1-1", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
-    path = g_build_filename(iface, "subsystem", "1-1", "iClass", NULL);
+    path = g_build_filename(iface, "subsystem", "devices", "1-1", "iClass", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
 
@@ -808,8 +808,8 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     /* class symlink created */
     g_assert(g_file_test("/sys/devices/dev1/subsystem", G_FILE_TEST_IS_SYMLINK));
-    g_assert(g_file_test("/sys/devices/dev1/subsystem/dev1", G_FILE_TEST_IS_SYMLINK));
-    g_assert(g_file_test("/sys/devices/dev1/subsystem/dev1/simple_attr", G_FILE_TEST_IS_REGULAR));
+    g_assert(g_file_test("/sys/devices/dev1/subsystem/devices/dev1", G_FILE_TEST_IS_SYMLINK));
+    g_assert(g_file_test("/sys/devices/dev1/subsystem/devices/dev1/simple_attr", G_FILE_TEST_IS_REGULAR));
 
     /* driver symlink created */
     g_assert(g_file_test("/sys/devices/dev1/driver", G_FILE_TEST_IS_SYMLINK));
@@ -974,7 +974,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(path);
 
     /* link */
-    path = canonicalize_file_name("/sys/class/pci/dev1");
+    path = canonicalize_file_name("/sys/bus/pci/devices/dev1");
     g_assert_cmpstr(path, ==, "/sys/devices/dev1");
     g_free(path);
 

@@ -394,23 +394,37 @@ public class Testbed: GLib.Object {
             FileUtils.test(Path.build_filename(dev_dir, "uevent"), FileTest.EXISTS))
             error("device %s already exists", dev_dir);
 
+        string dev_path_no_sys = dev_path.substring(dev_path.index_of("/devices/"));
+
         /* create device and corresponding subsystem dir */
         if (DirUtils.create_with_parents(dev_dir, 0755) != 0)
             error("cannot create dev dir '%s': %s", dev_dir, strerror(errno));
-        var class_dir = Path.build_filename(this.sys_dir, "class", subsystem);
-        if (DirUtils.create_with_parents(class_dir, 0755) != 0)
-            error("cannot create class dir '%s': %s", class_dir, strerror(errno));
+        if (subsystem != "usb" && subsystem != "pci") {
+            /* class/ symlinks */
+            var class_dir = Path.build_filename(this.sys_dir, "class", subsystem);
+            if (DirUtils.create_with_parents(class_dir, 0755) != 0)
+                error("cannot create class dir '%s': %s", class_dir, strerror(errno));
 
-        /* subsystem symlink */
-        string dev_path_no_sys = dev_path.substring(dev_path.index_of("/devices/"));
-        assert(FileUtils.symlink(Path.build_filename(make_dotdots(dev_path), "class", subsystem),
-                                 Path.build_filename(dev_dir, "subsystem")) == 0);
+            /* subsystem symlink */
+            assert(FileUtils.symlink(Path.build_filename(make_dotdots(dev_path), "class", subsystem),
+                                     Path.build_filename(dev_dir, "subsystem")) == 0);
 
-        /* device symlink from class/; skip directories in name; this happens
-         * when being called from add_from_string() when the parent devices do
-         * not exist yet */
-        assert(FileUtils.symlink(Path.build_filename("..", "..", dev_path_no_sys),
-                                 Path.build_filename(class_dir, Path.get_basename(name))) == 0);
+            /* device symlink from class/; skip directories in name; this happens
+             * when being called from add_from_string() when the parent devices do
+             * not exist yet */
+            assert(FileUtils.symlink(Path.build_filename("..", "..", dev_path_no_sys),
+                                     Path.build_filename(class_dir, Path.get_basename(name))) == 0);
+        } else {
+            /* bus symlink */
+            var bus_dir = Path.build_filename(this.sys_dir, "bus", subsystem, "devices");
+            assert(DirUtils.create_with_parents(bus_dir, 0755) == 0);
+            assert(FileUtils.symlink(Path.build_filename("..", "..", "..", dev_path_no_sys),
+                                     Path.build_filename(bus_dir, Path.get_basename(name))) == 0);
+
+            /* subsystem symlink */
+            assert(FileUtils.symlink(Path.build_filename(make_dotdots(dev_path), "bus", subsystem),
+                                     Path.build_filename(dev_dir, "subsystem")) == 0);
+        }
 
         /* /sys/block symlink */
         if (subsystem == "block") {
@@ -419,14 +433,6 @@ public class Testbed: GLib.Object {
                 error("cannot create block dir '%s': %s", block_dir, strerror(errno));
             assert (FileUtils.symlink(Path.build_filename("..", dev_path_no_sys),
                                      Path.build_filename(block_dir, Path.get_basename(name))) == 0);
-        }
-
-        /* bus symlink */
-        if (subsystem == "usb" || subsystem == "pci") {
-            class_dir = Path.build_filename(this.sys_dir, "bus", subsystem, "devices");
-            assert(DirUtils.create_with_parents(class_dir, 0755) == 0);
-            assert(FileUtils.symlink(Path.build_filename("..", "..", "..", dev_path_no_sys),
-                                     Path.build_filename(class_dir, Path.get_basename(name))) == 0);
         }
 
         /* properties; they go into the "uevent" sysfs attribute */
