@@ -1192,6 +1192,23 @@ inotify_add_watch(int fd, const char *path, uint32_t mask)
     return r;
 }
 
+ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
+{
+    const char *p;
+    libc_func(readlinkat, size_t, int, const char*, char*, size_t);
+    size_t r;
+
+    TRAP_PATH_LOCK;
+    p = trap_path(pathname);
+    DBG(DBG_PATH, "testbed wrapped readlinkat (%s) -> %s\n", pathname, p);
+    if (p == NULL)
+	r = -1;
+    else
+	r = _readlinkat(dirfd, p, buf, bufsiz);
+    TRAP_PATH_UNLOCK;
+    return r;
+}
+
 ssize_t
 read(int fd, void *buf, size_t count)
 {
