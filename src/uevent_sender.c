@@ -228,6 +228,11 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
         strcat(props + count, udev_device_get_devnode(device));
         count += strlen(props + count) + 1;
     }
+    if (udev_device_get_devtype(device)) {
+        strcpy(props + count, "DEVTYPE=");
+        strcat(props + count, udev_device_get_devtype(device));
+        count += strlen(props + count) + 1;
+    }
 
     /* add versioned header */
     memset(&nlh, 0x00, sizeof(struct udev_monitor_netlink_header));

@@ -5,6 +5,8 @@
   udev >= 220.
 - Create /sys/bus/ hierarchy instead of /sys/class for "usb" and "pci"
   subsystems, to match what the real kernel does.
+- Include DEVTYPE property into synthesized uevents so that libudev >= 220
+  monitoring works.
 
 0.8.9 (2015-05-22)
 ------------------
