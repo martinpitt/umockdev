@@ -952,6 +952,38 @@ t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
+t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    gboolean success;
+    GError *error = NULL;
+    char *path;
+
+    /* start with adding one device */
+    success = umockdev_testbed_add_from_string(fixture->testbed,
+					       "P: /devices/dev1\n"
+					       "E: SUBSYSTEM=pci\n"
+					       "A: simple_attr=1", &error);
+    g_assert_no_error(error);
+    g_assert(success);
+
+    /* canonicalize_file_name */
+
+    /* dir */
+    path = canonicalize_file_name("/sys/devices/dev1");
+    g_assert_cmpstr(path, ==, "/sys/devices/dev1");
+    g_free(path);
+
+    /* link */
+    path = canonicalize_file_name("/sys/class/pci/dev1");
+    g_assert_cmpstr(path, ==, "/sys/devices/dev1");
+    g_free(path);
+
+    /* nonexisting */
+    g_assert(canonicalize_file_name("/sys/devices/xxnoexist") == NULL);
+    g_assert_cmpint(errno, ==, ENOENT);
+}
+
+static void
 t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
@@ -1923,6 +1955,8 @@ main(int argc, char **argv)
 	       t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_file", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_file, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/libc", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_libc, t_testbed_fixture_teardown);
 
     /* tests for mocking uevents */
     g_test_add("/umockdev-testbed/uevent/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

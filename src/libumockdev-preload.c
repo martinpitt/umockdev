@@ -120,12 +120,14 @@ pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
 #define TRAP_PATH_LOCK pthread_mutex_lock (&trap_path_lock)
 #define TRAP_PATH_UNLOCK pthread_mutex_unlock (&trap_path_lock)
 
+static size_t trap_path_prefix_len = 0;
+
 static const char *
 trap_path(const char *path)
 {
     static char buf[PATH_MAX * 2];
     const char *prefix;
-    size_t path_len, prefix_len;
+    size_t path_len;
     int check_exist = 0;
 
     /* do we need to trap this path? */
@@ -142,19 +144,19 @@ trap_path(const char *path)
 	return path;
 
     path_len = strlen(path);
-    prefix_len = strlen(prefix);
-    if (path_len + prefix_len >= sizeof(buf)) {
+    trap_path_prefix_len = strlen(prefix);
+    if (path_len + trap_path_prefix_len >= sizeof(buf)) {
 	errno = ENAMETOOLONG;
 	return NULL;
     }
 
     /* test bed disabled? */
     strcpy(buf, prefix);
-    strcpy(buf + prefix_len, "/disabled");
+    strcpy(buf + trap_path_prefix_len, "/disabled");
     if (path_exists(buf) == 0)
 	return path;
 
-    strcpy(buf + prefix_len, path);
+    strcpy(buf + trap_path_prefix_len, path);
 
     if (check_exist && path_exists(buf) < 0)
 	return path;
@@ -1205,6 +1207,32 @@ ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
 	r = -1;
     else
 	r = _readlinkat(dirfd, p, buf, bufsiz);
+    TRAP_PATH_UNLOCK;
+    return r;
+}
+
+char *canonicalize_file_name(const char *path)
+{
+    const char *p;
+    libc_func(canonicalize_file_name, char*, const char*);
+    char *r, *oldr;
+
+    TRAP_PATH_LOCK;
+    p = trap_path(path);
+    if (p == NULL)
+	r = NULL;
+    else {
+	r = _canonicalize_file_name(p);
+        if (p == path) {
+	    DBG(DBG_PATH, "testbed wrapped canonicalize_file_name(%s) -> %s (not wrapped)\n", path, r);
+	} else if (r != NULL) {
+	    /* cut off the prefix again */
+	    oldr = r;
+	    r = strdup(r + trap_path_prefix_len);
+	    free (oldr);
+	    DBG(DBG_PATH, "testbed wrapped canonicalize_file_name(%s -> %s) -> %s (wrapped)\n", path, p, r);
+	}
+    }
     TRAP_PATH_UNLOCK;
     return r;
 }

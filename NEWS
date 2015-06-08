@@ -1,7 +1,8 @@
 0.8.10 (UNRELEASED)
 -------------------
 - Fix build failure of tests/test-ioctl-tree.c on powerpc with recent glibcs.
-- preload: Wrap readlinkat() to work with udev >= 220.
+- preload: Wrap readlinkat() and canonicalize_file_name(), to work with
+  udev >= 220.
 
 0.8.9 (2015-05-22)
 ------------------
