@@ -202,6 +202,7 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     const char *devtype;
     struct udev_device *device;
     struct udev_monitor_netlink_header nlh;
+    static unsigned long long seqnum = 1;
 
     device = udev_device_new_from_syspath(sender->udev, devpath);
     if (device == NULL) {
@@ -222,6 +223,8 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     count += strlen(props + count) + 1;
     strcpy(props + count, "SUBSYSTEM=");
     strcat(props + count, subsystem);
+    count += strlen(props + count) + 1;
+    snprintf(props + count, sizeof(props) - count, "SEQNUM=%llu", seqnum++);
     count += strlen(props + count) + 1;
     if (udev_device_get_devnode(device)) {
         strcpy(props + count, "DEVNAME=");
