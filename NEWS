@@ -1,4 +1,4 @@
-0.8.11 (UNRELEASED)
+0.8.11 (2015-06-29)
 -------------------
 - test-umockdev.py: Explicitly require version 1.0 for GUdev and GUMockdev
   introspection modules to avoid deprecation warning.
