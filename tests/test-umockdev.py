@@ -23,6 +23,9 @@ import os.path
 import unittest
 
 try:
+    import gi
+    gi.require_version('GUdev', '1.0')
+    gi.require_version('UMockdev', '1.0')
     from gi.repository import GLib, GUdev
 except ImportError as e:
     print('GI module not available, skipping test: %s' % e)

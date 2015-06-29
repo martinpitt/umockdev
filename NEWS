@@ -1,3 +1,8 @@
+0.8.11 (UNRELEASED)
+-------------------
+- test-umockdev.py: Explicitly require version 1.0 for GUdev and GUMockdev
+  introspection modules to avoid deprecation warning.
+
 0.8.10 (2015-06-09)
 -------------------
 - Fix build failure of tests/test-ioctl-tree.c on powerpc with recent glibcs.
