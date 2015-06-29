@@ -219,6 +219,11 @@ t_system_all ()
         stdout.flush ();
         return;
     }
+    if (Environment.get_variable ("INSTALLED_TEST") != null) {
+        stdout.printf ("[SKIP: brittle test] ");
+        stdout.flush ();
+        return;
+    }
 
     spawn (umockdev_record_path + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");

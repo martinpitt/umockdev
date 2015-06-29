@@ -42,7 +42,7 @@ TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
 		    MALLOC_CHECK_=3 \
 		    $(srcdir)/src/umockdev-wrapper
 
-INSTALL_TESTS_ENVIRONMENT = umockdev-wrapper
+INSTALL_TESTS_ENVIRONMENT = INSTALLED_TEST=1 umockdev-wrapper
 
 # use this for running Python tests
 PYCMD = $(PYTHON) -Wd -Werror::PendingDeprecationWarning -Werror::DeprecationWarning

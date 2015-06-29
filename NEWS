@@ -2,6 +2,8 @@
 -------------------
 - test-umockdev.py: Explicitly require version 1.0 for GUdev and GUMockdev
   introspection modules to avoid deprecation warning.
+- Skip /umockdev-record/system-all test with "check-installed", it's too
+  brittle and prone to break on quirky hardware/kernel issues.
 
 0.8.10 (2015-06-09)
 -------------------
