@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/sysmacros.h>
 #include <sys/un.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
