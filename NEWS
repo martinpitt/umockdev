@@ -1,3 +1,8 @@
+0.8.12 (2016-11-10)
+-------------------
+- Include missing sys/sysmacros.h to fix build with recent glibc.
+- Fix /umockdev-testbed-usb/lsusb test for libusb 1.0.21.
+
 0.8.11 (2015-06-29)
 -------------------
 - test-umockdev.py: Explicitly require version 1.0 for GUdev and GUMockdev
