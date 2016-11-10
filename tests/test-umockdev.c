@@ -1003,7 +1003,7 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 					  "busnum", "1", "devnum", "1", "speed", "480",
 					  "bConfigurationValue", "1", NULL,
 					  /* properties */
-					  "DEVNAME", "/dev/bus/usb/usb1", NULL);
+					  "DEVTYPE", "usb_device", "DEVNAME", "/dev/bus/usb/usb1", NULL);
     g_assert(syspath);
     /* descriptor from a Canon PowerShot SX200 */
     umockdev_testbed_set_attribute_binary(fixture->testbed, syspath, "descriptors", (guint8 *)
