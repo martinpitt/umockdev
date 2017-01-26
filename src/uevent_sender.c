@@ -81,6 +81,11 @@ sendmsg_one(uevent_sender * sender, struct msghdr *msg, const char *path)
 
     ret = connect(fd, (struct sockaddr *)&event_addr, sizeof(event_addr));
     if (ret < 0) {
+	if (errno == ECONNREFUSED) {
+	    /* client side closed its monitor underneath us, so clean up and ignore */
+	    unlink(event_addr.sun_path);
+	    return;
+	}
 	perror("sendmsg_one: cannot connect to client's event socket");
 	abort();
     }

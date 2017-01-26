@@ -606,6 +606,9 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     udev_monitor_unref(udev_mon);
     udev_monitor_unref(kernel_mon);
     udev_unref(udev);
+
+    /* don't trip over netlink sockets that the client side already closed */
+    umockdev_testbed_uevent(fixture->testbed, syspath, "remove");
 }
 
 static void
