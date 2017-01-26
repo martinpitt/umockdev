@@ -1,4 +1,4 @@
-0.8.13 (UNRELEAED)
+0.8.13 (2017-01-26)
 -------------------
 - Fix crash when client sends uevents to closed listeners. (issue #53)
 
