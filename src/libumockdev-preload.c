@@ -1360,6 +1360,7 @@ int
 connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
     libc_func(connect, int, int, const struct sockaddr *, socklen_t);
+    struct sockaddr_un trapped_addr;
     int res;
 
     /* playback */
@@ -1367,7 +1368,6 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	const char *sock_path = ((struct sockaddr_un *) addr)->sun_path;
 	TRAP_PATH_LOCK;
 	const char *p = trap_path(sock_path);
-	struct sockaddr_un trapped_addr;
 
 	if (p != sock_path) {
 	    DBG(DBG_NETLINK, "testbed wrapped connect: redirecting Unix socket %s to %s\n", sock_path, p);
