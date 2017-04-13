@@ -21,9 +21,9 @@ as JavaScript or Python).
 
 Right now umockdev supports the following features:
 
-- Emulation of arbitrary sysfs devices, attributes, and udev properties
+- Emulation of arbitrary sysfs devices, attributes, and udev properties.
 
-- Synthesis of arbitrary uevents
+- Synthesis of arbitrary uevents.
 
 - Emulation of /dev device nodes; they look just like the original real
   device (i. e. stat() delivers a block/char device with appropriate
@@ -44,6 +44,8 @@ Right now umockdev supports the following features:
 - Recording and replay of evdev input events using the evemu events format
   (https://github.com/bentiss/evemu/blob/master/README.md). Unlike recorded
   evdev scripts these are architecture independent and human readable.
+
+- Mocking of files and directories in /proc
 
 Other aspects and functionality will be added in the future as use cases arise.
 
@@ -67,7 +69,7 @@ umockdev consists of the following parts:
   tests. You can find the API documentation in ``docs/reference`` in the
   source directory.
 
-- The libumockdev-preload library intercepts access to /sys, /dev/, the
+- The libumockdev-preload library intercepts access to /sys, /dev/, /proc/, the
   kernel's netlink socket (for uevents) and ioctl() and re-routes them into
   the sandbox built by libumockdev. You don't interface with this library
   directly, instead you need to run your test suite or other program that uses
@@ -82,6 +84,22 @@ umockdev consists of the following parts:
   cannot use this program if you need to simulate uevents or change
   attributes/properties on the fly; for those you need to use libumockdev
   directly.
+
+Mocking /proc and /dev
+======================
+When enabled, the preload library diverts access to ``/proc`` and ``/dev`` to
+the corresponding directories in ``$UMOCKDEV_DIR``, aka.
+``umockdev_testbed_get_root()``. However, if a path does not exist there, it
+falls through the real ``/proc`` and ``/dev``. Thus you can easily replace
+files like ``/proc/cpuinfo`` or add new ones without losing standard files such
+as ``/dev/null`` or ``/proc/pid/*``. Currently there is no way to
+"remove" files from the real directories or fully control them. You can get the
+effect of removing a file by creating a broken symlink in the umockdev
+directory though.
+
+In contrast, an ``UMockdevTestbed`` fully controls the visible ``/sys``
+directory; for a program there is no (regular) way to see the real ``/sys``,
+unless it circumvents the libc API.
 
 Examples
 ========
@@ -247,6 +265,25 @@ devices.
 
   Press Control-C again to stop evtest.
 
+Command line: Mock file in /proc
+================================
+By default, ``/proc`` is the standard system directory:
+
+::
+
+  $ umockdev-run -- head -n2 /proc/cpuinfo
+  processor	: 0
+  vendor_id	: GenuineIntel
+
+But you can replace files (or directories) in it by the ones in the mock dir:
+
+::
+
+  $ umockdev-run -- sh -c 'mkdir $UMOCKDEV_DIR/proc;
+  >   echo hello > $UMOCKDEV_DIR/proc/cpuinfo;
+  >   cat /proc/cpuinfo'
+  hello
+
 
 Build, Test, Run
 ================
@@ -332,6 +369,7 @@ I'll answer your question there.
 License
 =======
 Copyright (C) 2012 - 2014 Canonical Ltd.
+Copyright (C) 2017 Martin Pitt
 
 umockdev is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by

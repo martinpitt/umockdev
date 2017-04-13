@@ -2,6 +2,7 @@
  * test-umockdev
  *
  * Copyright (C) 2012 Canonical Ltd.
+ * Copyright (C) 2017 Martin Pitt
  * Author: Martin Pitt <martin.pitt@ubuntu.com>
  *
  * umockdev is free software; you can redistribute it and/or
@@ -1924,6 +1925,80 @@ t_testbed_remove(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(!file_in_testbed(fixture, "sys/bus/usb"));
 }
 
+static void
+t_testbed_proc(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    gchar *contents;
+    gchar *procdir, *path;
+    const gchar *f;
+    GDir *dir;
+    gboolean found;
+
+    /* should be the real file */
+    g_assert(g_file_get_contents("/proc/cpuinfo", &contents, NULL, NULL));
+    g_assert(g_str_has_prefix(contents, "processor"));
+    g_free(contents);
+
+    /* file not existing in real /proc */
+    g_assert(!g_file_test("/proc/frobber", G_FILE_TEST_EXISTS));
+    g_assert_cmpint(g_open("/proc/frobber", O_RDONLY), <, 0);
+    g_assert_cmpint(errno, ==, ENOENT);
+
+    /* should be the real dir */
+    dir = g_dir_open("/proc/1", 0, NULL);
+    g_assert(dir != NULL);
+    found = FALSE;
+    while ((f = g_dir_read_name(dir)) != NULL) {
+	if (strcmp(f, "exe") == 0) {
+	    found = TRUE;
+	    break;
+	}
+    }
+    g_dir_close(dir);
+    g_assert(found);
+
+    /* mock existing /proc/cpuinfo */
+    procdir = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "proc", NULL);
+    g_assert(g_mkdir(procdir, 0755) == 0);
+    path = g_build_filename (procdir, "cpuinfo", NULL);
+    g_assert(g_file_set_contents(path, "Ze Calculator", -1, NULL));
+    g_free(path);
+
+    g_assert(g_file_get_contents("/proc/cpuinfo", &contents, NULL, NULL));
+    g_assert_cmpstr(contents, ==, "Ze Calculator");
+    g_free(contents);
+
+    /* mock new file */
+    path = g_build_filename (procdir, "frobber", NULL);
+    g_assert(g_file_set_contents(path, "42stuff", -1, NULL));
+    g_free(path);
+
+    g_assert(g_file_test("/proc/frobber", G_FILE_TEST_IS_REGULAR));
+    g_assert(g_file_get_contents("/proc/frobber", &contents, NULL, NULL));
+    g_assert_cmpstr(contents, ==, "42stuff");
+    g_free(contents);
+
+    /* mock file in directory */
+    path = g_build_filename (procdir, "1", NULL);
+    g_mkdir(path, 0755);
+    g_free(path);
+    path = g_build_filename (procdir, "1", "canary", NULL);
+    g_assert(g_file_set_contents(path, "1", -1, NULL));
+    g_free(path);
+
+    /* we don't magically merge dirs, so readdir() is just our mock */
+    dir = g_dir_open("/proc/1", 0, NULL);
+    g_assert(dir != NULL);
+    g_assert_cmpstr(g_dir_read_name(dir), ==, "canary");
+    g_assert_cmpstr(g_dir_read_name(dir), ==, NULL);
+    g_dir_close(dir);
+
+    /* but we can see through the mock with full paths */
+    g_assert(g_file_test("/proc/1/exe", G_FILE_TEST_IS_SYMLINK));
+
+    g_free(procdir);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -2013,5 +2088,7 @@ main(int argc, char **argv)
 	       t_testbed_disable, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/remove", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_remove, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/proc", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_proc, t_testbed_fixture_teardown);
     return g_test_run();
 }

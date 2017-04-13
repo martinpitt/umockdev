@@ -103,7 +103,10 @@ public class Testbed: GLib.Object {
      * umockdev_testbed_get_root_dir:
      * @self: A #UMockdevTestbed.
      *
-     * Get the root directory for the testbed.
+     * Get the root directory for the testbed. This is mostly useful for
+     * setting up the "dev/" or "proc/" testbed directories in this root
+     * directory. For getting the mocked "sys/" dir, use
+     * #umockdev_testbed_get_sys_dir.
      *
      * Returns: The testbed's root directory.
      */
