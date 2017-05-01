@@ -1,4 +1,4 @@
-0.9.1 (UNRELEASED)
+0.9.1 (2017-05-01)
 ------------------
 - Relax /umockdev-testbed/proc to work on different architectures, and show
   /proc/cpuinfo on failure for easier debugging.
