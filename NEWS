@@ -1,3 +1,8 @@
+0.9.1 (UNRELEASED)
+------------------
+- Relax /umockdev-testbed/proc to work on different architectures, and show
+  /proc/cpuinfo on failure for easier debugging.
+
 0.9 (2017-04-13)
 ----------------
 - Add mocking of /proc. (issue #55)

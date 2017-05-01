@@ -1936,7 +1936,10 @@ t_testbed_proc(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     /* should be the real file */
     g_assert(g_file_get_contents("/proc/cpuinfo", &contents, NULL, NULL));
-    g_assert(g_str_has_prefix(contents, "processor"));
+    if (!strstr(contents, "processor")) {
+        g_printerr("'processor' not found in /proc/cpuinfo: ----------\n%s\n----------", contents);
+        g_test_fail();
+    }
     g_free(contents);
 
     /* file not existing in real /proc */
