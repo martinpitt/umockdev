@@ -1,3 +1,8 @@
+0.9.2 (UNRELEASED)
+------------------
+- Relax sysfs path check in /umockdev-testbed/dev_query_gudev test to also work
+  with udev 234. (Debian #871060)
+
 0.9.1 (2017-05-01)
 ------------------
 - Relax /umockdev-testbed/proc to work on different architectures, and show

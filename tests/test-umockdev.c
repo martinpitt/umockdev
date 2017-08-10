@@ -1233,13 +1233,13 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     device = g_udev_client_query_by_device_file(client, "/dev/stream");
     g_assert(device);
     g_assert_cmpstr(g_udev_device_get_device_file(device), ==, "/dev/stream");
-    g_assert_cmpstr(g_udev_device_get_sysfs_path(device), ==, "/sys/devices/stream");
+    g_assert(g_str_has_suffix(g_udev_device_get_sysfs_path(device), "/devices/stream"));
     g_object_unref(device);
 
     device = g_udev_client_query_by_device_file(client, "/dev/disk");
     g_assert(device);
     g_assert_cmpstr(g_udev_device_get_device_file(device), ==, "/dev/disk");
-    g_assert_cmpstr(g_udev_device_get_sysfs_path(device), ==, "/sys/devices/block/disk");
+    g_assert(g_str_has_suffix(g_udev_device_get_sysfs_path(device), "/block/disk"));
     g_object_unref(device);
 
     g_object_unref(client);
