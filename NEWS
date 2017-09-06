@@ -1,4 +1,4 @@
-0.9.3 (UNRELEASED)
+0.9.3 (2017-09-06)
 ------------------
 - In the /umockdev-record/system-single test, stop assuming that /dev/loop0
   always exists, as that is not the case in containers and some other build
