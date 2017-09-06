@@ -192,18 +192,13 @@ t_system_single ()
         stdout.flush ();
         return;
     }
-    if (!FileUtils.test("/sys/block/loop0", FileTest.EXISTS)) {
-        stdout.printf ("[SKIP: no /sys/block/loop0 on this system] ");
-        stdout.flush ();
-        return;
-    }
 
-    spawn (umockdev_record_path + " /dev/null /dev/loop0", out sout, out serr, out exit);
+    spawn (umockdev_record_path + " /dev/null /dev/zero", out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_in("E: DEVNAME=/dev/null", sout);
-    assert_in("P: /devices/virtual/block/loop0", sout);
-    assert_in("E: DEVNAME=/dev/loop0", sout);
+    assert_in("P: /devices/virtual/mem/null", sout);
+    assert_in("E: DEVNAME=/dev/zero", sout);
 }
 
 // system /sys: umockdev-record --all works and result loads back
