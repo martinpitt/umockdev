@@ -43,6 +43,7 @@
 #include <sys/inotify.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/xattr.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
 #include <linux/input.h>
@@ -1061,6 +1062,23 @@ rettype name(const char *path, arg2t arg2, arg3t arg3) \
     return r;							\
 }
 
+/* wrapper template for a function with "const char* path" and three other arguments */
+#define WRAP_4ARGS(rettype, failret, name, arg2t, arg3t, arg4t) \
+rettype name(const char *path, arg2t arg2, arg3t arg3, arg4t arg4) \
+{ \
+    const char *p;						\
+    libc_func(name, rettype, const char*, arg2t, arg3t, arg4t);	\
+    rettype r;							\
+    TRAP_PATH_LOCK;						\
+    p = trap_path(path);					\
+    if (p == NULL)						\
+	r = failret;						\
+    else							\
+	r = (*_ ## name)(p, arg2, arg3, arg4);			\
+    TRAP_PATH_UNLOCK;						\
+    return r;							\
+}
+
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes) */
@@ -1164,6 +1182,9 @@ WRAP_2ARGS(int, -1, lstat, struct stat *);
 WRAP_2ARGS(int, -1, lstat64, struct stat64 *);
 
 WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
+
+WRAP_4ARGS(ssize_t, -1, getxattr, const char*, void*, size_t);
+WRAP_4ARGS(ssize_t, -1, lgetxattr, const char*, void*, size_t);
 
 WRAP_VERSTAT(__x,);
 WRAP_VERSTAT(__x, 64);
