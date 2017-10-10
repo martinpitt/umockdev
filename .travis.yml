@@ -21,6 +21,7 @@ addons:
         - xserver-xorg-input-synaptics
         - xinput
         - usbutils
+        - gphoto2
         - lcov
         - valgrind
 script:
