@@ -18,6 +18,9 @@
 
 namespace UMockdev {
 
+private bool __in_mock_env_initialized = false;
+private bool __in_mock_env_result = false;
+
 /**
  * SECTION:umockdev
  * @title: umockdev
@@ -1721,10 +1724,15 @@ private class SocketServer {
  */
 public bool in_mock_environment()
 {
-    string? preload = Environment.get_variable ("LD_PRELOAD");
-    if (preload == null)
-        return false;
-    return preload.contains ("libumockdev-preload");
+
+    if (!__in_mock_env_initialized) {
+        Posix.Stat st;
+        if (Posix.stat("/sys", out st) >= 0)
+            __in_mock_env_result = st.st_ino > 1 && st.st_size > 0;
+        __in_mock_env_initialized = true;
+    }
+
+    return __in_mock_env_result;
 }
 
 /**
