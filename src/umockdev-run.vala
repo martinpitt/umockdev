@@ -32,7 +32,7 @@ static string[] opt_evemu_events;
 static string[] opt_program;
 static bool opt_version = false;
 
-static const GLib.OptionEntry[] options = {
+const GLib.OptionEntry[] options = {
     {"device", 'd', 0, OptionArg.FILENAME_ARRAY, ref opt_device,
      "Load an umockdev-record device description into the testbed. Can be specified multiple times.",
      "filename"},

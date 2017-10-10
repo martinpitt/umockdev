@@ -349,7 +349,7 @@ static string[] opt_script;
 static string[] opt_evemu_events;
 static bool opt_version = false;
 
-static const GLib.OptionEntry[] options = {
+const GLib.OptionEntry[] options = {
     {"all", 'a', 0, OptionArg.NONE, ref opt_all, "Record all devices"},
     {"ioctl", 'i', 0, OptionArg.FILENAME, ref opt_ioctl,
      "Trace ioctls on the device, record into given file. In this case, all positional arguments are a command (and its arguments) to run that gets traced.", "devname=FILE"},
