@@ -6,7 +6,7 @@ set -e
 # worry about it.
 
 # check for anything uncommitted
-if LC_MESSAGES=C git st | grep -Eiq 'modified|untracked'; then
+if LC_MESSAGES=C git status | grep -Eiq 'modified|untracked'; then
     echo "untracked/modified files, see git status" >&2
     exit 1
 fi
