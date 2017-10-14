@@ -1,3 +1,13 @@
+0.9.4 (UNRELEASED)
+------------------
+- preload: Wrap [l]getxattr(). Fixes e. g. confusing error messages in `ls -l`.
+- Refine detection of being in mock environment. Fixes message about
+  nonexisting devices in `uevent_sender_send()` when using umockdev-run.
+- Fix build warnings about non-applicable "static const"s.
+- Disable t_gphoto_* test cases for now. These currently trigger an
+  assertion about submit_node != NULL. The URB structure in libgphoto/libmtp
+  apparently got more flexible, so ioctl replaying needs to be fixed for that.
+
 0.9.3 (2017-09-06)
 ------------------
 - In the /umockdev-record/system-single test, stop assuming that /dev/loop0
