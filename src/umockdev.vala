@@ -405,7 +405,7 @@ public class Testbed: GLib.Object {
         /* create device and corresponding subsystem dir */
         if (DirUtils.create_with_parents(dev_dir, 0755) != 0)
             error("cannot create dev dir '%s': %s", dev_dir, strerror(errno));
-        if (subsystem != "usb" && subsystem != "pci") {
+        if (subsystem != "usb" && subsystem != "pci" && subsystem != "thunderbolt") {
             /* class/ symlinks */
             var class_dir = Path.build_filename(this.sys_dir, "class", subsystem);
             if (DirUtils.create_with_parents(class_dir, 0755) != 0)
