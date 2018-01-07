@@ -194,6 +194,22 @@ string_hash32(const char *str)
     return h;
 }
 
+static ssize_t
+append_property(char *array, size_t size, ssize_t offset, const char *name, const char *value)
+{
+    int r;
+    assert(offset < size);
+    r = snprintf(array + offset, size - offset, "%s%s", name, value);
+    // include the NUL terminator in the string length, as we need to keep it as a separator between keys
+    ++r;
+    if (r + offset >= size) {
+        fprintf(stderr, "ERROR: uevent_sender_send: Property buffer overflow\n");
+        abort();
+     }
+
+    return r;
+}
+
 /* this mirrors the code from systemd/src/libudev/libudev-monitor.c,
  * udev_monitor_send_device() */
 void
@@ -206,6 +222,7 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     const char *subsystem;
     const char *devname;
     const char *devtype;
+    char seqnumstr[20];
     struct udev_device *device;
     struct udev_monitor_netlink_header nlh;
     static unsigned long long seqnum = 1;
@@ -224,27 +241,15 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
 
     /* build NUL-terminated property array */
     count = 0;
-    strcpy(props, "ACTION=");
-    strcat(props, action);
-    count += strlen(props) + 1;
-    strcpy(props + count, "DEVPATH=");
-    strcat(props + count, udev_device_get_devpath(device));
-    count += strlen(props + count) + 1;
-    strcpy(props + count, "SUBSYSTEM=");
-    strcat(props + count, subsystem);
-    count += strlen(props + count) + 1;
-    snprintf(props + count, sizeof(props) - count, "SEQNUM=%llu", seqnum++);
-    count += strlen(props + count) + 1;
-    if (devname) {
-        strcpy(props + count, "DEVNAME=");
-        strcat(props + count, devname);
-        count += strlen(props + count) + 1;
-    }
-    if (devtype) {
-        strcpy(props + count, "DEVTYPE=");
-        strcat(props + count, devtype);
-        count += strlen(props + count) + 1;
-    }
+    count += append_property(props, sizeof (props), count, "ACTION=", action);
+    count += append_property(props, sizeof (props), count, "DEVPATH=", udev_device_get_devpath(device));
+    count += append_property(props, sizeof (props), count, "SUBSYSTEM=", subsystem);
+    snprintf(seqnumstr, sizeof(seqnumstr), "%llu", seqnum++);
+    count += append_property(props, sizeof (props), count, "SEQNUM=", seqnumstr);
+    if (devname)
+        count += append_property(props, sizeof (props), count, "DEVNAME=", devname);
+    if (devtype)
+        count += append_property(props, sizeof (props), count, "DEVTYPE=", devtype);
 
     /* add versioned header */
     memset(&nlh, 0x00, sizeof(struct udev_monitor_netlink_header));
