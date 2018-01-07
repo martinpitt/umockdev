@@ -836,7 +836,8 @@ main (string[] args)
     Test.add_func ("/umockdev-record/testbed-no-ioctl-record", t_testbed_no_ioctl_record);
 
     Test.add_func ("/umockdev-record/system-single", t_system_single);
-    Test.add_func ("/umockdev-record/system-all", t_system_all);
+    // causes eternal hangs or crashes in some environments
+    //Test.add_func ("/umockdev-record/system-all", t_system_all);
     Test.add_func ("/umockdev-record/system-invalid", t_system_invalid);
     Test.add_func ("/umockdev-record/ioctl-log", t_system_ioctl_log);
     Test.add_func ("/umockdev-record/ioctl-log-append-dev-mismatch", t_system_ioctl_log_append_dev_mismatch);
