@@ -2,7 +2,7 @@
  * test-umockdev
  *
  * Copyright (C) 2012 Canonical Ltd.
- * Copyright (C) 2017 Martin Pitt
+ * Copyright (C) 2017, 2018 Martin Pitt
  * Author: Martin Pitt <martin.pitt@ubuntu.com>
  *
  * umockdev is free software; you can redistribute it and/or
@@ -610,6 +610,8 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     /* don't trip over netlink sockets that the client side already closed */
     umockdev_testbed_uevent(fixture->testbed, syspath, "remove");
+
+    g_free(syspath);
 }
 
 static void
@@ -666,6 +668,7 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer 
 
     udev_monitor_unref(mon);
     udev_unref(udev);
+    g_free(syspath);
 }
 
 static void
@@ -731,6 +734,8 @@ t_testbed_uevent_no_listener(UMockdevTestbedFixture * fixture, gconstpointer dat
 
     /* generate event */
     umockdev_testbed_uevent(fixture->testbed, syspath, "add");
+
+    g_free(syspath);
 }
 
 static void
