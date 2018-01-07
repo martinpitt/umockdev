@@ -204,6 +204,7 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     struct msghdr smsg;
     struct iovec iov[2];
     const char *subsystem;
+    const char *devname;
     const char *devtype;
     struct udev_device *device;
     struct udev_monitor_netlink_header nlh;
@@ -218,6 +219,9 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     subsystem = udev_device_get_subsystem(device);
     assert(subsystem != NULL);
 
+    devname = udev_device_get_devnode(device);
+    devtype = udev_device_get_devtype(device);
+
     /* build NUL-terminated property array */
     count = 0;
     strcpy(props, "ACTION=");
@@ -231,14 +235,14 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     count += strlen(props + count) + 1;
     snprintf(props + count, sizeof(props) - count, "SEQNUM=%llu", seqnum++);
     count += strlen(props + count) + 1;
-    if (udev_device_get_devnode(device)) {
+    if (devname) {
         strcpy(props + count, "DEVNAME=");
-        strcat(props + count, udev_device_get_devnode(device));
+        strcat(props + count, devname);
         count += strlen(props + count) + 1;
     }
-    if (udev_device_get_devtype(device)) {
+    if (devtype) {
         strcpy(props + count, "DEVTYPE=");
-        strcat(props + count, udev_device_get_devtype(device));
+        strcat(props + count, devtype);
         count += strlen(props + count) + 1;
     }
 
@@ -249,7 +253,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     nlh.header_size = sizeof(struct udev_monitor_netlink_header);
 
     nlh.filter_subsystem_hash = htonl(string_hash32(subsystem));
-    devtype = udev_device_get_devtype(device);
     if (devtype != NULL)
 	nlh.filter_devtype_hash = htonl(string_hash32(devtype));
     iov[0].iov_base = &nlh;
