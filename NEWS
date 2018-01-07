@@ -1,4 +1,4 @@
-0.10 (UNRELEASED)
+0.10 (2018-01-07)
 -----------------
 - Create /sys/bus symlinks for Thunderbolt devices
 - Avoid buffer overflow in uevent_sender_send()
