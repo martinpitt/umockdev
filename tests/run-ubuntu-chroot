@@ -1,0 +1,54 @@
+#!/bin/sh
+set -eu
+
+echo ${ARCH:=amd64}
+
+if [ -z "${RELEASE:-}" ]; then
+    # determine latest release, usually devel (see https://launchpad.net/+apidoc)
+    rel=$(curl --silent https://api.launchpad.net/devel/ubuntu/current_series_link | sed 's/^"//; s/"$//')
+    RELEASE=${rel##*/}
+fi
+
+mkdir -p ${CACHE:=/tmp/cache/$RELEASE}
+
+# get LP chroot
+CHROOT_URL=$(curl --silent https://api.launchpad.net/1.0/ubuntu/$RELEASE/$ARCH | grep -o 'http://[^ "]*chroot-ubuntu-[^ "]*')
+CHROOT_TAR="$CACHE/$(basename $CHROOT_URL)"
+[ -e "$CHROOT_TAR" ] || curl -o "$CHROOT_TAR" "$CHROOT_URL"
+
+# prepare chroot
+BUILDDIR=$(mktemp -d)
+trap "sudo rm -rf $BUILDDIR" EXIT INT QUIT PIPE
+sudo tar -C "$BUILDDIR" -xf "$CHROOT_TAR"
+CHROOT="$BUILDDIR/chroot-autobuild"
+sudo cp /etc/resolv.conf "$CHROOT/etc/resolv.conf"
+
+# copy code checkout into chroot
+sudo cp -a . "$CHROOT/build/src"
+
+sudo chroot "$CHROOT" << EOF
+mount -t proc proc /proc
+mount -t devtmpfs devtmpfs /dev
+mount -t devpts devpts /dev/pts
+mount -t sysfs sysfs /sys
+trap "umount /proc /dev/pts /dev /sys" EXIT INT QUIT PIPE
+set -ex
+# install build deps
+cat <<EOU > /etc/apt/sources.list
+deb http://archive.ubuntu.com/ubuntu ${RELEASE} main universe
+deb http://archive.ubuntu.com/ubuntu ${RELEASE}-updates main universe
+EOU
+apt-get update
+apt-get install -y pkg-config dh-autoreconf valac libglib2.0-dev libudev-dev libgudev-1.0-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
+
+# run build and tests as user
+chown -R buildd:buildd /build
+su - buildd <<EOU
+set -ex
+cd /build/src
+./autogen.sh
+make -j4
+make check-valgrind
+make -j4 distcheck
+EOU
+EOF

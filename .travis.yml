@@ -1,31 +1,11 @@
 dist: trusty
-sudo: false
 language: c
-addons:
-    apt:
-        packages:
-        - pkg-config
-        - valac
-        - libglib2.0-dev
-        - libudev-dev
-        - libgudev-1.0-dev
-        - python3-gi
-        - gobject-introspection
-        - libgirepository1.0-dev
-        - gir1.2-glib-2.0
-        - gir1.2-gudev-1.0
-        - gtk-doc-tools
-        - udev
-        - xserver-xorg-video-dummy
-        - xserver-xorg-input-evdev
-        - xserver-xorg-input-synaptics
-        - xinput
-        - usbutils
-        - gphoto2
-        - lcov
-        - valgrind
-script:
-    - ./autogen.sh
-    - make -j4
-    - make check-valgrind
-    - make -j4 distcheck
+sudo: true
+script: tests/run-ubuntu-chroot
+env:
+- RELEASE=
+- RELEASE=artful
+- RELEASE=xenial
+cache:
+  directories:
+  - /tmp/cache
