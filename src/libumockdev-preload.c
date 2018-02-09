@@ -1199,6 +1199,47 @@ WRAP_OPEN(, 64);
 WRAP_OPEN2(__,_2);
 WRAP_OPEN2(__,64_2);
 
+/* wrapper template for openat family; intercept opening /sys from the root dir */
+#define WRAP_OPENAT(prefix, suffix) \
+int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)		\
+{ \
+    const char *p = NULL;									\
+    libc_func(prefix ## openat ## suffix, int, int, const char *, int, ...);			\
+    libc_func(readlink, ssize_t, const char*, char *, size_t);					\
+    int trapped = 0, ret;									\
+    TRAP_PATH_LOCK;										\
+  \
+    if (strncmp(pathname, "sys", 3) == 0 && (pathname[3] == '/' || pathname[3] == '\0')) {	\
+        static char buf[PATH_MAX],link[PATH_MAX];						\
+        snprintf(buf, sizeof(buf), "/proc/self/fd/%d", dirfd);					\
+        if (_readlink(buf, link, sizeof(link)) == 1 && link[0] == '/') {			\
+            trapped = 1;									\
+            strncpy(link + 1, pathname, sizeof(link) - 1);					\
+            buf[sizeof(link) - 1] = 0;								\
+            p = trap_path(link);								\
+        } \
+    } \
+  \
+    if (!trapped)										\
+        p = trap_path(pathname);								\
+    DBG(DBG_PATH, "testbed wrapped " #suffix "openat" #suffix "(%s) -> %s\n", pathname, p);	\
+    if (p == NULL) { TRAP_PATH_UNLOCK; return -1; }						\
+    if (flags & (O_CREAT | O_TMPFILE)) {							\
+	mode_t mode;										\
+	va_list ap;										\
+	va_start(ap, flags);									\
+	mode = va_arg(ap, mode_t);								\
+	va_end(ap);										\
+	ret = _ ## prefix ## openat ## suffix(dirfd, p, flags, mode);				\
+    } else											\
+	ret =  _ ## prefix ## openat ## suffix(dirfd, p, flags);				\
+    TRAP_PATH_UNLOCK;										\
+    return ret;											\
+}
+
+WRAP_OPENAT(,);
+WRAP_OPENAT(, 64);
+
 int
 inotify_add_watch(int fd, const char *path, uint32_t mask)
 {

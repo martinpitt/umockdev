@@ -1007,6 +1007,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     gboolean success;
     GError *error = NULL;
     char *path;
+    int dirfd, fd;
 
     /* start with adding one device */
     success = umockdev_testbed_add_from_string(fixture->testbed,
@@ -1031,6 +1032,38 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     /* nonexisting */
     g_assert(canonicalize_file_name("/sys/devices/xxnoexist") == NULL);
     g_assert_cmpint(errno, ==, ENOENT);
+
+    /* openat */
+
+    /* sys/ in root dir should be trapped */
+    dirfd = open("/", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd, >=, 0);
+    fd = openat(dirfd, "sys/devices/dev1/simple_attr", O_RDONLY);
+    if (fd < 0)
+        perror("openat");
+    g_assert_cmpint(fd, >=, 0);
+    close(fd);
+
+    fd = openat64(dirfd, "sys/devices/dev1/simple_attr", O_RDONLY);
+    if (fd < 0)
+        perror("openat64");
+    g_assert_cmpint(fd, >=, 0);
+    close(fd);
+
+    close(dirfd);
+
+    /* sys/ in other dir should not be trapped */
+    errno = 0;
+    dirfd = open("/run", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(openat(dirfd, "sys", O_RDONLY), <, 0);
+    g_assert_cmpint(errno, ==, ENOENT);
+    g_assert_cmpint(openat64(dirfd, "sys", O_RDONLY), <, 0);
+    close(dirfd);
+
+    errno = 0;
+    g_assert_cmpint(openat(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
+    g_assert_cmpint(errno, ==, ENOENT);
+    g_assert_cmpint(openat64(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
 }
 
 static void
