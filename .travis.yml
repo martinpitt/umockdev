@@ -5,6 +5,7 @@ script: tests/run-ubuntu-chroot
 env:
 - RELEASE=
 - RELEASE=artful
+- RELEASE=artful ARCH=i386
 - RELEASE=xenial
 cache:
   directories:

@@ -2,6 +2,9 @@
 set -eu
 
 echo ${ARCH:=amd64}
+if [ "$ARCH" = i386 ]; then
+    chrootprefix=linux32
+fi
 
 if [ -z "${RELEASE:-}" ]; then
     # determine latest release, usually devel (see https://launchpad.net/+apidoc)
@@ -26,7 +29,7 @@ sudo cp /etc/resolv.conf "$CHROOT/etc/resolv.conf"
 # copy code checkout into chroot
 sudo cp -a . "$CHROOT/build/src"
 
-sudo chroot "$CHROOT" << EOF
+sudo ${chrootprefix:-} chroot "$CHROOT" << EOF
 mount -t proc proc /proc
 mount -t devtmpfs devtmpfs /dev
 mount -t devpts devpts /dev/pts
