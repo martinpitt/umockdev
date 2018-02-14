@@ -2013,9 +2013,9 @@ t_testbed_proc(UMockdevTestbedFixture * fixture, gconstpointer data)
     gboolean found;
 
     /* should be the real file */
-    g_assert(g_file_get_contents("/proc/cpuinfo", &contents, NULL, NULL));
-    if (!strstr(contents, "processor")) {
-        g_printerr("'processor' not found in /proc/cpuinfo: ----------\n%s\n----------", contents);
+    g_assert(g_file_get_contents("/proc/meminfo", &contents, NULL, NULL));
+    if (!strstr(contents, "MemTotal:")) {
+        g_printerr("'MemTotal:' not found in /proc/meminfo: ----------\n%s\n----------", contents);
         g_test_fail();
     }
     g_free(contents);
