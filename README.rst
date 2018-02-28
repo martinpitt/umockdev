@@ -342,10 +342,7 @@ all
 
 Development
 ===========
-| Home page: https://github.com/martinpitt/umockdev
-| GIT:       git://github.com/martinpitt/umockdev.git
-| Bugs:      https://github.com/martinpitt/umockdev/issues
-| Releases:  https://launchpad.net/umockdev/+download
+umockdev is being developed and released on https://github.com/martinpitt/umockdev.
 
 umockdev is very much demand driven. If you want to work on a new feature (such
 as adding support for more ioctls) or contribute a bug fix, please check out

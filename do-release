@@ -26,15 +26,9 @@ version=$(grep '(UNRELEASED)' NEWS | cut -f1 -d' ')
 }
 sed -i "s/(UNRELEASED)/$(date '+(%Y-%m-%d)')/" NEWS
 
-# build the final tarball with the NEWS update
-make dist
-
 # commit the release and tag
 git commit -a -m "release $version"
 changes=$(sed -n '/^$/ q; /^- / p' NEWS)
 printf "$version\n\n$changes\n" | git tag -s -F- $version
 git push
 git push --tags
-
-lp-project-upload umockdev $version umockdev-$version.tar.xz
-

@@ -58,3 +58,4 @@ make check-valgrind
 make -j4 distcheck
 EOU
 EOF
+cp "$CHROOT"/build/src/umockdev-*.tar.xz .

@@ -10,3 +10,12 @@ env:
 cache:
   directories:
   - /tmp/cache
+deploy:
+  provider: releases
+  api_key:
+    secure: "W5mg0roWwfjxzCMxbqadMfqeltkVAQTm6jCAdUyZE6A8jklyvlVCyLPGrPjQyyyBe0LB+K9muc9P8VWdO/BmJQFgns8AAKRO+ervbv+9C19x4bfIbSOF7qky0+vsnrmgqWhGjwzYMWjQwq8jHzQ3rI0FGkzbNE6aJVFHwRLd6VLrtXM6j5sd8KW6FE7zqkHn/xJMT9cHenKUjPPniLw39equFZxsuLv4bCY1yvJE2TcIWeLmn8eGYXJ5/qlGhOmzcgqQT6y3wDLOqoJQIo87ZY8zZnE6OZP7fXUQ0kj6hEJOmNKT1zNVNp5BTM7wfh8x/QpU9j7sAkn7tU+sHG5QLjw1Cb5/6/paPPe+ONC+3qsa+NUXBCusxX5tjh474790XqfrLZJIts04ZzS55hQU/YIK8LS9lY/AkHo1qDDE1EMZs3FfibSbF+EbRDH7riSViYl40rJTCzo31C9XphVQwpMqMiYLc4viXQ+2zIdLDzKdCHAF8+NNjcl1XycMTCNZb10onxhqvfhvwPnJ13AjUCcMCe5g/9bQ5dRsssoZNBGM5HIDPZ3Gp5Y0JrdRkY/65lpT/av8FsIo7TZYYep3rC/sgflcnYzJtHkLIudTLT/dAl62hpMFm7BTrwIBb22vL3/l6xayMRZMSlYLIoDQ6UIEe51Rgf3CQqAaycKSzwo="
+  file: umockdev-${TRAVIS_TAG}.tar.xz
+  skip_cleanup: true
+  on:
+    tags: true
+    condition: -z "$RELEASE"
