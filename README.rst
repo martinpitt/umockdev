@@ -358,18 +358,10 @@ tracker. Please always include the version of umockdev that you are using, and
 a complete runnable reproducer of the problem (i. e. the code and recorded
 scripts/ioctls, etc.), unless it is a feature request.
 
-Authors
-=======
-Martin Pitt <martin.pitt@ubuntu.com>
-
-You can contact me on IRC: pitti on Freenode, I'm hanging out in
-#ubuntu-quality and other channels. You can also file an issue on github and
-I'll answer your question there.
-
 License
 =======
 Copyright (C) 2012 - 2014 Canonical Ltd.
-Copyright (C) 2017 Martin Pitt
+Copyright (C) 2017 - 2018 Martin Pitt
 
 umockdev is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by
