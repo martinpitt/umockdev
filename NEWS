@@ -1,4 +1,4 @@
-0.11.1 (UNRELEASED)
+0.11.1 (2018-02-28)
 -------------------
 - Fix architecture specific /proc test (#74)
 - Move release tarballs to https://github.com/martinpitt/umockdev/releases
