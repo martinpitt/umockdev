@@ -31,7 +31,8 @@ make dist
 
 # commit the release and tag
 git commit -a -m "release $version"
-git tag -s -m "release $version" $version
+changes=$(sed -n '/^$/ q; /^- / p' NEWS)
+printf "$version\n\n$changes\n" | git tag -s -F- $version
 git push
 git push --tags
 
