@@ -11,12 +11,7 @@ if LC_MESSAGES=C git status | grep -Eiq 'modified|untracked'; then
     exit 1
 fi
 
-# build and tests must succeed from a clean tree
 git clean -fdx
-./autogen.sh
-make -j4
-make check-valgrind
-make -j4 distcheck
 
 # update NEWS
 version=$(grep '(UNRELEASED)' NEWS | cut -f1 -d' ')
