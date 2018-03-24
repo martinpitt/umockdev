@@ -182,7 +182,11 @@ main (string[] args)
 
     // propagate signals to the child
     var act = Posix.sigaction_t() { sa_handler = child_sig_handler, sa_flags = Posix.SA_RESETHAND };
+#if VALA_0_40
+    Posix.sigemptyset (out act.sa_mask);
+#else
     Posix.sigemptyset (act.sa_mask);
+#endif
     assert (Posix.sigaction (Posix.SIGTERM, act, null) == 0);
     assert (Posix.sigaction (Posix.SIGHUP, act, null) == 0);
     assert (Posix.sigaction (Posix.SIGINT, act, null) == 0);
