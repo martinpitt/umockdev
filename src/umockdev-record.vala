@@ -75,15 +75,15 @@ resolve (string dev)
     if (Posix.stat(dev, out st) != 0)
         exit_error("Cannot access device %s: %s", dev, strerror(errno));
 
-    uint major = Posix.major(st.st_rdev);
-    uint minor = Posix.minor(st.st_rdev);
+    uint maj = Posix.hack_major(st.st_rdev);
+    uint min = Posix.minor(st.st_rdev);
 
     string link;
     // character device?
     if (Posix.S_ISCHR(st.st_mode))
-        link = "/sys/dev/char/%u:%u".printf(major, minor);
+        link = "/sys/dev/char/%u:%u".printf(maj, min);
     else if (Posix.S_ISBLK(st.st_mode))
-        link = "/sys/dev/block/%u:%u".printf(major, minor);
+        link = "/sys/dev/block/%u:%u".printf(maj, min);
     else
         link = dev;
 

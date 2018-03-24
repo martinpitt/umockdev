@@ -1,11 +1,7 @@
 [CCode (cprefix = "", lower_case_cprefix = "")]
 namespace Posix {
-#if !VALA_0_20
-    // https://bugzilla.gnome.org/show_bug.cgi?id=693411
-    [CCode (cheader_filename = "sys/sysmacros.h")]
-    uint major (dev_t dev);
-    [CCode (cheader_filename = "sys/sysmacros.h")]
-    uint minor (dev_t dev);
-#endif
+    // https://bugzilla.gnome.org/show_bug.cgi?id=794651
+    [CCode (cheader_filename = "sys/sysmacros.h", cname="major")]
+    uint hack_major (dev_t dev);
 }
 
