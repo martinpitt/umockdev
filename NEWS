@@ -1,3 +1,9 @@
+0.11.2 (UNRELEASED)
+-------------------
+- Fix build failures with glibc 2.27 and vala 0.40
+- preload: Fix potential unterminated strings
+- Fix a lot of warnings about deprecated API
+
 0.11.1 (2018-02-28)
 -------------------
 - Fix architecture specific /proc test (#74)
