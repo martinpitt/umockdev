@@ -268,7 +268,7 @@ static void
 dump_devices(string[] devices)
 {
     // process arguments parentwards first
-    var seen = new HashTable<string,unowned string>(str_hash, str_equal);
+    var seen = new GenericSet<string>(str_hash, str_equal);
     foreach (string device in devices) {
         while (device != null) {
             if (!seen.contains(device)) {
