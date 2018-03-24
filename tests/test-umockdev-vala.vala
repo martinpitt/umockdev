@@ -441,7 +441,7 @@ A: dev=188:1
   Posix.Stat st;
   assert_cmpint (Posix.lstat ("/dev/ttyUSB1", out st), Op.EQ, 0);
   assert (Posix.S_ISCHR (st.st_mode));
-  assert_cmpuint (Posix.major (st.st_rdev), Op.EQ, 188);
+  assert_cmpuint (Posix.hack_major (st.st_rdev), Op.EQ, 188);
   assert_cmpuint (Posix.minor (st.st_rdev), Op.EQ, 1);
 
   // stty issues an ioctl; verify that it recognizes the fake device as a real tty
