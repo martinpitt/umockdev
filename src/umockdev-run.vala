@@ -184,14 +184,19 @@ main (string[] args)
     var act = Posix.sigaction_t() { sa_handler = child_sig_handler, sa_flags = Posix.SA_RESETHAND };
 #if VALA_0_40
     Posix.sigemptyset (out act.sa_mask);
+    assert (Posix.sigaction (Posix.Signal.TERM, act, null) == 0);
+    assert (Posix.sigaction (Posix.Signal.HUP, act, null) == 0);
+    assert (Posix.sigaction (Posix.Signal.INT, act, null) == 0);
+    assert (Posix.sigaction (Posix.Signal.QUIT, act, null) == 0);
+    assert (Posix.sigaction (Posix.Signal.ABRT, act, null) == 0);
 #else
     Posix.sigemptyset (act.sa_mask);
-#endif
     assert (Posix.sigaction (Posix.SIGTERM, act, null) == 0);
     assert (Posix.sigaction (Posix.SIGHUP, act, null) == 0);
     assert (Posix.sigaction (Posix.SIGINT, act, null) == 0);
     assert (Posix.sigaction (Posix.SIGQUIT, act, null) == 0);
     assert (Posix.sigaction (Posix.SIGABRT, act, null) == 0);
+#endif
 
     Posix.waitpid (child_pid, out status, 0);
     Process.close_pid (child_pid);

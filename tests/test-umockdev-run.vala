@@ -501,7 +501,11 @@ t_input_touchpad ()
             out props_out, out props_err, out props_exit);
 
     /* shut down X */
+#if VALA_0_40
+    Posix.kill (xorg_pid, Posix.Signal.TERM);
+#else
     Posix.kill (xorg_pid, Posix.SIGTERM);
+#endif
     int status;
     Posix.waitpid (xorg_pid, out status, 0);
     Process.close_pid (xorg_pid);
@@ -556,7 +560,11 @@ t_input_evtest ()
 
     // our script covers 1.4 seconds, give it some slack
     Posix.sleep (2);
+#if VALA_0_40
+    Posix.kill (evtest_pid, Posix.Signal.TERM);
+#else
     Posix.kill (evtest_pid, Posix.SIGTERM);
+#endif
     var sout = new uint8[10000];
     var serr = new uint8[10000];
     ssize_t sout_len = Posix.read (outfd, sout, sout.length);
@@ -640,7 +648,11 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
     // our script covers 0.5 seconds, give it some slack
     Posix.sleep (1);
     FileUtils.remove (evemu_file);
+#if VALA_0_40
+    Posix.kill (evtest_pid, Posix.Signal.TERM);
+#else
     Posix.kill (evtest_pid, Posix.SIGTERM);
+#endif
     var sout = new uint8[10000];
     var serr = new uint8[10000];
     ssize_t sout_len = Posix.read (outfd, sout, sout.length);
