@@ -1214,7 +1214,7 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
         snprintf(buf, sizeof(buf), "/proc/self/fd/%d", dirfd);					\
         if (_readlink(buf, link, sizeof(link)) == 1 && link[0] == '/') {			\
             trapped = 1;									\
-            strncpy(link + 1, pathname, sizeof(link) - 1);					\
+            strncpy(link + 1, pathname, sizeof(link) - 2);					\
             buf[sizeof(link) - 1] = 0;								\
             p = trap_path(link);								\
         } \
@@ -1434,7 +1434,8 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	if (p != sock_path) {
 	    DBG(DBG_NETLINK, "testbed wrapped connect: redirecting Unix socket %s to %s\n", sock_path, p);
 	    trapped_addr.sun_family = AF_UNIX;
-	    strncpy(trapped_addr.sun_path, p, sizeof(trapped_addr.sun_path));
+	    strncpy(trapped_addr.sun_path, p, sizeof(trapped_addr.sun_path) - 1);
+	    trapped_addr.sun_path[sizeof(trapped_addr.sun_path) - 1] = '\0';
 	    addr = (struct sockaddr*) &trapped_addr;
 	}
 	TRAP_PATH_UNLOCK;
