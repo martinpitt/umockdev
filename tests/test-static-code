@@ -7,7 +7,7 @@ ROOTDIR=$(dirname $(readlink -f $0))/..
 CODE_INT=`grep -B 100000 'Overridden libc' $ROOTDIR/src/libumockdev-preload.c`
 CODE_WRAPPERS=`grep -A 100000 'Overridden libc' $ROOTDIR/src/libumockdev-preload.c`
 
-LIBC_OVERRIDES=`echo "$CODE_WRAPPERS" | grep '^[a-z_]\+(' | cut -f1 -d'('`
+LIBC_OVERRIDES=`echo "$CODE_WRAPPERS" | grep '^[a-z_]\+(' | grep -v '^WRAP_' | cut -f1 -d'('`
 
 RET=0
 
