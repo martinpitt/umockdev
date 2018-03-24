@@ -823,7 +823,7 @@ main (string[] args)
     // determine path of umockdev-record
     string? r = Environment.get_variable ("TOP_BUILDDIR");
     if (r == null)
-        rootdir = Path.get_dirname (Path.get_dirname (Path.get_dirname (Posix.fixed_realpath (args[0]))));
+        rootdir = Path.get_dirname (Path.get_dirname (Path.get_dirname (Posix.realpath (args[0]))));
     else
         rootdir = r;
 
