@@ -87,7 +87,7 @@ resolve (string dev)
     else
         link = dev;
 
-    string real = Posix.fixed_realpath(link);
+    string real = Posix.realpath(link);
     // FIXME: does not work under testbed for test suite
     //assert(real != null);
     if (real == null)
