@@ -1,4 +1,4 @@
-0.11.2 (UNRELEASED)
+0.11.2 (2018-03-24)
 -------------------
 - Fix build failures with glibc 2.27 and vala 0.40
 - preload: Fix potential unterminated strings
