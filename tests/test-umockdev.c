@@ -1721,14 +1721,14 @@ r 0 OK\n";
   close(fd);
 }
 
-/* assert that difference between first and second is "ms" milliseconds, ±20 ms */
+/* assert that difference between first and second is "ms" milliseconds, ±50 ms */
 static void
 assert_delta_t(const struct timeval * first, const struct timeval * second, int ms)
 {
     int delta = (second->tv_sec - first->tv_sec) * 1000;
     delta += (second->tv_usec - first->tv_usec) / 1000;
-    g_assert_cmpint(delta, >=, ms - 20);
-    g_assert_cmpint(delta, <=, ms + 20);
+    g_assert_cmpint(delta, >=, ms - 50);
+    g_assert_cmpint(delta, <=, ms + 50);
 }
 
 static void
