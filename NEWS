@@ -1,3 +1,7 @@
+0.11.3 (UNRELEASED)
+-------------------
+- Relax evemu delta-t test, it failed sometimes on loaded systems.
+
 0.11.2 (2018-03-24)
 -------------------
 - Fix build failures with glibc 2.27 and vala 0.40
