@@ -191,7 +191,7 @@ src_umockdev_run_SOURCES = 		\
 	$(NULL)
 
 src_umockdev_run_CFLAGS = $(GLIB_CFLAGS) -I $(srcdir)/src -I src -w
-src_umockdev_run_LDADD = $(GLIB_LIBS) $(GUDEV_LIBS) libumockdev.la
+src_umockdev_run_LDADD = $(GLIB_LIBS) libumockdev.la
 src_umockdev_run_VALAFLAGS =		\
 	--vapidir $(top_builddir)/src	\
 	--pkg umockdev-1.0		\
