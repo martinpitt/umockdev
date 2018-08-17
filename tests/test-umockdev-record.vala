@@ -253,7 +253,10 @@ t_system_invalid ()
     assert_cmpint (exit, Op.NE, 0);
 
     spawn (umockdev_record_path + " /sys/block/loop0/size", out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "Invalid device /sys/devices/virtual/block/loop0/size, has no uevent attribute\n");
+    // the real path might vary
+    assert (serr.contains ("Invalid device"));
+    assert (serr.contains ("/block/loop0/size"));
+    assert (serr.contains ("has no uevent attribute"));
     assert_cmpstr (sout, Op.EQ, "");
     assert_cmpint (exit, Op.NE, 0);
 }
