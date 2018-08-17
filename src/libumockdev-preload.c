@@ -1326,6 +1326,8 @@ char *__realpath_chk(const char *path, char *resolved, size_t size)
     return r;
 }
 
+#ifdef __GLIBC__
+
 char *canonicalize_file_name(const char *path)
 {
     const char *p;
@@ -1349,6 +1351,8 @@ char *canonicalize_file_name(const char *path)
     TRAP_PATH_UNLOCK;
     return r;
 }
+
+#endif
 
 ssize_t
 read(int fd, void *buf, size_t count)

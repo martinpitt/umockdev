@@ -1036,6 +1036,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(realpath("/sys/devices/xxnoexist", pathbuf) == NULL);
     g_assert_cmpint(errno, ==, ENOENT);
 
+#ifdef __GLIBC__
     /* canonicalize_file_name */
 
     /* dir */
@@ -1051,6 +1052,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     /* nonexisting */
     g_assert(canonicalize_file_name("/sys/devices/xxnoexist") == NULL);
     g_assert_cmpint(errno, ==, ENOENT);
+#endif
 
     /* openat */
 
