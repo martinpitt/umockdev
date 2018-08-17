@@ -1028,6 +1028,27 @@ rettype name(const char *path)		    \
     return r;				    \
 }
 
+/* wrapper template for a function with one "const char* path" argument and path return */
+#define WRAP_1ARG_PATHRET(rettype, failret, name)   \
+rettype name(const char *path)		    \
+{ \
+    const char *p;			    \
+    libc_func(name, rettype, const char*);  \
+    rettype r;				    \
+    TRAP_PATH_LOCK;			    \
+    p = trap_path(path);		    \
+    if (p == NULL)			    \
+	r = failret;			    \
+    else {				    \
+	r = (*_ ## name)(p);		    \
+	if (p != path && r != NULL)	    \
+	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1); \
+    };					    \
+    TRAP_PATH_UNLOCK;			    \
+    return r;				    \
+}
+
+
 /* wrapper template for a function with "const char* path" and another argument */
 #define WRAP_2ARGS(rettype, failret, name, arg2t) \
 rettype name(const char *path, arg2t arg2) \
@@ -1045,6 +1066,27 @@ rettype name(const char *path, arg2t arg2) \
     return r;						\
 }
 
+/* wrapper template for a function with "const char* path", another argument, and path return */
+#define WRAP_2ARGS_PATHRET(rettype, failret, name, arg2t) \
+rettype name(const char *path, arg2t arg2) \
+{ \
+    const char *p;					\
+    libc_func(name, rettype, const char*, arg2t);	\
+    rettype r;						\
+    TRAP_PATH_LOCK;					\
+    p = trap_path(path);				\
+    if (p == NULL)					\
+	r = failret;					\
+    else {						\
+	r = (*_ ## name)(p, arg2);			\
+	if (p != path && r != NULL)			\
+	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1); \
+    };					    \
+    TRAP_PATH_UNLOCK;					\
+    return r;						\
+}
+
+
 /* wrapper template for a function with "const char* path" and two other arguments */
 #define WRAP_3ARGS(rettype, failret, name, arg2t, arg3t) \
 rettype name(const char *path, arg2t arg2, arg3t arg3) \
@@ -1061,6 +1103,27 @@ rettype name(const char *path, arg2t arg2, arg3t arg3) \
     TRAP_PATH_UNLOCK;						\
     return r;							\
 }
+
+/* wrapper template for a function with "const char* path", two other arguments, and path return */
+#define WRAP_3ARGS_PATHRET(rettype, failret, name, arg2t, arg3t) \
+rettype name(const char *path, arg2t arg2, arg3t arg3) \
+{ \
+    const char *p;					\
+    libc_func(name, rettype, const char*, arg2t, arg3t); \
+    rettype r;						\
+    TRAP_PATH_LOCK;					\
+    p = trap_path(path);				\
+    if (p == NULL)					\
+	r = failret;					\
+    else {						\
+	r = (*_ ## name)(p, arg2, arg3);		\
+	if (p != path && r != NULL)			\
+	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1); \
+    };					    \
+    TRAP_PATH_UNLOCK;					\
+    return r;						\
+}
+
 
 /* wrapper template for a function with "const char* path" and three other arguments */
 #define WRAP_4ARGS(rettype, failret, name, arg2t, arg3t, arg4t) \
@@ -1274,84 +1337,13 @@ ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
     return r;
 }
 
-char *realpath(const char *path, char *resolved)
-{
-    const char *p;
-    libc_func(realpath, char*, const char*, char*);
-    char *r;
-
-    TRAP_PATH_LOCK;
-    p = trap_path(path);
-    if (p == NULL)
-	r = NULL;
-    else {
-	r = _realpath(p, resolved);
-        if (p == path) {
-	    DBG(DBG_PATH, "testbed wrapped realpath(%s) -> %s (not wrapped)\n", path, r);
-	} else if (r != NULL) {
-	    /* cut off the prefix again */
-	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1);
-	    DBG(DBG_PATH, "testbed wrapped realpath(%s -> %s) -> %s (wrapped)\n", path, p, r);
-	}
-    }
-    TRAP_PATH_UNLOCK;
-    return r;
-}
+WRAP_2ARGS_PATHRET(char *, NULL, realpath, char *);
 
 char *__realpath_chk(const char *path, char *resolved, size_t size);
-
-char *__realpath_chk(const char *path, char *resolved, size_t size)
-{
-    const char *p;
-    libc_func(__realpath_chk, char*, const char*, char*, size_t);
-    char *r;
-    DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s)\n", path);
-
-    TRAP_PATH_LOCK;
-    p = trap_path(path);
-    if (p == NULL)
-	r = NULL;
-    else {
-	r = ___realpath_chk(p, resolved, size);
-	DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s) ret  %s err %i %s\n", path, r, errno, strerror(errno));
-        if (p == path) {
-	    DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s) -> %s (not wrapped)\n", path, r);
-	} else if (r != NULL) {
-	    /* cut off the prefix again */
-	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1);
-	    DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s -> %s) -> %s (wrapped)\n", path, p, r);
-	}
-    }
-    TRAP_PATH_UNLOCK;
-    return r;
-}
+WRAP_3ARGS_PATHRET(char *, NULL, __realpath_chk, char *, size_t);
 
 #ifdef __GLIBC__
-
-char *canonicalize_file_name(const char *path)
-{
-    const char *p;
-    libc_func(canonicalize_file_name, char*, const char*);
-    char *r;
-
-    TRAP_PATH_LOCK;
-    p = trap_path(path);
-    if (p == NULL)
-	r = NULL;
-    else {
-	r = _canonicalize_file_name(p);
-        if (p == path) {
-	    DBG(DBG_PATH, "testbed wrapped canonicalize_file_name(%s) -> %s (not wrapped)\n", path, r);
-	} else if (r != NULL) {
-	    /* cut off the prefix again */
-	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1);
-	    DBG(DBG_PATH, "testbed wrapped canonicalize_file_name(%s -> %s) -> %s (wrapped)\n", path, p, r);
-	}
-    }
-    TRAP_PATH_UNLOCK;
-    return r;
-}
-
+WRAP_1ARG_PATHRET(char *, NULL, canonicalize_file_name);
 #endif
 
 ssize_t
