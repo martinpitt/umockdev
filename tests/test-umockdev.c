@@ -754,6 +754,9 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     /* unknown device, shouldn't crash but print an error message */
     orig_stderr = stderr;
+
+    /* musl libc has readonly stderr */
+#ifndef __MUSL__
     stderr = tmpfile();
     g_assert(stderr != NULL);
     umockdev_testbed_uevent(fixture->testbed, "/devices/unknown", "add");
@@ -763,6 +766,7 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(buf, ==, "ERROR: uevent_sender_send: No such device /devices/unknown\n");
     fclose(stderr);
     stderr = orig_stderr;
+#endif
 
     /* should not trigger an actual event */
     g_assert(udev_monitor_receive_device(mon) == NULL);
