@@ -1011,6 +1011,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     gboolean success;
     GError *error = NULL;
     char *path;
+    char pathbuf[PATH_MAX];
     int dirfd, fd;
 
     /* start with adding one device */
@@ -1020,6 +1021,20 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
 					       "A: simple_attr=1", &error);
     g_assert_no_error(error);
     g_assert(success);
+
+    /* realpath */
+
+    /* dir */
+    path = realpath("/sys/devices/dev1", pathbuf);
+    g_assert_cmpstr(path, ==, "/sys/devices/dev1");
+
+    /* link */
+    path = realpath("/sys/bus/../bus/pci/devices/./dev1", pathbuf);
+    g_assert_cmpstr(path, ==, "/sys/devices/dev1");
+
+    /* nonexisting */
+    g_assert(realpath("/sys/devices/xxnoexist", pathbuf) == NULL);
+    g_assert_cmpint(errno, ==, ENOENT);
 
     /* canonicalize_file_name */
 

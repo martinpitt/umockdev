@@ -1274,6 +1274,58 @@ ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
     return r;
 }
 
+char *realpath(const char *path, char *resolved)
+{
+    const char *p;
+    libc_func(realpath, char*, const char*, char*);
+    char *r;
+
+    TRAP_PATH_LOCK;
+    p = trap_path(path);
+    if (p == NULL)
+	r = NULL;
+    else {
+	r = _realpath(p, resolved);
+        if (p == path) {
+	    DBG(DBG_PATH, "testbed wrapped realpath(%s) -> %s (not wrapped)\n", path, r);
+	} else if (r != NULL) {
+	    /* cut off the prefix again */
+	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1);
+	    DBG(DBG_PATH, "testbed wrapped realpath(%s -> %s) -> %s (wrapped)\n", path, p, r);
+	}
+    }
+    TRAP_PATH_UNLOCK;
+    return r;
+}
+
+char *__realpath_chk(const char *path, char *resolved, size_t size);
+
+char *__realpath_chk(const char *path, char *resolved, size_t size)
+{
+    const char *p;
+    libc_func(__realpath_chk, char*, const char*, char*, size_t);
+    char *r;
+    DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s)\n", path);
+
+    TRAP_PATH_LOCK;
+    p = trap_path(path);
+    if (p == NULL)
+	r = NULL;
+    else {
+	r = ___realpath_chk(p, resolved, size);
+	DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s) ret  %s err %i %s\n", path, r, errno, strerror(errno));
+        if (p == path) {
+	    DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s) -> %s (not wrapped)\n", path, r);
+	} else if (r != NULL) {
+	    /* cut off the prefix again */
+	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1);
+	    DBG(DBG_PATH, "testbed wrapped __realpath_chk(%s -> %s) -> %s (wrapped)\n", path, p, r);
+	}
+    }
+    TRAP_PATH_UNLOCK;
+    return r;
+}
+
 char *canonicalize_file_name(const char *path)
 {
     const char *p;
