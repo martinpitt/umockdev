@@ -1330,7 +1330,7 @@ char *canonicalize_file_name(const char *path)
 {
     const char *p;
     libc_func(canonicalize_file_name, char*, const char*);
-    char *r, *oldr;
+    char *r;
 
     TRAP_PATH_LOCK;
     p = trap_path(path);
@@ -1342,9 +1342,7 @@ char *canonicalize_file_name(const char *path)
 	    DBG(DBG_PATH, "testbed wrapped canonicalize_file_name(%s) -> %s (not wrapped)\n", path, r);
 	} else if (r != NULL) {
 	    /* cut off the prefix again */
-	    oldr = r;
-	    r = strdup(r + trap_path_prefix_len);
-	    free (oldr);
+	    memmove(r, r + trap_path_prefix_len, strlen(r) - trap_path_prefix_len + 1);
 	    DBG(DBG_PATH, "testbed wrapped canonicalize_file_name(%s -> %s) -> %s (wrapped)\n", path, p, r);
 	}
     }
