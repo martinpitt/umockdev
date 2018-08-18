@@ -743,8 +743,6 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     struct udev *udev;
     struct udev_monitor *mon;
-    FILE *orig_stderr;
-    char buf[1000];
 
     /* set up monitor */
     udev = udev_new();
@@ -753,10 +751,11 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(mon != NULL);
 
     /* unknown device, shouldn't crash but print an error message */
-    orig_stderr = stderr;
+    /* some libcs (musl) have readonly stderr, so only test with glibc */
+#ifdef __GLIBC__
+    FILE *orig_stderr = stderr;
+    char buf[1000];
 
-    /* musl libc has readonly stderr */
-#ifndef __MUSL__
     stderr = tmpfile();
     g_assert(stderr != NULL);
     umockdev_testbed_uevent(fixture->testbed, "/devices/unknown", "add");
