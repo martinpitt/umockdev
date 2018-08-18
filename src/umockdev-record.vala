@@ -125,14 +125,14 @@ format_hex(uint8[] bytes, int len=-1)
 }
 
 static void
-write_attr(string name, uint8[] val)
+write_attr(string name, uint8[] val, int size)
 {
     // check if it's text or binary
     string strval = (string) val;
-    if (val.length == strval.length && strval.validate())
+    if (size == strval.length && strval.validate())
         stdout.printf("A: %s=%s", name, strval.chomp().escape(""));
     else
-        stdout.printf("H: %s=%s", name, format_hex(val));
+        stdout.printf("H: %s=%s", name, format_hex(val, size));
     stdout.putc('\n');
 }
 
@@ -195,6 +195,9 @@ print_device_attributes(string devpath, string subdir)
         }
     attributes.sort(strcmp);
 
+    // restrict recorded attributes to 16KiB
+    uint8 contents[16385];
+
     foreach (var attr in attributes) {
         string attr_path = Path.build_filename(attr_dir, attr);
         string attr_name = Path.build_filename(subdir, attr);
@@ -205,11 +208,23 @@ print_device_attributes(string devpath, string subdir)
                 exit_error("Cannot read link %s: %s", attr_path, e.message);
             }
         } else if (FileUtils.test(attr_path, FileTest.IS_REGULAR)) {
-            uint8[] contents;
-            try {
-                FileUtils.get_data(attr_path, out contents);
-                write_attr(attr_name, contents);
-            } catch (FileError e) {} // some attributes are EACCES, or "no such device", etc.
+            // a normal read from FileUtils.get_data() sometimes hangs, so use low-level operations
+            int fd = Posix.open(attr_path, Posix.O_RDONLY|Posix.O_NONBLOCK);
+            // some attributes are EACCES, or "no such device", etc., ignore these
+            if (fd < 0) {
+                debug("Cannot open %s, ignoring: %s", attr_path, strerror(errno));
+                continue;
+            }
+
+            ssize_t contents_len = Posix.read(fd, contents, contents.length - 1);
+            if (contents_len >= 0) {
+                contents[contents_len] = 0;
+                write_attr(attr_name, contents, (int) contents_len);
+            } else {
+                debug("Cannot read %s, ignoring: %s", attr_path, strerror(errno));
+            }
+
+            Posix.close(fd);
         } else if (FileUtils.test(attr_path, FileTest.IS_DIR)) {
             print_device_attributes(devpath, attr);
         }
