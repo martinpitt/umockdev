@@ -216,12 +216,18 @@ print_device_attributes(string devpath, string subdir)
                 continue;
             }
 
-            ssize_t contents_len = Posix.read(fd, contents, contents.length - 1);
-            if (contents_len >= 0) {
-                contents[contents_len] = 0;
-                write_attr(attr_name, contents, (int) contents_len);
-            } else {
-                debug("Cannot read %s, ignoring: %s", attr_path, strerror(errno));
+            // trying to read some attributes hangs forever even with O_NONBLOCK, so check if there's anything
+            Posix.fd_set read_fds;
+            Posix.FD_ZERO(out read_fds);
+            Posix.FD_SET(fd, ref read_fds);
+            if (Posix.select(fd + 1, &read_fds, null, null, {0, 0}) > 0) {
+                ssize_t contents_len = Posix.read(fd, contents, contents.length - 1);
+                if (contents_len >= 0) {
+                    contents[contents_len] = 0;
+                    write_attr(attr_name, contents, (int) contents_len);
+                } else {
+                    debug("Cannot read %s, ignoring: %s", attr_path, strerror(errno));
+                }
             }
 
             Posix.close(fd);
