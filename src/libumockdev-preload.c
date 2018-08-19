@@ -50,6 +50,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "config.h"
 #include "debug.h"
 #include "ioctl_tree.h"
 
@@ -1235,32 +1236,35 @@ int prefix ## open ## suffix (const char *path, int flags)	    \
 WRAP_1ARG(DIR *, NULL, opendir);
 
 WRAP_2ARGS(FILE *, NULL, fopen, const char *);
-WRAP_2ARGS(FILE *, NULL, fopen64, const char *);
 WRAP_2ARGS(int, -1, mkdir, mode_t);
 WRAP_2ARGS(int, -1, chmod, mode_t);
 WRAP_2ARGS(int, -1, access, int);
 WRAP_2ARGS(int, -1, stat, struct stat *);
-WRAP_2ARGS(int, -1, stat64, struct stat64 *);
 WRAP_2ARGS(int, -1, lstat, struct stat *);
+
+#ifdef HAVE_FILE64
+WRAP_2ARGS(int, -1, stat64, struct stat64 *);
+WRAP_2ARGS(FILE *, NULL, fopen64, const char *);
 WRAP_2ARGS(int, -1, lstat64, struct stat64 *);
+#endif
 
 WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
 
 WRAP_4ARGS(ssize_t, -1, getxattr, const char*, void*, size_t);
 WRAP_4ARGS(ssize_t, -1, lgetxattr, const char*, void*, size_t);
 
+#ifdef HAVE_XSTAT
 WRAP_VERSTAT(__x,);
 WRAP_VERSTAT(__x, 64);
 WRAP_VERSTAT(__lx,);
 WRAP_VERSTAT(__lx, 64);
+#endif
 
 int __open_2(const char *path, int flags);
 int __open64_2(const char *path, int flags);
 
 WRAP_OPEN(,);
-WRAP_OPEN(, 64);
 WRAP_OPEN2(__,_2);
-WRAP_OPEN2(__,64_2);
 
 /* wrapper template for openat family; intercept opening /sys from the root dir */
 #define WRAP_OPENAT(prefix, suffix) \
@@ -1301,7 +1305,12 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
 }
 
 WRAP_OPENAT(,);
+
+#ifdef HAVE_FILE64
+WRAP_OPEN(, 64);
+WRAP_OPEN2(__,64_2);
 WRAP_OPENAT(, 64);
+#endif
 
 int
 inotify_add_watch(int fd, const char *path, uint32_t mask)
