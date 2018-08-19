@@ -37,10 +37,6 @@ AM_PROG_AR
 LT_PREREQ(2.2)
 LT_INIT
 
-# check which functions to wrap in preload
-AC_CHECK_LIB([c], [fopen64], [AC_DEFINE([HAVE_FILE64], [1], [libc has fopen64() and similar functions]) ])
-AC_CHECK_LIB([c], [__xstat], [AC_DEFINE([HAVE_XSTAT], [1], [libc has __xstat() and similar functions]) ])
-
 # check for gtk-doc
 m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])

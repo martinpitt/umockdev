@@ -50,7 +50,6 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "config.h"
 #include "debug.h"
 #include "ioctl_tree.h"
 
@@ -1242,7 +1241,7 @@ WRAP_2ARGS(int, -1, access, int);
 WRAP_2ARGS(int, -1, stat, struct stat *);
 WRAP_2ARGS(int, -1, lstat, struct stat *);
 
-#ifdef HAVE_FILE64
+#ifdef __GLIBC__
 WRAP_2ARGS(int, -1, stat64, struct stat64 *);
 WRAP_2ARGS(FILE *, NULL, fopen64, const char *);
 WRAP_2ARGS(int, -1, lstat64, struct stat64 *);
@@ -1253,7 +1252,7 @@ WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
 WRAP_4ARGS(ssize_t, -1, getxattr, const char*, void*, size_t);
 WRAP_4ARGS(ssize_t, -1, lgetxattr, const char*, void*, size_t);
 
-#ifdef HAVE_XSTAT
+#ifdef __GLIBC__
 WRAP_VERSTAT(__x,);
 WRAP_VERSTAT(__x, 64);
 WRAP_VERSTAT(__lx,);
@@ -1306,7 +1305,7 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
 
 WRAP_OPENAT(,);
 
-#ifdef HAVE_FILE64
+#ifdef __GLIBC__
 WRAP_OPEN(, 64);
 WRAP_OPEN2(__,64_2);
 WRAP_OPENAT(, 64);
