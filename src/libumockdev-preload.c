@@ -42,8 +42,8 @@
 #include <sys/sysmacros.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
-#include <sys/ioctl.h>
 #include <sys/xattr.h>
+#include <linux/ioctl.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
 #include <linux/input.h>

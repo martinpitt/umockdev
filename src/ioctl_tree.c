@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
-#include <sys/ioctl.h>
+#include <linux/ioctl.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
 
