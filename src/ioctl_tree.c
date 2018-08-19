@@ -38,7 +38,7 @@
  ***********************************/
 
 ioctl_tree *
-ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret)
+ioctl_tree_new_from_bin(IOCTL_REQUEST_TYPE id, const void *data, int ret)
 {
     const ioctl_type *type;
     ioctl_tree *t;
@@ -66,7 +66,7 @@ ioctl_tree_new_from_text(const char *line)
     static char lead_ws[1001];
     static char ioctl_name[101];
     int ret, offset;
-    unsigned long id;
+    IOCTL_REQUEST_TYPE id;
     const ioctl_type *type;
     ioctl_tree *t;
 
@@ -340,7 +340,7 @@ ioctl_node_list_append(ioctl_node_list * list, ioctl_tree * element)
 }
 
 ioctl_tree *
-ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void *arg, int *ret)
+ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     const ioctl_type *t;
     ioctl_tree *i;
@@ -463,7 +463,7 @@ write_hex(FILE * file, const char *buf, size_t len)
 #define NSIZE(node) ((node->type && node->type->real_size >= 0) ? node->type->real_size : _IOC_SIZE(node->id))
 
 static inline int
-id_matches_type(unsigned long id, const ioctl_type *type)
+id_matches_type(IOCTL_REQUEST_TYPE id, const ioctl_type *type)
 {
     return _IOC_TYPE(id) == _IOC_TYPE(type->id) &&
            _IOC_DIR(id) == _IOC_DIR(type->id) &&
@@ -523,7 +523,7 @@ ioctl_simplestruct_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 }
 
 static int
-ioctl_simplestruct_in_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_simplestruct_in_execute(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     if (id == node->id) {
 	memcpy(arg, node->data, NSIZE(node));
@@ -595,7 +595,7 @@ ioctl_varlenstruct_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 }
 
 static int
-ioctl_varlenstruct_in_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_varlenstruct_in_execute(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     if (id == node->id) {
 	size_t size = node->type->get_data_size(id, node->data);
@@ -702,7 +702,7 @@ usbdevfs_reapurb_equal(const ioctl_tree * n1, const ioctl_tree * n2)
 }
 
 static int
-usbdevfs_reapurb_execute(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+usbdevfs_reapurb_execute(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     /* set in SUBMIT, cleared in REAP */
     static const ioctl_tree *submit_node = NULL;
@@ -797,7 +797,7 @@ usbdevfs_reapurb_insertion_parent(ioctl_tree * tree, ioctl_tree * node)
  ***********************************/
 
 static int
-ioctl_execute_success(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_execute_success(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     errno = 0;
     *ret = 0;
@@ -805,7 +805,7 @@ ioctl_execute_success(const ioctl_tree * node, unsigned long id, void *arg, int 
 }
 
 static int
-ioctl_execute_enodata(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_execute_enodata(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     errno = ENODATA;
     *ret = -1;
@@ -813,7 +813,7 @@ ioctl_execute_enodata(const ioctl_tree * node, unsigned long id, void *arg, int 
 }
 
 static int
-ioctl_execute_enotty(const ioctl_tree * node, unsigned long id, void *arg, int *ret)
+ioctl_execute_enotty(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
 {
     errno = ENOTTY;
     *ret = -1;
@@ -923,7 +923,7 @@ ioctl_type ioctl_db[] = {
 };
 
 const ioctl_type *
-ioctl_type_get_by_id(unsigned long id)
+ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id)
 {
     ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
@@ -933,7 +933,7 @@ ioctl_type_get_by_id(unsigned long id)
 }
 
 const ioctl_type *
-ioctl_type_get_by_name(const char *name, unsigned long *out_id)
+ioctl_type_get_by_name(const char *name, IOCTL_REQUEST_TYPE *out_id)
 {
     ioctl_type *cur;
     char *parens;

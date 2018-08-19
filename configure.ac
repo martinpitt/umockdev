@@ -37,6 +37,24 @@ AM_PROG_AR
 LT_PREREQ(2.2)
 LT_INIT
 
+# glibc's ioctl takes an 'unsigned long' instead of the POSIX 'int' for the request parameter
+AC_CACHE_CHECK([ioctl request parameter type],
+    [gl_cv_func_ioctl_request_type],
+    [AC_COMPILE_IFELSE(
+        [AC_LANG_PROGRAM(
+        [[#include <sys/ioctl.h>]],
+        [[extern
+            #ifdef __cplusplus
+            "C"
+            #endif
+            int ioctl (int, int, ...);
+        ]])
+        ],
+        [gl_cv_func_ioctl_request_type=int],
+        [gl_cv_func_ioctl_request_type="unsigned long"]
+    ])
+AC_DEFINE_UNQUOTED([IOCTL_REQUEST_TYPE], [$gl_cv_func_ioctl_request_type], [ioctl request parameter type]))
+
 # check for gtk-doc
 m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK([1.14],[--flavour no-tmpl])

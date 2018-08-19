@@ -50,6 +50,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "config.h"
 #include "debug.h"
 #include "ioctl_tree.h"
 
@@ -550,7 +551,7 @@ static void ioctl_record_sigint_handler(int signum)
 }
 
 static void
-record_ioctl(unsigned long request, void *arg, int result)
+record_ioctl(IOCTL_REQUEST_TYPE request, void *arg, int result)
 {
     ioctl_tree *node;
 
@@ -625,7 +626,7 @@ ioctl_emulate_close(int fd)
 }
 
 static int
-ioctl_emulate(int fd, unsigned long request, void *arg)
+ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 {
     ioctl_tree *ret;
     int ioctl_result = -1;
@@ -1530,9 +1531,9 @@ fclose(FILE * stream)
 }
 
 int
-ioctl(int d, unsigned long request, ...)
+ioctl(int d, IOCTL_REQUEST_TYPE request, ...)
 {
-    libc_func(ioctl, int, int, unsigned long, ...);
+    libc_func(ioctl, int, int, IOCTL_REQUEST_TYPE, ...);
     int result;
     va_list ap;
     void* arg;
@@ -1548,13 +1549,13 @@ ioctl(int d, unsigned long request, ...)
 
     result = ioctl_emulate(d, request, arg);
     if (result != UNHANDLED) {
-	DBG(DBG_IOCTL, "ioctl fd %i request %lX: emulated, result %i\n", d, request, result);
+	DBG(DBG_IOCTL, "ioctl fd %i request %X: emulated, result %i\n", d, (unsigned) request, result);
 	return result;
     }
 
     /* call original ioctl */
     result = _ioctl(d, request, arg);
-    DBG(DBG_IOCTL, "ioctl fd %i request %lX: original, result %i\n", d, request, result);
+    DBG(DBG_IOCTL, "ioctl fd %i request %X: original, result %i\n", d, (unsigned) request, result);
 
     if (result != -1 && ioctl_record_fd == d)
 	record_ioctl(request, arg, result);

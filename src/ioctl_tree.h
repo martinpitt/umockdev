@@ -19,13 +19,15 @@
 #ifndef __IOCTL_TREE_H
 #    define __IOCTL_TREE_H
 
+#include "config.h"
+
 struct ioctl_tree;
 typedef struct ioctl_tree ioctl_tree;
 
 typedef struct {
-    unsigned long id;
+    IOCTL_REQUEST_TYPE id;
     ssize_t real_size;		/* for legacy ioctls with _IOC_SIZE == 0 */
-    unsigned long nr_range;
+    IOCTL_REQUEST_TYPE nr_range;
     const char name[100];
     void (*init_from_bin) (ioctl_tree *, const void *);
     int (*init_from_text) (ioctl_tree *, const char *);
@@ -33,12 +35,12 @@ typedef struct {
     void (*write) (const ioctl_tree *, FILE *);
     int (*equal) (const ioctl_tree *, const ioctl_tree *);
     /* ret: 0: unhandled, 1: handled, move to next node, 2: handled, keep node */
-    int (*execute) (const ioctl_tree *, unsigned long, void *, int *);
+    int (*execute) (const ioctl_tree *, IOCTL_REQUEST_TYPE, void *, int *);
     ioctl_tree *(*insertion_parent) (ioctl_tree *, ioctl_tree *);
     /* some structs have a variable length and contain a length field, or their
      * ioctls do not encode the size; if set, and real_size < 0, this function
      * returns the length */
-    size_t (*get_data_size) (unsigned long, const void *);
+    size_t (*get_data_size) (IOCTL_REQUEST_TYPE, const void *);
 } ioctl_type;
 
 typedef struct {
@@ -52,7 +54,7 @@ struct ioctl_tree {
     int depth;
     void *data;
     int ret;
-    unsigned long id;		/* usually type->id, but needed for patterns like EVIOCGABS(abs) */
+    IOCTL_REQUEST_TYPE id;		/* usually type->id, but needed for patterns like EVIOCGABS(abs) */
     ioctl_tree *child;
     ioctl_tree *next;		/* sibling */
     ioctl_tree *parent;
@@ -61,7 +63,7 @@ struct ioctl_tree {
     ioctl_node_list *last_added;
 };
 
-ioctl_tree *ioctl_tree_new_from_bin(unsigned long id, const void *data, int ret);
+ioctl_tree *ioctl_tree_new_from_bin(IOCTL_REQUEST_TYPE id, const void *data, int ret);
 ioctl_tree *ioctl_tree_new_from_text(const char *line);
 void ioctl_tree_free(ioctl_tree * tree);
 ioctl_tree *ioctl_tree_read(FILE * f);
@@ -69,7 +71,7 @@ void ioctl_tree_write(FILE * f, const ioctl_tree * tree);
 ioctl_tree *ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node);
 ioctl_tree *ioctl_tree_find_equal(ioctl_tree * tree, ioctl_tree * node);
 ioctl_tree *ioctl_tree_next(const ioctl_tree * node);
-ioctl_tree *ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, unsigned long id, void *arg, int *ret);
+ioctl_tree *ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, void *arg, int *ret);
 
 /* node lists */
 ioctl_node_list *ioctl_node_list_new(void);
@@ -93,7 +95,7 @@ ioctl_tree_next_wrap(ioctl_tree * tree, ioctl_tree * node)
 }
 
 /* database of known ioctls; return NULL for unknown ones */
-const ioctl_type *ioctl_type_get_by_id(unsigned long id);
-const ioctl_type *ioctl_type_get_by_name(const char *name, unsigned long *out_id);
+const ioctl_type *ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id);
+const ioctl_type *ioctl_type_get_by_name(const char *name, IOCTL_REQUEST_TYPE *out_id);
 
 #endif				/* __IOCTL_TREE_H */
