@@ -1143,6 +1143,39 @@ rettype name(const char *path, arg2t arg2, arg3t arg3, arg4t arg4) \
     return r;							\
 }
 
+/* wrapper template for stat family; note that we abuse the sticky bit in
+ * the emulated /dev to indicate a block device (the sticky bit has no
+ * real functionality for device nodes) */
+#define WRAP_STAT(prefix, suffix) \
+int prefix ## stat ## suffix (const char *path, struct stat ## suffix *st) \
+{ \
+    const char *p;								\
+    libc_func(prefix ## stat ## suffix, int, const char*, struct stat ## suffix *); \
+    int ret;									\
+    TRAP_PATH_LOCK;								\
+    p = trap_path(path);							\
+    if (p == NULL) {								\
+	TRAP_PATH_UNLOCK;							\
+	return -1;								\
+    }										\
+    DBG(DBG_PATH, "testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
+    ret = _ ## prefix ## stat ## suffix(p, st);					\
+    TRAP_PATH_UNLOCK;								\
+    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
+	&& is_emulated_device(p, st->st_mode)) {				\
+	st->st_mode &= ~S_IFREG;						\
+	if (st->st_mode &  S_ISVTX) {						\
+	    st->st_mode &= ~S_ISVTX; st->st_mode |= S_IFBLK;			\
+	    DBG(DBG_PATH, "  %s is an emulated block device\n", path);		\
+	} else {								\
+	    st->st_mode |= S_IFCHR;						\
+	    DBG(DBG_PATH, "  %s is an emulated char device\n", path);		\
+	}									\
+	st->st_rdev = get_rdev(path + 5);					\
+    }										\
+    return ret;									\
+}
+
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes) */
@@ -1239,13 +1272,13 @@ WRAP_2ARGS(FILE *, NULL, fopen, const char *);
 WRAP_2ARGS(int, -1, mkdir, mode_t);
 WRAP_2ARGS(int, -1, chmod, mode_t);
 WRAP_2ARGS(int, -1, access, int);
-WRAP_2ARGS(int, -1, stat, struct stat *);
-WRAP_2ARGS(int, -1, lstat, struct stat *);
+WRAP_STAT(,);
+WRAP_STAT(l,);
 
 #ifdef __GLIBC__
-WRAP_2ARGS(int, -1, stat64, struct stat64 *);
+WRAP_STAT(,64);
+WRAP_STAT(l,64);
 WRAP_2ARGS(FILE *, NULL, fopen64, const char *);
-WRAP_2ARGS(int, -1, lstat64, struct stat64 *);
 #endif
 
 WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
