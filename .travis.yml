@@ -1,12 +1,15 @@
 dist: trusty
 language: c
 sudo: true
-script: tests/run-ubuntu-chroot
+services:
+- docker
 env:
-- RELEASE=
-- RELEASE=bionic
-- RELEASE=bionic ARCH=i386
-- RELEASE=xenial
+- TEST=tests/run-ubuntu-chroot RELEASE=
+- TEST=tests/run-ubuntu-chroot RELEASE=bionic
+- TEST=tests/run-ubuntu-chroot RELEASE=bionic ARCH=i386
+- TEST=tests/run-ubuntu-chroot RELEASE=xenial
+- TEST=tests/run-alpine-docker RELEASE=latest
+script: $TEST
 cache:
   directories:
   - /tmp/cache
