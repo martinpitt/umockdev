@@ -45,7 +45,7 @@ ioctl_tree_new_from_bin(IOCTL_REQUEST_TYPE id, const void *data, int ret)
 
     type = ioctl_type_get_by_id(id);
     if (type == NULL) {
-	DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_bin: unknown ioctl %lX\n", id);
+	DBG(DBG_IOCTL_TREE, "ioctl_tree_new_from_bin: unknown ioctl %X\n", (unsigned) id);
 	return NULL;
     }
     /* state independent ioctl? */
@@ -346,7 +346,7 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, 
     ioctl_tree *i;
     int r, handled;
 
-    DBG(DBG_IOCTL_TREE, "ioctl_tree_execute ioctl %lX\n", id);
+    DBG(DBG_IOCTL_TREE, "ioctl_tree_execute ioctl %X\n", (unsigned) id);
 
     /* check if it's a hardware independent stateless ioctl */
     t = ioctl_type_get_by_id(id);
@@ -367,7 +367,7 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, 
      * ioctls as much as possible (i. e. maintain it while the requests come in
      * at the same order as originally recorded) */
     for (;;) {
-	DBG(DBG_IOCTL_TREE, "   ioctl_tree_execute: checking node %s(%lX, base id %lX) ", i->type->name, i->id, i->type->id);
+	DBG(DBG_IOCTL_TREE, "   ioctl_tree_execute: checking node %s(%X, base id %X) ", i->type->name, (unsigned) i->id, (unsigned) i->type->id);
 	if (debug_categories & DBG_IOCTL_TREE)
 	    i->type->write(i, stderr);
 	DBG(DBG_IOCTL_TREE, "\n");
@@ -474,7 +474,7 @@ id_matches_type(IOCTL_REQUEST_TYPE id, const ioctl_type *type)
 static void
 ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
-    DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_bin: %s(%lX): size is %lu bytes\n", node->type->name, node->id, NSIZE(node));
+    DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_bin: %s(%X): size is %lu bytes\n", node->type->name, (unsigned) node->id, NSIZE(node));
     node->data = malloc(NSIZE(node));
     memcpy(node->data, data, NSIZE(node));
 }
@@ -489,8 +489,8 @@ ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
     node->data = malloc(data_len);
 
     if (NSIZE(node) != data_len) {
-	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: adjusting ioctl ID %lX (size %lu) to actual data length %zu\n",
-	    node->id, NSIZE(node), data_len);
+	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: adjusting ioctl ID %X (size %lu) to actual data length %zu\n",
+	    (unsigned) node->id, NSIZE(node), data_len);
 	node->id = _IOC(_IOC_DIR(node->id), _IOC_TYPE(node->id), _IOC_NR(node->id), data_len);
     }
 
@@ -548,7 +548,7 @@ static void
 ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
 {
     size_t size = node->type->get_data_size(node->id, data);
-    DBG(DBG_IOCTL_TREE, "ioctl_varlenstruct_init_from_bin: %s(%lX): size is %zu bytes\n", node->type->name, node->id, size);
+    DBG(DBG_IOCTL_TREE, "ioctl_varlenstruct_init_from_bin: %s(%X): size is %zu bytes\n", node->type->name, (unsigned) node->id, size);
     node->data = malloc(size);
     memcpy(node->data, data, size);
 }
@@ -570,8 +570,8 @@ ioctl_varlenstruct_init_from_text(ioctl_tree * node, const char *data)
     size_t size = node->type->get_data_size(node->id, node->data);
 
     if (size != data_len) {
-	fprintf(stderr, "ioctl_varlenstruct_init_from_text: ioctl %lX: expected data length %zu, but got %zu bytes from text data\n",
-		node->id, size, data_len);
+	fprintf(stderr, "ioctl_varlenstruct_init_from_text: ioctl %X: expected data length %zu, but got %zu bytes from text data\n",
+		(unsigned) node->id, size, data_len);
 	free(node->data);
 	return FALSE;
     }
