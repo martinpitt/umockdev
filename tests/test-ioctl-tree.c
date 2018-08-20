@@ -88,7 +88,7 @@ get_test_tree(void)
 static void
 t_type_get_by(void)
 {
-    unsigned long id;
+    IOCTL_REQUEST_TYPE id;
     const ioctl_type *t;
 
     g_assert(ioctl_type_get_by_id(-1) == NULL);
