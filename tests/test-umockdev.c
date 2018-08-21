@@ -1138,6 +1138,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     GStatBuf st;
     gchar *devdir, *devpath;
     int fd;
+    FILE* f;
     char buf[100];
 
     /* no mocked devices */
@@ -1172,6 +1173,20 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(!isatty(fd));
     g_assert_cmpint(read(fd, buf, 20), ==, 12);
     close(fd);
+    g_assert_cmpint(buf[0], ==, 'z');
+    g_assert_cmpint(buf[1], ==, 'e');
+    g_assert_cmpint(buf[11], ==, 'o');
+    g_assert_cmpint(buf[12], ==, 0);
+    memset(buf, 0, sizeof(buf));
+
+    /* /dev/zero with fopen() */
+    g_assert(fopen("/dev/wishyouwerehere", "r") == NULL);
+    g_assert_cmpint(errno, ==, ENOENT);
+    f = fopen("/dev/zero", "rb");
+    g_assert(f != NULL);
+    g_assert(!isatty(fileno(f)));
+    g_assert_cmpint(fread(buf, 1, 100, f), ==, 12);
+    fclose(f);
     g_assert_cmpint(buf[0], ==, 'z');
     g_assert_cmpint(buf[1], ==, 'e');
     g_assert_cmpint(buf[11], ==, 'o');

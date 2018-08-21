@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012-2013 Canonical Ltd.
+ * Copyright (C) 2018 Martin Pitt
  * Author: Martin Pitt <martin.pitt@ubuntu.com>
  *
  * The initial code for intercepting function calls was inspired and partially
@@ -413,6 +414,7 @@ static void ioctl_record_sigint_handler(int signum);
 static void
 ioctl_record_open(int fd)
 {
+    libc_func(fopen, FILE*, const char *, const char*);
     static dev_t record_rdev = (dev_t) - 1;
 
     if (fd < 0)
@@ -467,7 +469,7 @@ ioctl_record_open(int fd)
 	    fprintf(stderr, "umockdev: $UMOCKDEV_DIR cannot be used while recording\n");
 	    exit(1);
 	}
-	ioctl_record_log = fopen(path, "a+");
+	ioctl_record_log = _fopen(path, "a+");
 	if (ioctl_record_log == NULL) {
 	    perror("umockdev: failed to open ioctl record file");
 	    exit(1);
@@ -582,6 +584,7 @@ struct ioctl_fd_info {
 static void
 ioctl_emulate_open(int fd, const char *dev_path)
 {
+    libc_func(fopen, FILE*, const char *, const char*);
     libc_func(fclose, int, FILE *);
     FILE *f;
     static char ioctl_path[PATH_MAX];
@@ -598,7 +601,7 @@ ioctl_emulate_open(int fd, const char *dev_path)
     /* check if we have an ioctl tree for this */
     snprintf(ioctl_path, sizeof(ioctl_path), "%s/ioctl/%s", getenv("UMOCKDEV_DIR"), dev_path);
 
-    f = fopen(ioctl_path, "r");
+    f = _fopen(ioctl_path, "r");
     if (f == NULL)
 	return;
 
@@ -760,6 +763,7 @@ static void
 script_start_record(int fd, const char *logname, const char *recording_path, enum script_record_format fmt)
 {
     FILE *log;
+    libc_func(fopen, FILE*, const char *, const char*);
     struct script_record_info *srinfo;
 
     if (fd_map_get(&script_recorded_fds, fd, NULL)) {
@@ -767,7 +771,7 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
 	abort();
     }
 
-    log = fopen(logname, "a+");
+    log = _fopen(logname, "a+");
     if (log == NULL) {
 	perror("umockdev: failed to open script record file");
 	exit(1);
@@ -1266,9 +1270,37 @@ int prefix ## open ## suffix (const char *path, int flags)	    \
     return ret;						    	    \
 }
 
+/* wrapper template for fopen family */
+#define WRAP_FOPEN(prefix, suffix) \
+FILE* prefix ## fopen ## suffix (const char *path, const char *mode)  \
+{ \
+    const char *p;						    \
+    libc_func(prefix ## fopen ## suffix, FILE*, const char*, const char*);\
+    FILE *ret;							    \
+    TRAP_PATH_LOCK;						    \
+    p = trap_path(path);					    \
+    if (p == NULL) {						    \
+	TRAP_PATH_UNLOCK;					    \
+	return NULL;						    \
+    }								    \
+    DBG(DBG_PATH, "testbed wrapped " #prefix "fopen" #suffix "(%s) -> %s\n", path, p); \
+    ret =  _ ## prefix ## fopen ## suffix(p, mode);		    \
+    TRAP_PATH_UNLOCK;						    \
+    if (ret != NULL) {						    \
+	int fd = fileno(ret);					    \
+	if (path != p)						    \
+	    ioctl_emulate_open(fd, path);			    \
+	else {							    \
+	    ioctl_record_open(fd);				    \
+	    script_record_open(fd);				    \
+	}							    \
+    }								    \
+    return ret;							    \
+}
+
 WRAP_1ARG(DIR *, NULL, opendir);
 
-WRAP_2ARGS(FILE *, NULL, fopen, const char *);
+WRAP_FOPEN(,);
 WRAP_2ARGS(int, -1, mkdir, mode_t);
 WRAP_2ARGS(int, -1, chmod, mode_t);
 WRAP_2ARGS(int, -1, access, int);
@@ -1278,7 +1310,7 @@ WRAP_STAT(l,);
 #ifdef __GLIBC__
 WRAP_STAT(,64);
 WRAP_STAT(l,64);
-WRAP_2ARGS(FILE *, NULL, fopen64, const char *);
+WRAP_FOPEN(,64);
 #endif
 
 WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);

@@ -2,6 +2,7 @@
  * test-umockdev-record.vala
  *
  * Copyright (C) 2013 Canonical Ltd.
+ * Copyright (C) 2018 Martin Pitt
  * Author: Martin Pitt <martin.pitt@ubuntu.com>
  *
  * umockdev is free software; you can redistribute it and/or
@@ -373,6 +374,51 @@ t_system_script_log_simple ()
 
     // should log the header plus one read
     spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
+           out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    string[] loglines = file_contents (log).split("\n");
+    assert_cmpuint (loglines.length, Op.EQ, 2);
+    assert_cmpstr (loglines[0], Op.EQ, "d 0 /dev/zero");
+
+    string[] logwords = loglines[1].split(" ");
+    assert_cmpuint (logwords.length, Op.EQ, 3);
+    assert_cmpstr (logwords[0], Op.EQ, "r");
+    // should be quick, give it 5 ms at most
+    assert_cmpint (int.parse(logwords[1]), Op.LE, 5);
+    assert_cmpstr (logwords[2], Op.EQ, "^@");
+
+    FileUtils.remove (log);
+}
+
+/*
+ * umockdev-record --script recording to a file, with simple "readbyte" command in fopen mode
+ * It would be so much more elegant to use Test.add_data_func() and re-use the
+ * previous function, but this is broken: https://gitlab.gnome.org/GNOME/vala/issues/525
+ */
+static void
+t_system_script_log_simple_fopen ()
+{
+    string sout;
+    string serr;
+    int exit;
+    string log;
+
+    try {
+        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
+    } catch (Error e) { Process.abort (); }
+
+    // should not log anything as that device is not touched
+    spawn (umockdev_record_path + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero fopen",
+           out sout, out serr, out exit);
+    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (file_contents (log), Op.EQ, "");
+
+    // should log the header plus one read
+    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero fopen",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -847,6 +893,7 @@ main (string[] args)
     Test.add_func ("/umockdev-record/ioctl-log", t_system_ioctl_log);
     Test.add_func ("/umockdev-record/ioctl-log-append-dev-mismatch", t_system_ioctl_log_append_dev_mismatch);
     Test.add_func ("/umockdev-record/script-log-simple", t_system_script_log_simple);
+    Test.add_func ("/umockdev-record/script-log-simple-fopen", t_system_script_log_simple_fopen);
     Test.add_func ("/umockdev-record/script-log-append-same-dev", t_system_script_log_append_same_dev);
     Test.add_func ("/umockdev-record/script-log-append-dev-mismatch", t_system_script_log_append_dev_mismatch);
     Test.add_func ("/umockdev-record/script-log-chatter", t_system_script_log_chatter);
