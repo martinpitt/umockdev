@@ -115,7 +115,7 @@ t_run_exit_code ()
     // normal exit, nonzero
     get_program_out ("ls", umockdev_run_command + "ls /nonexisting", out sout, out serr, out exit);
     assert (Process.if_exited (exit));
-    assert_cmpint (Process.exit_status (exit), Op.EQ, 2);
+    assert_cmpint (Process.exit_status (exit), Op.GT, 0);
     assert_cmpstr (sout, Op.EQ, "");
     assert_cmpstr (serr, Op.NE, "");
 
