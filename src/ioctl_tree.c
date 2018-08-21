@@ -708,7 +708,8 @@ usbdevfs_reapurb_execute(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *a
     static const ioctl_tree *submit_node = NULL;
     static struct usbdevfs_urb *submit_urb = NULL;
 
-    if (id == USBDEVFS_SUBMITURB) {
+    /* have to cast here, as with musl USBDEVFS* have the wrong type "unsigned long" */
+    if (id == (IOCTL_REQUEST_TYPE) USBDEVFS_SUBMITURB) {
 	const struct usbdevfs_urb *n_urb = node->data;
 	struct usbdevfs_urb *a_urb = arg;
 	assert(submit_node == NULL);

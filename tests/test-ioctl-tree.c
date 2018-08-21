@@ -100,22 +100,33 @@ t_type_get_by(void)
     g_assert_cmpuint(id, ==, USBDEVFS_CONNECTINFO);
     g_assert_cmpuint(ioctl_type_get_by_name("USBDEVFS_REAPURBNDELAY", NULL)->id, ==, USBDEVFS_REAPURBNDELAY);
 
+    t = ioctl_type_get_by_id(USBDEVFS_CONNECTINFO);
+    g_assert(t != NULL);
+    g_assert_cmpuint(t->id, ==, USBDEVFS_CONNECTINFO);
+    g_assert_cmpstr(t->name, ==, "USBDEVFS_CONNECTINFO");
+
+    t = ioctl_type_get_by_id(EVIOCGABS(0));
+    g_assert(t != NULL);
+    /* have to cast here, as with musl EVIO* have the wrong type "unsigned long" */
+    g_assert_cmpuint(t->id, ==, (IOCTL_REQUEST_TYPE) EVIOCGABS(0));
+    g_assert_cmpstr(t->name, ==, "EVIOCGABS");
+
     t = ioctl_type_get_by_id(EVIOCGABS(ABS_X));
     g_assert(t != NULL);
-    g_assert_cmpuint(t->id, ==, EVIOCGABS(0));
+    g_assert_cmpuint(t->id, ==, (IOCTL_REQUEST_TYPE) EVIOCGABS(0));
     g_assert_cmpstr(t->name, ==, "EVIOCGABS");
     g_assert(ioctl_type_get_by_id(EVIOCGABS(ABS_WHEEL)) == t);
     g_assert(ioctl_type_get_by_id(EVIOCGABS(ABS_MAX)) == t);
 
     g_assert(ioctl_type_get_by_name("EVIOCGABS", &id) == t);
     g_assert(ioctl_type_get_by_name("EVIOCGABS(0)", &id) == t);
-    g_assert_cmpuint(id, ==, EVIOCGABS(ABS_X));
+    g_assert_cmpuint(id, ==, (IOCTL_REQUEST_TYPE) EVIOCGABS(ABS_X));
     g_assert(ioctl_type_get_by_name("EVIOCGABS(8)", &id) == t);
-    g_assert_cmpuint(id, ==, EVIOCGABS(ABS_WHEEL));
+    g_assert_cmpuint(id, ==, (IOCTL_REQUEST_TYPE) EVIOCGABS(ABS_WHEEL));
 
     t = ioctl_type_get_by_id(EVIOCGBIT(EV_SYN, 10));
     g_assert(t != NULL);
-    g_assert_cmpuint(t->id, ==, EVIOCGBIT(EV_SYN, 32));
+    g_assert_cmpuint(t->id, ==, (IOCTL_REQUEST_TYPE) EVIOCGBIT(EV_SYN, 32));
     g_assert_cmpstr(t->name, ==, "EVIOCGBIT");
     g_assert(ioctl_type_get_by_id(EVIOCGBIT(EV_KEY, 20)) == t);
     g_assert(ioctl_type_get_by_id(EVIOCGBIT(EV_PWR, 1000)) == t);
