@@ -261,6 +261,8 @@ tests_test_umockdev_LDADD =	\
 tests_test_ioctl_tree_SOURCES =	\
 	src/ioctl_tree.c	\
 	tests/test-ioctl-tree.c	\
+	src/debug.h		\
+	src/debug.c		\
 	$(NULL)
 
 tests_test_ioctl_tree_CFLAGS =	\

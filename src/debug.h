@@ -13,7 +13,7 @@
 #define DBG_IOCTL   (1 << 3)
 #define DBG_IOCTL_TREE (1 << 4)
 
-unsigned debug_categories;
+extern unsigned debug_categories;
 
 void init_debug(void) __attribute__((constructor));
 
