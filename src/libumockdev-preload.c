@@ -1322,7 +1322,7 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
   \
     if (!trapped)										\
         p = trap_path(pathname);								\
-    DBG(DBG_PATH, "testbed wrapped " #suffix "openat" #suffix "(%s) -> %s\n", pathname, p);	\
+    DBG(DBG_PATH, "testbed wrapped " #prefix "openat" #suffix "(%s) -> %s\n", pathname, p);	\
     if (p == NULL) { TRAP_PATH_UNLOCK; return -1; }						\
     if (flags & (O_CREAT | O_TMPFILE)) {							\
 	mode_t mode;										\
