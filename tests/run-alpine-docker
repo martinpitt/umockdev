@@ -8,7 +8,7 @@ RM=""
 sudo docker run --interactive $OPTS --volume `pwd`:/source alpine:${RELEASE:-latest} /bin/sh <<EOF
 
 # install build dependencies
-apk add --no-cache autoconf automake libtool gcc musl-dev glib-dev eudev-dev libgudev-dev make vala linux-headers xz
+apk add --no-cache autoconf automake libtool gcc musl-dev glib-dev eudev-dev libgudev-dev make vala linux-headers xz usbutils
 
 # run build as user
 su -s /bin/sh - guest << EOG

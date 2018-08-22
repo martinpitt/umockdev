@@ -1089,8 +1089,6 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
 static void
 t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-/* FIXME: This does not currently work in Alpine/musl */
-#ifdef __GLIBC__
     gchar *syspath;
     gchar *out, *err, *dir;
     int exit_status;
@@ -1126,9 +1124,12 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(exit_status, ==, 0);
 
     /* g_printf("------ out: -------\n%s\n------ err: ------\n%s\n-----\n", out, err); */
-    g_assert(g_str_has_prefix(out, "\nBus 001 Device 001: ID 04a9:31c0 Canon, Inc. PowerShot SX200 IS\n"));
-    g_assert(strstr(out, "idVendor           0x04a9 Canon, Inc."));
-#endif
+    g_assert(g_str_has_prefix(out, "\nBus 001 Device 001: ID 04a9:31c0"));
+    g_assert(strstr(out, "idVendor           0x04a9"));
+
+    /* Alpine's lsusb doesn't read usb.ids, and our test container does not ship it */
+    if (g_file_test("/var/lib/usbutils/usb.ids", G_FILE_TEST_EXISTS))
+        g_assert(strstr(out, "Canon, Inc. PowerShot SX200 IS"));
 }
 
 static void
