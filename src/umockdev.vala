@@ -1078,7 +1078,8 @@ public class Testbed: GLib.Object {
         // otherwise we create a PTY
         int ptym, ptys;
         char[] ptyname_array = new char[8192];
-        assert (Linux.openpty (out ptym, out ptys, ptyname_array, null, null) == 0);
+        if (Linux.openpty (out ptym, out ptys, ptyname_array, null, null) < 0)
+            error ("umockdev Testbed.create_node_for_device: openpty() failed: %s", strerror (errno));
         string ptyname = (string) ptyname_array;
         debug ("create_node_for_device: creating pty device %s: got pty %s", node_path, ptyname);
         Posix.close (ptys);
