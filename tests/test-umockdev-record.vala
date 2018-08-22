@@ -823,6 +823,14 @@ main (string[] args)
 {
     Test.init (ref args);
 
+    /* FIXME: remove after moving to our own well-defined test programs */
+    string? head_path = Posix.realpath("/usr/bin/head");
+    if (head_path != null && head_path.has_suffix("/busybox")) {
+        stdout.printf ("[SKIP: busybox head uses fopen(), which is not currently supported (issue #19) ] ");
+        stdout.flush ();
+        return 0;
+    }
+
     // determine path of umockdev-record
     string? r = Environment.get_variable ("TOP_BUILDDIR");
     if (r == null)
