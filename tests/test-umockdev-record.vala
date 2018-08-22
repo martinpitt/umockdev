@@ -22,6 +22,7 @@ using Assertions;
 
 string umockdev_record_path;
 string umockdev_run_path;
+string readbyte_path;
 string rootdir;
 
 // wrappers to avoid "unhandled error" warnings
@@ -173,7 +174,7 @@ t_testbed_no_ioctl_record ()
 
     var tb = new UMockdev.Testbed ();
     tb.add_devicev ("mem", "zero", null, {"dev", "1:5"}, {});
-    spawn (umockdev_record_path + " --ioctl /sys/devices/zero=/dev/stdout -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --ioctl /sys/devices/zero=/dev/stdout -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpint (exit, Op.NE, 0);
     assert_cmpstr (sout, Op.EQ, "");
@@ -283,7 +284,7 @@ t_system_ioctl_log ()
     string log = Path.build_filename (workdir, "log");
 
     // should not log anything as that device is not touched
-    spawn (umockdev_record_path + " --ioctl=/dev/null=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --ioctl=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -291,7 +292,7 @@ t_system_ioctl_log ()
     assert (!FileUtils.test (log, FileTest.EXISTS));
 
     // this should create a log
-    spawn (umockdev_record_path + " --ioctl /dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --ioctl /dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -302,7 +303,7 @@ t_system_ioctl_log ()
     FileUtils.remove (log);
 
     // invalid syntax
-    spawn (umockdev_record_path + " --ioctl /dev/null -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --ioctl /dev/null -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpint (exit, Op.NE, 1);
     assert_cmpstr (sout, Op.EQ, "");
@@ -326,7 +327,7 @@ t_system_ioctl_log_append_dev_mismatch ()
     } catch (Error e) { Process.abort (); }
 
     // should log the header plus one read
-    spawn (umockdev_record_path + " -i /dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " -i /dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -335,7 +336,7 @@ t_system_ioctl_log_append_dev_mismatch ()
     string orig_contents = file_contents (log);
 
     // should fail as it is a different device
-    spawn (umockdev_record_path + " -i /dev/null=" + log + " -- head -c1 /dev/null",
+    spawn (umockdev_record_path + " -i /dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
     assert_cmpint (exit, Op.EQ, 256);
@@ -348,7 +349,7 @@ t_system_ioctl_log_append_dev_mismatch ()
 }
 
 /*
- * umockdev-record --script recording to a file, with simple "head" command
+ * umockdev-record --script recording to a file, with simple "readbyte" command
  */
 static void
 t_system_script_log_simple ()
@@ -363,7 +364,7 @@ t_system_script_log_simple ()
     } catch (Error e) { Process.abort (); }
 
     // should not log anything as that device is not touched
-    spawn (umockdev_record_path + " --script=/dev/null=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -371,7 +372,7 @@ t_system_script_log_simple ()
     assert_cmpstr (file_contents (log), Op.EQ, "");
 
     // should log the header plus one read
-    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -403,14 +404,14 @@ t_system_script_log_append_same_dev ()
     } catch (Error e) { Process.abort (); }
 
     // should log the header plus one read
-    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
     assert_cmpstr (sout, Op.EQ, "\0");
 
     // should still work as it is the same device, and append
-    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -451,7 +452,7 @@ t_system_script_log_append_dev_mismatch ()
     } catch (Error e) { Process.abort (); }
 
     // should log the header plus one read
-    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -460,7 +461,7 @@ t_system_script_log_append_dev_mismatch ()
     string orig_contents = file_contents (log);
 
     // should fail as it is a different device
-    spawn (umockdev_record_path + " --script=/dev/null=" + log + " -- head -c1 /dev/null",
+    spawn (umockdev_record_path + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
     assert_cmpint (exit, Op.EQ, 256);
@@ -703,7 +704,7 @@ t_system_evemu_log ()
     } catch (Error e) { Process.abort (); }
     string log = Path.build_filename (workdir, "log");
 
-    spawn (umockdev_record_path + " --evemu-events=/dev/null=" + log + " -- head -c1 /dev/null",
+    spawn (umockdev_record_path + " --evemu-events=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -711,7 +712,7 @@ t_system_evemu_log ()
     assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n");
 
     // appending a record for the same device should work
-    spawn (umockdev_record_path + " --evemu-events=/dev/null=" + log + " -- head -c1 /dev/null",
+    spawn (umockdev_record_path + " --evemu-events=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert_cmpstr (serr, Op.EQ, "");
     assert_cmpint (exit, Op.EQ, 0);
@@ -720,7 +721,7 @@ t_system_evemu_log ()
     assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
 
     // appending a record for a different device should fail
-    spawn (umockdev_record_path + " --evemu-events=/dev/zero=" + log + " -- head -c1 /dev/zero",
+    spawn (umockdev_record_path + " --evemu-events=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
     assert_cmpint (exit, Op.EQ, 256);
@@ -823,14 +824,6 @@ main (string[] args)
 {
     Test.init (ref args);
 
-    /* FIXME: remove after moving to our own well-defined test programs */
-    string? head_path = Posix.realpath("/usr/bin/head");
-    if (head_path != null && head_path.has_suffix("/busybox")) {
-        stdout.printf ("[SKIP: busybox head uses fopen(), which is not currently supported (issue #19) ] ");
-        stdout.flush ();
-        return 0;
-    }
-
     // determine path of umockdev-record
     string? r = Environment.get_variable ("TOP_BUILDDIR");
     if (r == null)
@@ -840,6 +833,7 @@ main (string[] args)
 
     umockdev_record_path = Path.build_filename (rootdir, "src", "umockdev-record");
     umockdev_run_path = Path.build_filename (rootdir, "src", "umockdev-run");
+    readbyte_path = Path.build_filename (rootdir, "tests", "readbyte");
 
     Test.add_func ("/umockdev-record/testbed-all-empty", t_testbed_all_empty);
     Test.add_func ("/umockdev-record/testbed-one", t_testbed_one);

@@ -225,7 +225,7 @@ DISTCLEANFILES += \
 # -------------------------------------------------------------
 # tests
 
-noinst_PROGRAMS += tests/chatter tests/chatter-socket-stream
+noinst_PROGRAMS += tests/chatter tests/chatter-socket-stream tests/readbyte
 
 tests_chatter_SOURCES = tests/chatter.c
 
@@ -237,6 +237,12 @@ tests_chatter_socket_stream_SOURCES = tests/chatter-socket-stream.c
 
 tests_chatter_socket_stream_CFLAGS =	\
 	$(AM_CFLAGS)			\
+	$(NULL)
+
+tests_readbyte_SOURCES = tests/readbyte.c
+
+tests_readbyte_CFLAGS =		\
+	$(AM_CFLAGS)		\
 	$(NULL)
 
 noinst_PROGRAMS += tests/test-umockdev tests/test-ioctl-tree
