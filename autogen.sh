@@ -33,5 +33,5 @@ else
     echo "lcov not installed, not enabling code coverage"
 fi
 
-autoreconf --install --symlink
+autoreconf --install
 [ -n "$NOCONFIGURE" ] || ./configure $args "$@"
