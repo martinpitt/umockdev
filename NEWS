@@ -1,3 +1,11 @@
+0.12 (UNRELEASED)
+-----------------
+- Fix build, functionality, and tests with musl libc. This now gets tested and
+  on Alpine Linux. (#83)
+- preload: Wrap realpath()
+- preload: Support mocks and script recording/emulation with fopen() (#19)
+- Stop linking to gudev (this is only being used in tests). (#80)
+
 0.11.3 (2018-05-01)
 -------------------
 - Relax evemu delta-t test, it failed sometimes on loaded systems.
