@@ -1,4 +1,4 @@
-0.12 (UNRELEASED)
+0.12 (2018-08-26)
 -----------------
 - Fix build, functionality, and tests with musl libc. This now gets tested and
   on Alpine Linux. (#83)
