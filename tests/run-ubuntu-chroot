@@ -56,10 +56,18 @@ chown -R buildd:buildd /build
 su - buildd <<EOU
 set -ex
 cd /build/src
-./autogen.sh
+./autogen.sh --prefix=/usr
 make -j4
 make check-valgrind
 make -j4 distcheck
+EOU
+
+# install and run check-installed
+make -C /build/src install
+ldconfig
+su - buildd <<EOU
+cd /build/src
+make check-installed
 EOU
 EOF
 cp "$CHROOT"/build/src/umockdev-*.tar.xz .
