@@ -41,6 +41,7 @@ src/umockdev-record
 src/umockdev-record.c
 tests/chatter
 tests/chatter-socket-stream
+tests/readbyte
 tests/test-ioctl-tree
 tests/test-umockdev-vala.c
 tests/test-umockdev
