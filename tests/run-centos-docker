@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+# keep container around if $DEBUG is set, and allow strace
+RM=""
+[ -n "${DEBUG:-}" ] && OPTS="--privileged" || OPTS="--rm"
+
+sudo docker run --interactive $OPTS --volume `pwd`:/source centos:${RELEASE:-latest} /bin/sh << EOF
+
+# install build dependencies
+yum -y install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python-gobject usbutils vala
+
+# run build as user
+useradd guest
+su -s /bin/sh - guest << EOG
+set -ex
+cp -r /source /tmp
+cd /tmp/source
+./autogen.sh
+make -j4
+make check
+EOG
+
+EOF
