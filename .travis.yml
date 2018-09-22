@@ -9,6 +9,7 @@ env:
 - TEST=tests/run-ubuntu-chroot RELEASE=bionic ARCH=i386
 - TEST=tests/run-ubuntu-chroot RELEASE=xenial
 - TEST=tests/run-alpine-docker RELEASE=latest
+- TEST=tests/run-centos-docker RELEASE=7
 script: $TEST
 cache:
   directories:
