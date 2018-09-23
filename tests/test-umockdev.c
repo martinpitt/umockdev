@@ -40,6 +40,11 @@
 
 #include "umockdev.h"
 
+/* fix missing O_TMPFILE on some systems */
+#ifndef O_TMPFILE
+#define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
+#endif
+
 static gboolean has_real_sysfs;
 
 typedef struct {
