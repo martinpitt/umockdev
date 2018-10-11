@@ -474,7 +474,7 @@ id_matches_type(IOCTL_REQUEST_TYPE id, const ioctl_type *type)
 static void
 ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
-    DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_bin: %s(%X): size is %lu bytes\n", node->type->name, (unsigned) node->id, NSIZE(node));
+    DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_bin: %s(%X): size is %u bytes\n", node->type->name, (unsigned) node->id, (unsigned) NSIZE(node));
     node->data = malloc(NSIZE(node));
     memcpy(node->data, data, NSIZE(node));
 }
@@ -489,8 +489,8 @@ ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
     node->data = malloc(data_len);
 
     if (NSIZE(node) != data_len) {
-	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: adjusting ioctl ID %X (size %lu) to actual data length %zu\n",
-	    (unsigned) node->id, NSIZE(node), data_len);
+	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: adjusting ioctl ID %X (size %u) to actual data length %zu\n",
+	    (unsigned) node->id, (unsigned) NSIZE(node), data_len);
 	node->id = _IOC(_IOC_DIR(node->id), _IOC_TYPE(node->id), _IOC_NR(node->id), data_len);
     }
 
