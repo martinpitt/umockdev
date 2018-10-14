@@ -1040,6 +1040,11 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(realpath("/sys/devices/xxnoexist", pathbuf) == NULL);
     g_assert_cmpint(errno, ==, ENOENT);
 
+    /* dir with dynamic allocation */
+    path = realpath("/sys/devices/dev1", NULL);
+    g_assert_cmpstr(path, ==, "/sys/devices/dev1");
+    g_free(path);
+
 #ifdef __GLIBC__
     /* canonicalize_file_name */
 
