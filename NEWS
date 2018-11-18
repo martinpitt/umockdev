@@ -1,3 +1,10 @@
+0.12.1 (UNRELEASED)
+-------------------
+- Fix realpath() with NULL second argument
+- Fix build on systems without O_TMPFILE (#84)
+- Support running tests on old Python 3.x versions
+- Adjust _IOC_NSIZE() data type to fix compilation on armhf
+
 0.12 (2018-08-26)
 -----------------
 - Fix build, functionality, and tests with musl libc. This now gets tested and
