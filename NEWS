@@ -1,4 +1,4 @@
-0.12.1 (UNRELEASED)
+0.12.1 (2018-11-18)
 -------------------
 - Fix realpath() with NULL second argument
 - Fix build on systems without O_TMPFILE (#84)
