@@ -1691,7 +1691,7 @@ r 10 ^@response\n";
 
   /* should get initial greeting after 200 ms */
   ASSERT_EOF;
-  usleep(220000);
+  usleep(350000); /* some slow architectures (HPPA) often don't manage in 200 ms */
   g_assert_cmpint(read(fd, buf, 5), ==, 5);
   g_assert(strncmp(buf, "ready", 5) == 0);
   g_assert_cmpint(errno, ==, 0);
