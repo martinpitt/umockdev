@@ -261,7 +261,7 @@ devices.
   ::
 
     umockdev-run -d mouse.umockdev -i /dev/input/event3=mouse.ioctl \
-        -e /dev/input/event3=mouse.events - evtest /dev/input/event3
+        -e /dev/input/event3=mouse.events -- evtest /dev/input/event3
 
   Press Control-C again to stop evtest.
 
