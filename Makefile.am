@@ -245,7 +245,12 @@ tests_readbyte_CFLAGS =		\
 	$(AM_CFLAGS)		\
 	$(NULL)
 
-noinst_PROGRAMS += tests/test-umockdev tests/test-ioctl-tree
+noinst_PROGRAMS += tests/test-ioctl-tree
+
+if HAVE_GUDEV
+
+noinst_PROGRAMS += tests/test-umockdev tests/test-umockdev-vala
+CHECKS += tests/test-umockdev tests/test-umockdev-vala
 
 tests_test_umockdev_SOURCES = tests/test-umockdev.c
 
@@ -263,29 +268,6 @@ tests_test_umockdev_LDADD =	\
 	$(LIBUDEV_LIBS)		\
 	$(GUDEV_LIBS)		\
 	$(NULL)
-
-tests_test_ioctl_tree_SOURCES =	\
-	src/ioctl_tree.c	\
-	tests/test-ioctl-tree.c	\
-	src/debug.h		\
-	src/debug.c		\
-	$(NULL)
-
-tests_test_ioctl_tree_CFLAGS =	\
-	$(AM_CFLAGS)		\
-	$(GLIB_CFLAGS)		\
-	-I $(top_srcdir)/src	\
-	$(NULL)
-
-tests_test_ioctl_tree_LDADD =	\
-	$(GLIB_LIBS)		\
-	$(NULL)
-
-CHECKS += tests/test-umockdev tests/test-ioctl-tree
-
-EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf tests/test-static-code
-
-noinst_PROGRAMS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
 
 tests_test_umockdev_vala_SOURCES = 	\
 	tests/test-umockdev-vala.vala	\
@@ -305,6 +287,31 @@ tests_test_umockdev_vala_VALAFLAGS =		\
 	--pkg gudev-1.0			\
 	$(AM_VALAFLAGS)			\
 	$(NULL)
+
+endif # HAVE_GUDEV
+
+tests_test_ioctl_tree_SOURCES =	\
+	src/ioctl_tree.c	\
+	tests/test-ioctl-tree.c	\
+	src/debug.h		\
+	src/debug.c		\
+	$(NULL)
+
+tests_test_ioctl_tree_CFLAGS =	\
+	$(AM_CFLAGS)		\
+	$(GLIB_CFLAGS)		\
+	-I $(top_srcdir)/src	\
+	$(NULL)
+
+tests_test_ioctl_tree_LDADD =	\
+	$(GLIB_LIBS)		\
+	$(NULL)
+
+CHECKS += tests/test-ioctl-tree
+
+EXTRA_DIST += tests/test-umockdev.py tests/xorg-dummy.conf tests/test-static-code
+
+noinst_PROGRAMS += tests/test-umockdev-run tests/test-umockdev-record
 
 tests_test_umockdev_run_SOURCES = 	\
 	tests/test-umockdev-run.vala	\
@@ -351,7 +358,7 @@ DISTCLEANFILES += \
 	$(srcdir)/tests_test_umockdev_record_vala.stamp	\
 	$(NULL)
 
-CHECKS += tests/test-umockdev-vala tests/test-umockdev-run tests/test-umockdev-record
+CHECKS += tests/test-umockdev-run tests/test-umockdev-record
 
 # we do not use TESTS to avoid using the parallel test runner which does not
 # give any useful output on failures
@@ -367,10 +374,12 @@ check-local: $(CHECKS)
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
+if HAVE_GUDEV
 	@if [ -z "$(T)" ]; then \
 		echo "== Running GI test with $(PYTHON) against build tree =="; \
 		$(PYTEST_TREE) $(srcdir)/tests/test-umockdev.py; \
 	fi
+endif
 endif
 	echo "== Running static code tests against build tree =="
 	$(srcdir)/tests/test-static-code
@@ -386,8 +395,10 @@ check-installed: $(CHECKS)
 
 if HAVE_INTROSPECTION
 if HAVE_PYTHON
+if HAVE_GUDEV
 	@echo "== Running GI test with $(PYTHON) against installed system =="
 	$(PYTEST_INSTALL) $(srcdir)/tests/test-umockdev.py
+endif
 endif
 endif
 
