@@ -1254,7 +1254,7 @@ static void
 t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GError *error = NULL;
-    gchar *contents;
+    gchar *contents, *target;
     gsize length;
     GStatBuf st;
 
@@ -1269,6 +1269,20 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
     g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
     g_assert_cmpint(st.st_rdev, ==, makedev(1, 3));
+
+    /* N: with S: should create a symlink to DEVNAME */
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/target\nN: target\nS: link\n"
+					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/target\n"
+					      "A: dev=1:4\n", &error));
+    g_assert_no_error(error);
+
+    contents = g_file_read_link("/dev/link", &error);
+    g_assert_no_error(error);
+    target = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev/target", NULL);
+    g_assert_cmpstr(contents, ==, target);
+    g_free(target);
+    g_free(contents);
 
     /* N: another N without value whose name looks like hex */
     umockdev_testbed_add_from_string(fixture->testbed,
