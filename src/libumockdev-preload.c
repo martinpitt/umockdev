@@ -452,6 +452,8 @@ ioctl_record_open(int fd)
 
     /* lazily open the record file */
     if (ioctl_record_log == NULL) {
+	int r;
+
 	const char *path = getenv("UMOCKDEV_IOCTL_RECORD_FILE");
 	const char *device_path = getenv("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH");
 	struct sigaction act_int;
@@ -514,9 +516,11 @@ ioctl_record_open(int fd)
 
 	/* ensure that we write the file also on Control-C */
 	act_int.sa_handler = ioctl_record_sigint_handler;
-	assert(sigemptyset(&act_int.sa_mask) == 0);
+	r = sigemptyset(&act_int.sa_mask);
+	assert(r == 0);
 	act_int.sa_flags = 0;
-	assert(sigaction(SIGINT, &act_int, &orig_actint) == 0);
+	r = sigaction(SIGINT, &act_int, &orig_actint);
+	assert(r == 0);
 
 	DBG(DBG_IOCTL, "ioctl_record_open: starting ioctl recording of fd %i into %s\n", fd, path);
     } else {
@@ -535,8 +539,11 @@ ioctl_record_close(int fd)
 
     /* recorded anything? */
     if (ioctl_record != NULL) {
+	int r;
+
 	rewind(ioctl_record_log);
-	assert(ftruncate(fileno(ioctl_record_log), 0) == 0);
+	r = ftruncate(fileno(ioctl_record_log), 0);
+	assert(r == 0);
 	fprintf(ioctl_record_log, "@DEV %s\n", getenv("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH"));
 	ioctl_tree_write(ioctl_record_log, ioctl_record);
 	fflush(ioctl_record_log);
@@ -545,9 +552,12 @@ ioctl_record_close(int fd)
 
 static void ioctl_record_sigint_handler(int signum)
 {
+    int r;
+
     DBG(DBG_IOCTL, "ioctl_record_sigint_handler: got signal %i, flushing record\n", signum);
     ioctl_record_close(ioctl_record_fd);
-    assert(sigaction(SIGINT, &orig_actint, NULL) == 0);
+    r = sigaction(SIGINT, &orig_actint, NULL);
+    assert(r == 0);
     raise(signum);
 }
 
@@ -851,7 +861,10 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
 
     srinfo = malloc(sizeof(struct script_record_info));
     srinfo->log = log;
-    assert(clock_gettime(CLOCK_MONOTONIC, &srinfo->time) == 0);
+    if (clock_gettime(CLOCK_MONOTONIC, &srinfo->time) < 0) {
+	fprintf(stderr, "libumockdev-preload: failed to clock_gettime: %m\n");
+	abort();
+    }
     srinfo->op = 0;
     srinfo->fmt = fmt;
     fd_map_add(&script_recorded_fds, fd, srinfo);
@@ -861,9 +874,10 @@ static void
 script_record_open(int fd)
 {
     dev_t fd_dev;
-    const char *logname, *recording_path;
-    const void* data;
+    const char *logname, *recording_path = NULL;
+    const void* data = NULL;
     enum script_record_format fmt;
+    int r;
 
     if (!script_dev_logfile_map_inited)
 	init_script_dev_logfile_map();
@@ -874,8 +888,10 @@ script_record_open(int fd)
 	DBG(DBG_SCRIPT, "script_record_open: fd %i on device %i:%i is not recorded\n", fd, major(fd_dev), minor(fd_dev));
 	return;
     }
-    assert (fd_map_get(&script_dev_devpath_map, fd_dev, (const void **)&recording_path));
-    assert (fd_map_get(&script_dev_format_map, fd_dev, &data));
+    r = fd_map_get(&script_dev_devpath_map, fd_dev, (const void **)&recording_path);
+    assert(r);
+    r = fd_map_get(&script_dev_format_map, fd_dev, &data);
+    assert(r);
     fmt = (enum script_record_format) data;
 
     DBG(DBG_SCRIPT, "script_record_open: start recording fd %i on device %i:%i into %s (format %i)\n",
@@ -924,7 +940,10 @@ update_msec(struct timespec *tm)
 {
     struct timespec now;
     long delta;
-    assert(clock_gettime(CLOCK_MONOTONIC, &now) == 0);
+    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
+	fprintf(stderr, "libumockdev-preload: failed to clock_gettime: %m\n");
+	abort();
+    }
     delta = (now.tv_sec - tm->tv_sec) * 1000 + now.tv_nsec / 1000000 - tm->tv_nsec / 1000000;
     assert(delta >= 0);
     *tm = now;
@@ -940,7 +959,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
     libc_func(fwrite, size_t, const void *, size_t, size_t, FILE *);
     static char header[100];
     const unsigned char *cur;
-    int i;
+    int i, r;
 
     if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
 	return;
@@ -959,7 +978,8 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 		if (srinfo->op != 0)
 		    putc('\n', srinfo->log);
 		snprintf(header, sizeof(header), "%c %lu ", op, delta);
-		assert(_fwrite(header, strlen(header), 1, srinfo->log) == 1);
+		r = _fwrite(header, strlen(header), 1, srinfo->log);
+		assert(r == 1);
 	    }
 
 	    /* escape ASCII control chars */

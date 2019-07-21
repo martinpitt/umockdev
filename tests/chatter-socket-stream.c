@@ -23,11 +23,21 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define writestr(s) assert(write(fd, s, strlen(s)) >= 0)
+static void
+writestr (int fd, const char *s)
+{
+    int r;
+    r = write(fd, s, strlen(s));
+    if (r <= 0) {
+        perror ("write");
+        abort();
+    }
+}
 
 int
 main(int argc, char **argv)
@@ -56,17 +66,18 @@ main(int argc, char **argv)
         return 1;
     }
 
-    writestr("What is your name?\n");
+    writestr(fd, "What is your name?\n");
     len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
     printf("Got name: %s\n", buf);
-    writestr("hello ");
-    writestr(buf);
+    writestr(fd, "hello ");
+    writestr(fd, buf);
 
     /* test send/recv, too */
     usleep(20000);
-    assert(send(fd, "send()", 6, 0) == 6);
+    len = send(fd, "send()", 6, 0);
+    assert(len == 6);
 
     len = recv(fd, buf, sizeof(buf) - 1, 0);
     assert(len > 0);

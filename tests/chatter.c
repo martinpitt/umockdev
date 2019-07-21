@@ -19,12 +19,22 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 
-#define writestr(s) assert(write(fd, s, strlen(s)) >= 0)
+static void
+writestr (int fd, const char *s)
+{
+    int r;
+    r = write(fd, s, strlen(s));
+    if (r <= 0) {
+        perror ("write");
+        abort();
+    }
+}
 
 int
 main(int argc, char **argv)
@@ -43,20 +53,20 @@ main(int argc, char **argv)
 	perror("open:");
 	return 1;
     }
-    writestr("Hello world!\n");
-    writestr("What is your name?\n");
+    writestr(fd, "Hello world!\n");
+    writestr(fd, "What is your name?\n");
     len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
     printf("Got input: %s", buf);
-    writestr("I ♥ ");
-    writestr(buf);
-    writestr("a\t tab and a\n   line break in one write\n");
+    writestr(fd, "I ♥ ");
+    writestr(fd, buf);
+    writestr(fd, "a\t tab and a\n   line break in one write\n");
     len = read(fd, buf, sizeof(buf) - 1);
     assert(len >= 0);
     buf[len] = 0;
     printf("Got input: %s", buf);
-    writestr("bye!\n");
+    writestr(fd, "bye!\n");
     close(fd);
     return 0;
 }

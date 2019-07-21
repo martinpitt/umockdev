@@ -243,12 +243,12 @@ ioctl_tree_read(FILE * f)
 void
 ioctl_tree_write(FILE * f, const ioctl_tree * tree)
 {
-    int i;
+    int res;
     if (tree == NULL)
 	return;
 
     /* write indent */
-    for (i = 0; i < tree->depth; ++i)
+    for (int i = 0; i < tree->depth; ++i)
 	fputc(' ', f);
     if (tree->id != tree->type->id) {
 	long offset;
@@ -260,7 +260,8 @@ ioctl_tree_write(FILE * f, const ioctl_tree * tree)
 	fprintf(f, "%s %i ", tree->type->name, tree->ret);
     }
     tree->type->write(tree, f);
-    assert(fputc('\n', f) == '\n');
+    res = fputc('\n', f);
+    assert(res == '\n');
 
     ioctl_tree_write(f, tree->child);
     ioctl_tree_write(f, tree->next);

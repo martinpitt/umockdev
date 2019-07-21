@@ -59,9 +59,9 @@ trap "pkill -e -kill Xorg || true" EXIT INT QUIT PIPE
 set -ex
 cd /build/src
 ./autogen.sh --prefix=/usr
-make -j4
+make -j$(nproc)
 make check-valgrind
-make -j4 distcheck
+make -j$(nproc) distcheck
 EOU
 
 # install and run check-installed
@@ -73,6 +73,15 @@ trap "pkill -e -kill Xorg || true" EXIT INT QUIT PIPE
 set -ex
 cd /build/src
 make check-installed
+EOU
+
+# check build without assertions
+su - buildd <<EOU
+set -ex
+cd /build/src
+make distclean
+./autogen.sh --prefix=/usr CPPFLAGS=-DNDEBUG
+make -j$(nproc) check
 EOU
 EOF
 cp "$CHROOT"/build/src/umockdev-*.tar.xz .
