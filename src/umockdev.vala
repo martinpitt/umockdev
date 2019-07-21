@@ -928,7 +928,7 @@ public class Testbed: GLib.Object {
             uint8[] ev_data = new uint8[sizeof(Linux.Input.Event)];
             Posix.memcpy(ev_data, &ev, ev_data.length);
             string script_line = "r " + delay.to_string() + " " + ScriptRunner.encode(ev_data) + "\n";
-            Posix.write(script_fd, script_line, script_line.length);
+            assert (Posix.write(script_fd, script_line, script_line.length) == script_line.length);
         }
 
         Posix.close (script_fd);
