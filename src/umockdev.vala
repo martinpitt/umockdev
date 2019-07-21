@@ -956,6 +956,7 @@ public class Testbed: GLib.Object {
         string cur_data = data;
         string? devnode_path = null;
         uint8[] devnode_contents = {};
+        string[] devnode_links = {};
 
         cur_data = this.record_parse_line(cur_data, out type, out key, out devpath);
         if (cur_data == null || type != 'P')
@@ -1018,7 +1019,10 @@ public class Testbed: GLib.Object {
                     break;
 
                 case 'S':
-                    /* TODO: ignored for now */
+                    /* collect symlinks */
+                    if (val == null)
+                        throw new UMockdev.Error.PARSE("invalid S: line in description of device %s", devpath);
+                    devnode_links += Path.build_filename(this.root_dir, "dev", val);
                     break;
 
                 default:
@@ -1043,8 +1047,15 @@ public class Testbed: GLib.Object {
             this.set_attribute_link (syspath, linkattrs[i], linkattrs[i+1]);
 
         /* create fake device node */
-        if (devnode_path != null)
+        if (devnode_path != null) {
             this.create_node_for_device(subsystem, devnode_path, devnode_contents, majmin);
+
+            /* create symlinks */
+            for (int i = 0; i < devnode_links.length; i++) {
+                assert (DirUtils.create_with_parents(Path.get_dirname(devnode_links[i]), 0755) == 0);
+                assert (FileUtils.symlink(devnode_path, devnode_links[i]) == 0);
+            }
+        }
 
         /* skip over multiple blank lines */
         while (cur_data[0] != '\0' && cur_data[0] == '\n')
