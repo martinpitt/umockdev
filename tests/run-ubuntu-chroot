@@ -54,6 +54,8 @@ apt-get install -y pkg-config dh-autoreconf valac libglib2.0-dev libudev-dev lib
 # run build and tests as user
 chown -R buildd:buildd /build
 su - buildd <<EOU
+# avoid forever-hanging X.org subprocess
+trap "pkill -e -kill Xorg || true" EXIT INT QUIT PIPE
 set -ex
 cd /build/src
 ./autogen.sh --prefix=/usr
@@ -66,6 +68,9 @@ EOU
 make -C /build/src install
 ldconfig
 su - buildd <<EOU
+# avoid forever-hanging X.org subprocess
+trap "pkill -e -kill Xorg || true" EXIT INT QUIT PIPE
+set -ex
 cd /build/src
 make check-installed
 EOU
