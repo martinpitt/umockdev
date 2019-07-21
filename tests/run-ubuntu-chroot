@@ -24,7 +24,7 @@ CHROOT_TAR="$CACHE/$(basename $CHROOT_URL)"
 
 # prepare chroot
 BUILDDIR=$(mktemp -d)
-trap "sudo rm -rf $BUILDDIR" EXIT INT QUIT PIPE
+trap "sudo rm --one-file-system -rf $BUILDDIR" EXIT INT QUIT PIPE
 sudo tar -C "$BUILDDIR" -xf "$CHROOT_TAR"
 CHROOT="$BUILDDIR/chroot-autobuild"
 sudo cp /etc/resolv.conf "$CHROOT/etc/resolv.conf"
