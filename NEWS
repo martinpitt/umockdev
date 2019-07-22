@@ -1,3 +1,10 @@
+0.13 (UNRELEASED)
+-----------------
+- Add support for devnode symlinks in device descriptions
+- Support building without gudev
+- Fix building with NDEBUG
+- Use AX_CODE_COVERAGE instead of deprecated GNOME_CODE_COVERAGE
+
 0.12.1 (2018-11-18)
 -------------------
 - Fix realpath() with NULL second argument
