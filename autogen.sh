@@ -27,6 +27,12 @@ else
     echo 'EXTRA_DIST =' > docs/gtk-doc.make
 fi
 
+ax_coverage="$(aclocal --print)/ax_code_coverage.m4"
+if ! cp --verbose "$ax_coverage" m4; then
+    echo "ax_code_coverage.m4 (from autoconf-archive) not available, using dummy"
+    echo 'AC_DEFUN([AX_CODE_COVERAGE],[[CODE_COVERAGE_RULES=''] AC_SUBST([CODE_COVERAGE_RULES])])' > m4/ax_code_coverage.m4
+fi
+
 if type lcov >/dev/null 2>&1; then
     args="$args --enable-code-coverage"
 else

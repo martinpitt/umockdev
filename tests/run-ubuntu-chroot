@@ -49,7 +49,7 @@ if [ -n "${PROPOSED:-}" ]; then
 fi
 apt-get update
 $UPGRADE
-apt-get install -y pkg-config dh-autoreconf valac libglib2.0-dev libudev-dev libgudev-1.0-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
+apt-get install -y pkg-config dh-autoreconf autoconf-archive valac libglib2.0-dev libudev-dev libgudev-1.0-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
 
 # run build and tests as user
 chown -R buildd:buildd /build

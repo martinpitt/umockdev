@@ -84,15 +84,7 @@ AC_CHECK_PROGS(VALAC, [valac])
 AM_PROG_VALAC([0.16.1])
 
 # code coverage support
-AC_MSG_CHECKING(for GNOME code coverage support)
-m4_ifdef([AX_CODE_COVERAGE],
-         [AC_MSG_RESULT(yes)
-          AX_CODE_COVERAGE],
-         [AC_MSG_RESULT(no)
-          CODE_COVERAGE_RULES=''
-          AC_SUBST([CODE_COVERAGE_RULES])
-          enable_code_coverage="no"])
-
+AX_CODE_COVERAGE
 CPPFLAGS="$CPPFLAGS $CODE_COVERAGE_CPPFLAGS"
 CFLAGS="$CFLAGS $CODE_COVERAGE_CFLAGS"
 LDFLAGS="$LDFLAGS $CODE_COVERAGE_LIBS"
