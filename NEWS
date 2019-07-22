@@ -1,4 +1,4 @@
-0.13.1 (UNRELEASED)
+0.13.1 (2019-07-22)
 -------------------
 - Ship code coverage autoconf macros in dist tarball (#91)
 
