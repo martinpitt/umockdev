@@ -120,8 +120,14 @@ path_exists(const char *path)
 /* multi-thread locking for trap_path users */
 pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* multi-thread locking for ioctls */
+pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
+
 #define TRAP_PATH_LOCK pthread_mutex_lock (&trap_path_lock)
 #define TRAP_PATH_UNLOCK pthread_mutex_unlock (&trap_path_lock)
+
+#define IOCTL_LOCK pthread_mutex_lock (&ioctl_lock)
+#define IOCTL_UNLOCK pthread_mutex_unlock (&ioctl_lock)
 
 static size_t trap_path_prefix_len = 0;
 
@@ -645,6 +651,8 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
     int orig_errno;
     struct ioctl_fd_info *fdinfo;
 
+    IOCTL_LOCK;
+
     if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
 	/* we default to erroring and an appropriate error code before
 	 * tree_execute, as handlers might change errno; if they succeed, we
@@ -667,6 +675,8 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
     } else {
 	ioctl_result = UNHANDLED;
     }
+
+    IOCTL_UNLOCK;
 
     return ioctl_result;
 }
