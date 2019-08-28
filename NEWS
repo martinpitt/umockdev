@@ -1,3 +1,8 @@
+0.13.2 (UNRELEASED)
+-------------------
+- Add locking to ioctl emulation (#92)
+- Don't expect size to be non-zero for mocked /sys (#93)
+
 0.13.1 (2019-07-22)
 -------------------
 - Ship code coverage autoconf macros in dist tarball (#91)
