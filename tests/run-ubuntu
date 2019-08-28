@@ -1,0 +1,56 @@
+#!/bin/sh
+set -eu
+
+# keep container around if $DEBUG is set
+[ -n "${DEBUG:-}" ] || OPTS="--rm"
+
+if type podman >/dev/null 2>&1; then
+    RUNC=podman
+else
+    RUNC="sudo docker"
+fi
+
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source ${ARCH:-amd64}/ubuntu:${RELEASE:-rolling} /bin/sh << EOF
+set -ex
+
+# go-faster apt
+echo  'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages
+
+# upgrade
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y eatmydata
+eatmydata apt-get -y --purge dist-upgrade
+
+# install build dependencies
+eatmydata apt-get install -y --no-install-recommends pkg-config dh-autoreconf autoconf-archive valac libglib2.0-dev libudev-dev libgudev-1.0-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
+
+# run build as user
+useradd build
+su -s /bin/sh - build << EOG
+set -ex
+cp -r /source /tmp
+cd /tmp/source
+./autogen.sh --prefix=/usr
+make -j$(nproc)
+make check-valgrind
+make -j$(nproc) distcheck
+EOG
+
+# install and run check-installed
+make -C /tmp/source install
+ldconfig
+su -c 'make -C /tmp/source check-installed' - build
+
+# check build without assertions
+su - build <<EOG
+set -ex
+cd /tmp/source
+make distclean
+./autogen.sh --prefix=/usr CPPFLAGS=-DNDEBUG
+make -j$(nproc) check
+EOG
+
+# copy release tarball to outside
+cp /tmp/source/umockdev-*.tar.xz /source
+EOF

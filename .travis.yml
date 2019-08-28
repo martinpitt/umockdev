@@ -4,10 +4,10 @@ sudo: true
 services:
 - docker
 env:
-- TEST=tests/run-ubuntu-chroot RELEASE=
-- TEST=tests/run-ubuntu-chroot RELEASE=bionic
-- TEST=tests/run-ubuntu-chroot RELEASE=bionic ARCH=i386
-- TEST=tests/run-ubuntu-chroot RELEASE=xenial
+- TEST=tests/run-ubuntu RELEASE=devel
+- TEST=tests/run-ubuntu RELEASE=rolling
+- TEST=tests/run-ubuntu RELEASE=latest
+- TEST=tests/run-ubuntu RELEASE=latest ARCH=i386
 - TEST=tests/run-alpine RELEASE=latest
 - TEST=tests/run-centos RELEASE=7
 script: $TEST
@@ -22,4 +22,4 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    condition: -z "$RELEASE"
+    condition: "$RELEASE = rolling"
