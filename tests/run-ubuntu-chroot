@@ -18,7 +18,7 @@ fi
 mkdir -p ${CACHE:=/tmp/cache/$RELEASE}
 
 # get LP chroot
-CHROOT_URL=$(curl --silent https://api.launchpad.net/1.0/ubuntu/$RELEASE/$ARCH | grep -o 'http://[^ "]*chroot-ubuntu-[^ "]*')
+CHROOT_URL=$(curl --silent https://api.launchpad.net/1.0/ubuntu/$RELEASE/$ARCH | grep -o 'http://[^ "]*launchpadlibrarian[^ "]*')
 CHROOT_TAR="$CACHE/$(basename $CHROOT_URL)"
 [ -e "$CHROOT_TAR" ] || curl -o "$CHROOT_TAR" "$CHROOT_URL"
 
