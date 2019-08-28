@@ -1,11 +1,16 @@
 #!/bin/sh
 set -eu
 
-# keep container around if $DEBUG is set, and allow strace
-RM=""
-[ -n "${DEBUG:-}" ] && OPTS="--privileged" || OPTS="--rm"
+# keep container around if $DEBUG is set
+[ -n "${DEBUG:-}" ] || OPTS="--rm"
 
-sudo docker run --interactive $OPTS --volume `pwd`:/source centos:${RELEASE:-latest} /bin/sh << EOF
+if type podman >/dev/null 2>&1; then
+    RUNC=podman
+else
+    RUNC="sudo docker"
+fi
+
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source centos:${RELEASE:-latest} /bin/sh << EOF
 
 # install build dependencies
 yum -y install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python-gobject usbutils vala
