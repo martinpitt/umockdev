@@ -1,4 +1,4 @@
-0.13.2 (UNRELEASED)
+0.13.2 (2019-08-28)
 -------------------
 - Add locking to ioctl emulation (#92)
 - Don't expect size to be non-zero for mocked /sys (#93)
