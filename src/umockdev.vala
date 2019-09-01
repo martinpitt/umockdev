@@ -405,7 +405,7 @@ public class Testbed: GLib.Object {
         /* create device and corresponding subsystem dir */
         if (DirUtils.create_with_parents(dev_dir, 0755) != 0)
             error("cannot create dev dir '%s': %s", dev_dir, strerror(errno));
-        if (subsystem != "usb" && subsystem != "pci" && subsystem != "thunderbolt") {
+        if (!subsystem_is_bus(subsystem)) {
             /* class/ symlinks */
             var class_dir = Path.build_filename(this.sys_dir, "class", subsystem);
             if (DirUtils.create_with_parents(class_dir, 0755) != 0)
@@ -594,7 +594,7 @@ public class Testbed: GLib.Object {
         FileUtils.unlink(Path.build_filename(this.sys_dir, "class", subsystem, devname));
         DirUtils.remove(Path.build_filename(this.sys_dir, "class", subsystem));
         // bus symlink
-        if (subsystem == "usb" || subsystem == "pci" || subsystem == "thunderbolt") {
+        if (subsystem_is_bus(subsystem)) {
             FileUtils.unlink(Path.build_filename(this.sys_dir, "bus", subsystem, "devices", devname));
             DirUtils.remove(Path.build_filename(this.sys_dir, "bus", subsystem, "devices"));
             DirUtils.remove(Path.build_filename(this.sys_dir, "bus", subsystem));
@@ -943,6 +943,154 @@ public class Testbed: GLib.Object {
         bool ret = load_script(owned_dev, script_file);
         FileUtils.unlink(script_file);
         return ret;
+    }
+
+    private static static HashTable<string, string> bus_lookup_table;
+
+    private static HashTable<string, string> create_bus_lookup() {
+        var lookup = new HashTable<string, string?>(str_hash, str_equal);
+
+        // bus names can be found by searching the Linux kernel for "struct bus_type"
+        lookup.insert("ac97", null);
+        lookup.insert("ac97bus", null);
+        lookup.insert("acpi", null);
+        lookup.insert("amba", null);
+        lookup.insert("anybuss", null);
+        lookup.insert("aoa-soundbus", null);
+        lookup.insert("ap", null);
+        lookup.insert("aprbus", null);
+        lookup.insert("bcma", null);
+        lookup.insert("bttv-sub", null);
+        lookup.insert("ccw", null);
+        lookup.insert("ccwgroup", null);
+        lookup.insert("cdmm", null);
+        lookup.insert("cec", null);
+        lookup.insert("coreboot", null);
+        lookup.insert("coresight", null);
+        lookup.insert("cosm_bus", null);
+        lookup.insert("counter", null);
+        lookup.insert("css", null);
+        lookup.insert("dax", null);
+        lookup.insert("dio", null);
+        lookup.insert("ecard", null);
+        lookup.insert("eisa", null);
+        lookup.insert("event_source", null);
+        lookup.insert("fcoe", null);
+        lookup.insert("firewire", null);
+        lookup.insert("fsi", null);
+        lookup.insert("fsl-mc", null);
+        lookup.insert("gameport", null);
+        lookup.insert("gbphy", null);
+        lookup.insert("genpd", null);
+        lookup.insert("gio", null);
+        lookup.insert("gpio", null);
+        lookup.insert("greybus", null);
+        lookup.insert("hdaudio", null);
+        lookup.insert("hid", null);
+        lookup.insert("host1x", null);
+        lookup.insert("hsi", null);
+        lookup.insert("i2c", null);
+        lookup.insert("i3c", null);
+        lookup.insert("ibmebus", null);
+        lookup.insert("ide", null);
+        lookup.insert("iio", null);
+        lookup.insert("iio", null);
+        lookup.insert("intel_th", null);
+        lookup.insert("ipack", null);
+        lookup.insert("isa", null);
+        lookup.insert("iscsi_flashnode", null);
+        lookup.insert("ishtp", null);
+        lookup.insert("iucv", null);
+        lookup.insert("locomo-bus", null);
+        lookup.insert("logicmodule", null);
+        lookup.insert("macio", null);
+        lookup.insert("maple", null);
+        lookup.insert("matrix", null);
+        lookup.insert("mcb", null);
+        lookup.insert("mcp", null);
+        lookup.insert("mdev", null);
+        lookup.insert("mdio_bus", null);
+        lookup.insert("media", null);
+        lookup.insert("mei", null);
+        lookup.insert("memstick", null);
+        lookup.insert("mic_bus", null);
+        lookup.insert("mipi-dsi", null);
+        lookup.insert("mmc_rpmb", null);
+        lookup.insert("mmc", null);
+        lookup.insert("most", null);
+        lookup.insert("nd", null);
+        lookup.insert("netdevsim", null);
+        lookup.insert("ntb_transport", null);
+        lookup.insert("ntb", null);
+        lookup.insert("nubus", null);
+        lookup.insert("nvmem", null);
+        lookup.insert("parisc", null);
+        lookup.insert("parport", null);
+        lookup.insert("pci-epf", null);
+        lookup.insert("pci", null);
+        lookup.insert("pcmcia", null);
+        lookup.insert("platform", null);
+        lookup.insert("pnp", null);
+        lookup.insert("ps3_system_bus", null);
+        lookup.insert("pseudo", null);
+        lookup.insert("rapidio", null);
+        lookup.insert("rbd", null);
+        lookup.insert("rmi4", null);
+        lookup.insert("rpmsg", null);
+        lookup.insert("sa1111-rab", null);
+        lookup.insert("scif_bus", null);
+        lookup.insert("scif_peer_bus", null);
+        lookup.insert("scm", null);
+        lookup.insert("scmi_protocol", null);
+        lookup.insert("scsi", null);
+        lookup.insert("sdio", null);
+        lookup.insert("serial", null);
+        lookup.insert("serio", null);
+        lookup.insert("siox", null);
+        lookup.insert("slimbus", null);
+        lookup.insert("snd_seq", null);
+        lookup.insert("soc", null);
+        lookup.insert("soundwire", null);
+        lookup.insert("spi", null);
+        lookup.insert("spmi", null);
+        lookup.insert("ssb", null);
+        lookup.insert("sunxi-rsb", null);
+        lookup.insert("superhyway", null);
+        lookup.insert("tc", null);
+        lookup.insert("tcm_loop_bus", null);
+        lookup.insert("tee", null);
+        lookup.insert("thunderbolt", null);
+        lookup.insert("tifm", null);
+        lookup.insert("tiocx", null);
+        lookup.insert("typec", null);
+        lookup.insert("ulpi", null);
+        lookup.insert("umc", null);
+        lookup.insert("usb-serial", null);
+        lookup.insert("usb", null);
+        lookup.insert("usb", null);
+        lookup.insert("uwb", null);
+        lookup.insert("vio", null);
+        lookup.insert("virtio", null);
+        lookup.insert("visorbus", null);
+        lookup.insert("vlynq", null);
+        lookup.insert("vmbus", null);
+        lookup.insert("vme", null);
+        lookup.insert("vop_bus", null);
+        lookup.insert("w1", null);
+        lookup.insert("wmi_bus", null);
+        lookup.insert("xen-backend", null);
+        lookup.insert("xen", null);
+        lookup.insert("zorro", null);
+
+        return lookup;
+    }
+
+    private static bool subsystem_is_bus(string subsystem) {
+        if (bus_lookup_table == null) {
+            bus_lookup_table = create_bus_lookup();
+        }
+
+        return bus_lookup_table.contains(subsystem);
     }
 
     private string add_dev_from_string (string data) throws UMockdev.Error

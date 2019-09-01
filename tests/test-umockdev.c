@@ -904,8 +904,8 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "dev2color"), ==, "green");
     g_assert_cmpstr(g_udev_device_get_property(device, "DEV2COLOR"), ==, "GREEN");
     g_assert(g_file_test("/sys/devices/dev2/subsystem", G_FILE_TEST_IS_SYMLINK));
-    g_assert(g_file_test("/sys/devices/dev2/subsystem/dev2", G_FILE_TEST_IS_SYMLINK));
-    g_assert(g_file_test("/sys/devices/dev2/subsystem/dev2/dev2color", G_FILE_TEST_IS_REGULAR));
+    g_assert(g_file_test("/sys/devices/dev2/subsystem/devices/dev2", G_FILE_TEST_IS_SYMLINK));
+    g_assert(g_file_test("/sys/devices/dev2/subsystem/devices/dev2/dev2color", G_FILE_TEST_IS_REGULAR));
 
     /* check subdev1 */
     subdev = g_udev_client_query_by_sysfs_path(client, "/sys/devices/dev2/subdev1");
