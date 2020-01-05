@@ -433,6 +433,20 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
     g_assert(strstr(errors.last_message, "idProduct") != NULL);
 
+    /* duplicate symlinks are a bug in the device description, but should not crash */
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/target\nN: target\nS: link\n"
+					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/target\n"
+					      "A: dev=1:4\n", NULL));
+
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/other\nN: other\nS: link\n"
+					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/other\n"
+					      "A: dev=1:5\n", NULL));
+    g_assert_cmpint(errors.counter, ==, 3);
+    g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
+    g_assert(strstr(errors.last_message, "File exists") != NULL);
+
 }
 
 static void

@@ -1201,7 +1201,9 @@ public class Testbed: GLib.Object {
             /* create symlinks */
             for (int i = 0; i < devnode_links.length; i++) {
                 assert (DirUtils.create_with_parents(Path.get_dirname(devnode_links[i]), 0755) == 0);
-                assert (FileUtils.symlink(devnode_path, devnode_links[i]) == 0);
+                if (FileUtils.symlink(devnode_path, devnode_links[i]) < 0)
+                    warning ("failed to create %s -> %s symlink for device %s: %m",
+                             devnode_links[i], devnode_path, devpath);
             }
         }
 
