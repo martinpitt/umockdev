@@ -429,10 +429,11 @@ EXTRA_DIST += $(EXAMPLES)
 # -------------------------------------------------------------
 # code coverage
 
+include $(top_srcdir)/aminclude_static.am
+
 # umockdev-scan is something internal from gcov/lcov, ignore that
 CODE_COVERAGE_IGNORE_PATTERN = */docs/* */usr/* *umockdev-scan*
 CODE_COVERAGE_LCOV_OPTIONS = --base-directory $(top_builddir)
-@CODE_COVERAGE_RULES@
 
 # -------------------------------------------------------------
 # developer tools

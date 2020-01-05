@@ -16,6 +16,7 @@
 *.gcno
 *-coverage
 *-coverage.info
+aminclude_static.am
 stamp-*
 Makefile.in
 Makefile
