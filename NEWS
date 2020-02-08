@@ -1,3 +1,10 @@
+0.14 (UNRELEASED)
+-----------------
+- Add all bus names from Linux kernel 5.3 (#94)
+- Makefile.am: Adjust for dropped @CODE_COVERAGE_RULES@
+- Fix crash on duplicate S: link targets
+- preload: Avoid printing NULL strings in debug statements
+
 0.13.2 (2019-08-28)
 -------------------
 - Add locking to ioctl emulation (#92)
