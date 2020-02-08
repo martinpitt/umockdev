@@ -1,4 +1,4 @@
-0.14 (UNRELEASED)
+0.14 (2020-02-08)
 -----------------
 - Add all bus names from Linux kernel 5.3 (#94)
 - Makefile.am: Adjust for dropped @CODE_COVERAGE_RULES@
