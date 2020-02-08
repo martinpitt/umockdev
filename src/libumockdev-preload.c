@@ -799,7 +799,7 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
     /* if we have a previous record... */
     fseek(log, 0, SEEK_END);
     if (ftell(log) > 0) {
-	DBG(DBG_SCRIPT, "script_start_record: Appending to existing record of format %i for path %s\n", fmt, recording_path);
+	DBG(DBG_SCRIPT, "script_start_record: Appending to existing record of format %i for path %s\n", fmt, recording_path ?: "NULL");
 	/* ...and we're going to record the device name... */
 	if (recording_path) {
 	    /* ... ensure we're recording the same device... */
@@ -1383,8 +1383,8 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
   \
     if (!trapped)										\
         p = trap_path(pathname);								\
-    DBG(DBG_PATH, "testbed wrapped " #prefix "openat" #suffix "(%s) -> %s\n", pathname, p);	\
     if (p == NULL) { TRAP_PATH_UNLOCK; return -1; }						\
+    DBG(DBG_PATH, "testbed wrapped " #prefix "openat" #suffix "(%s) -> %s\n", pathname, p);	\
     if (flags & (O_CREAT | O_TMPFILE)) {							\
 	mode_t mode;										\
 	va_list ap;										\
@@ -1431,7 +1431,7 @@ ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
 
     TRAP_PATH_LOCK;
     p = trap_path(pathname);
-    DBG(DBG_PATH, "testbed wrapped readlinkat (%s) -> %s\n", pathname, p);
+    DBG(DBG_PATH, "testbed wrapped readlinkat (%s) -> %s\n", pathname, p ?: "NULL");
     if (p == NULL)
 	r = -1;
     else
