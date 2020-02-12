@@ -36,6 +36,7 @@ TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
 		    TOP_SRCDIR=$(top_srcdir) \
 		    LD_LIBRARY_PATH=$(top_builddir)/.libs:$$LD_LIBRARY_PATH \
 		    GI_TYPELIB_PATH=$(builddir) \
+		    G_DEBUG=fatal-warnings,fatal-criticals \
 		    PATH=$(top_builddir)/src:$$PATH \
 		    G_SLICE=debug-blocks \
 		    MALLOC_PERTURB_=85 \
