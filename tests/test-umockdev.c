@@ -427,7 +427,6 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL,
 					  /* attributes */
 					  "idVendor", "0815", "idProduct", NULL, NULL);
-    g_log_remove_handler(NULL, log_handler);
     g_assert(syspath);
     g_assert_cmpint(errors.counter, ==, 2);
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
@@ -447,6 +446,7 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
     g_assert(strstr(errors.last_message, "File exists") != NULL);
 
+    g_log_remove_handler(NULL, log_handler);
 }
 
 static void
