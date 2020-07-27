@@ -71,6 +71,31 @@ t_testbed_fixture_teardown(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(rootdir);
 }
 
+static void
+t_testbed_read_buf_delay(ulong delay, int fd, char* buf, ssize_t length)
+{
+    ssize_t len = 0;
+    gint64 start;
+
+    usleep (delay);
+    start = g_get_monotonic_time();
+
+    while (len < length && 5000000 > g_get_monotonic_time() - start) {
+        ssize_t ret;
+
+        errno = 0;
+        ret = read (fd, &buf[len], length - len);
+        if (ret > 0)
+            len += ret;
+        else if (ret == 0)
+            break;
+        else
+            g_assert_true(errno == EAGAIN || errno == EWOULDBLOCK);
+    }
+
+    g_assert_cmpint(len, ==, length);
+}
+
 /* Return number of devices that libudev can see */
 static guint
 num_udev_devices(void)
@@ -1533,8 +1558,7 @@ r 0 ^@^^^`^@a\n";
 
   /* should get initial greeting after 200 ms */
   ASSERT_EOF;
-  usleep(220000);
-  g_assert_cmpint(read(fd, buf, 5), ==, 5);
+  t_testbed_read_buf_delay(220000, fd, buf, 5);
   g_assert(strncmp(buf, "ready", 5) == 0);
   g_assert_cmpint(errno, ==, 0);
 
@@ -1547,12 +1571,10 @@ r 0 ^@^^^`^@a\n";
 
   /* now we should get the response after 10 ms */
   ASSERT_EOF;
-  usleep(20000);
-  g_assert_cmpint(read(fd, buf, 11), ==, 11);
+  t_testbed_read_buf_delay(20000, fd, buf, 11);
   g_assert(strncmp(buf, "response\t1\n", 11) == 0);
   g_assert_cmpint(errno, ==, 0);
-  usleep(5000);
-  g_assert_cmpint(read(fd, buf, 15), ==, 15);
+  t_testbed_read_buf_delay(5000, fd, buf, 15);
   g_assert(strncmp(buf, "hello world ☺\n", 15) == 0);
   g_assert_cmpint(errno, ==, 0);
   ASSERT_EOF;
@@ -1563,8 +1585,7 @@ r 0 ^@^^^`^@a\n";
   g_assert_cmpint(write(fd, "ATI\r", 4), ==, 4);
 
   /* response after 20 ms */
-  usleep(30000);
-  g_assert_cmpint(read(fd, buf, 13), ==, 12);
+  t_testbed_read_buf_delay(30000, fd, buf, 12);
   g_assert(strncmp(buf, "Bogus Device", 12) == 0);
   ASSERT_EOF;
 
@@ -1576,14 +1597,12 @@ r 0 ^@^^^`^@a\n";
 
   /* response after 10 ms */
   ASSERT_EOF;
-  usleep(20000);
-  g_assert_cmpint(read(fd, buf, 20), ==, 3);
+  t_testbed_read_buf_delay(20000, fd, buf, 3);
   g_assert(strncmp(buf, "ACK", 3) == 0);
 
   /* corner cases in encoding */
   g_assert_cmpint(write(fd, "\0\x1E^\0a", 5), ==, 5);
-  usleep(10000);
-  g_assert_cmpint(read(fd, buf, 10), ==, 5);
+  t_testbed_read_buf_delay(10000, fd, buf, 5);
   g_assert_cmpint(buf[0], ==, 0);
   g_assert_cmpint(buf[1], ==, '\x1E');
   g_assert_cmpint(buf[2], ==, '^');
@@ -1719,8 +1738,8 @@ r 10 ^@response\n";
 
   /* should get initial greeting after 200 ms */
   ASSERT_EOF;
-  usleep(350000); /* some slow architectures (HPPA) often don't manage in 200 ms */
-  g_assert_cmpint(read(fd, buf, 5), ==, 5);
+  /* some slow architectures (HPPA) often don't manage in 200 ms */
+  t_testbed_read_buf_delay(350000, fd, buf, 5);
   g_assert(strncmp(buf, "ready", 5) == 0);
   g_assert_cmpint(errno, ==, 0);
 
@@ -1733,8 +1752,7 @@ r 10 ^@response\n";
 
   /* now we should get the response after 10 ms */
   ASSERT_EOF;
-  usleep(15000);
-  g_assert_cmpint(read(fd, buf, 50), ==, 9);
+  t_testbed_read_buf_delay(15000, fd, buf, 9);
   g_assert_cmpint(buf[0], ==, 0);
   g_assert(strncmp(buf + 1, "response", 8) == 0);
   g_assert_cmpint(errno, ==, 0);
@@ -1787,8 +1805,7 @@ r 0 OK\n";
   g_assert_cmpint(write(fd, "bbbbb7b", 7), ==, 7);
 
   /* wait for final OK to make sure it survived */
-  usleep(10000);
-  g_assert_cmpint(read(fd, buf, 11), ==, 2);
+  t_testbed_read_buf_delay(10000, fd, buf, 2);
   g_assert(strncmp(buf, "OK", 2) == 0);
   g_assert_cmpint(errno, ==, 0);
 
