@@ -538,6 +538,26 @@ read_line_timeout(FileStream stream)
     return "<timeout>";
 }
 
+static ssize_t
+read_buf_delay(ulong delay, Socket socket, uint8[] buffer, ssize_t length) throws Error
+{
+    ssize_t len = 0;
+    int64 start;
+
+    Thread.usleep (delay);
+    start = get_monotonic_time();
+
+    while (len < length && 5000000 > get_monotonic_time() - start) {
+        unowned uint8[] buf = buffer[len:length];
+
+        assert (socket.condition_timed_wait (IN, 5000000));
+        len += socket.receive (buf);
+    }
+
+    assert (len == length);
+    return len;
+}
+
 /*
  * umockdev-record --script recording to a file, with our chatter command
  */
@@ -684,15 +704,13 @@ t_system_script_log_chatter_socket_stream ()
         conn.send ("John\n".data);
 
         // give it some time for the response
-        Thread.usleep (10000);
-        len = conn.receive (buf);
+        len = read_buf_delay (10000, conn, buf, 11);
         assert (len > 0);
         buf[len] = 0;
         assert_cmpstr ((string) buf, Op.EQ, "hello John\n");
 
         // check the send message
-        Thread.usleep (20000);
-        len = conn.receive (buf);
+        len = read_buf_delay (20000, conn, buf, 6);
         assert (len > 0);
         buf[len] = 0;
         assert_cmpstr ((string) buf, Op.EQ, "send()");
