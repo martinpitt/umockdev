@@ -47,6 +47,8 @@
 
 static gboolean has_real_sysfs;
 
+static int slow_testbed_factor = 1;
+
 typedef struct {
     UMockdevTestbed *testbed;
 } UMockdevTestbedFixture;
@@ -1821,8 +1823,8 @@ assert_delta_t(const struct timeval * first, const struct timeval * second, int 
 {
     int delta = (second->tv_sec - first->tv_sec) * 1000;
     delta += (second->tv_usec - first->tv_usec) / 1000;
-    g_assert_cmpint(delta, >=, ms - 50);
-    g_assert_cmpint(delta, <=, ms + 50);
+    g_assert_cmpint(delta, >=, ms - 50 * slow_testbed_factor);
+    g_assert_cmpint(delta, <=, ms + 50 * slow_testbed_factor);
 }
 
 static void
@@ -2177,6 +2179,11 @@ t_testbed_proc(UMockdevTestbedFixture * fixture, gconstpointer data)
 int
 main(int argc, char **argv)
 {
+    const gchar *f = g_getenv("SLOW_TESTBED_FACTOR");
+
+    if (f != NULL && atoi(f) > 0)
+            slow_testbed_factor = atoi(f);
+
 #if !defined(GLIB_VERSION_2_36)
     g_type_init();
 #endif
