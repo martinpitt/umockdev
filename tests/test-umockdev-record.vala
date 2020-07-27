@@ -26,6 +26,8 @@ string umockdev_run_path;
 string readbyte_path;
 string rootdir;
 
+int slow_testbed_factor = 1;
+
 // wrappers to avoid "unhandled error" warnings
 void
 spawn (string command, out string sout, out string serr, out int exit)
@@ -386,7 +388,7 @@ t_system_script_log_simple ()
     assert_cmpuint (logwords.length, Op.EQ, 3);
     assert_cmpstr (logwords[0], Op.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5);
+    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
     assert_cmpstr (logwords[2], Op.EQ, "^@");
 
     FileUtils.remove (log);
@@ -431,7 +433,7 @@ t_system_script_log_simple_fopen ()
     assert_cmpuint (logwords.length, Op.EQ, 3);
     assert_cmpstr (logwords[0], Op.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5);
+    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
     assert_cmpstr (logwords[2], Op.EQ, "^@");
 
     FileUtils.remove (log);
@@ -472,14 +474,14 @@ t_system_script_log_append_same_dev ()
     assert_cmpuint (logwords.length, Op.EQ, 3);
     assert_cmpstr (logwords[0], Op.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5);
+    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
     assert_cmpstr (logwords[2], Op.EQ, "^@");
 
     logwords = loglines[2].split(" ");
     assert_cmpuint (logwords.length, Op.EQ, 3);
     assert_cmpstr (logwords[0], Op.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5);
+    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
     assert_cmpstr (logwords[2], Op.EQ, "^@");
 
     FileUtils.remove (log);
@@ -624,18 +626,18 @@ t_system_script_log_chatter ()
     assert_cmpint (log_stream.scanf ("d 0 %s\n", buf), Op.EQ, 1);
     assert_cmpstr ((string)buf, Op.EQ, (string)ptyname);
     assert_cmpint (log_stream.scanf ("w %d Hello world!^JWhat is your name?^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
     assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.GE, 450);
-    assert_cmpint (time, Op.LE, 800);
+    assert_cmpint (time, Op.LE, 800 * slow_testbed_factor);
     assert_cmpint (log_stream.scanf ("w %d I ♥ John^Ja^I tab and a^J line break in one write^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
     assert_cmpint (log_stream.scanf ("r %d foo ☹ bar ^`!^J\n", &time), Op.EQ, 1);;
     assert_cmpint (time, Op.GE, 250);
-    assert_cmpint (time, Op.LE, 450);
+    assert_cmpint (time, Op.LE, 450 * slow_testbed_factor);
 
     assert_cmpint (log_stream.scanf ("w %d bye!^J\n", &time), Op.EQ, 1);;
-    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
 
     // verify EOF
     assert_cmpint (log_stream.scanf ("%*c"), Op.EQ, -1);
@@ -732,17 +734,17 @@ t_system_script_log_chatter_socket_stream ()
     var log_stream = FileStream.open (log, "r");
     int time = 0;
     assert_cmpint (log_stream.scanf ("w %d What is your name?^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
     assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.GE, 250);
-    assert_cmpint (time, Op.LE, 400);
+    assert_cmpint (time, Op.LE, 400 * slow_testbed_factor);
     assert_cmpint (log_stream.scanf ("w %d hello John^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20);
+    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
     assert_cmpint (log_stream.scanf ("w %d send()\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.GE, 10);
     assert_cmpint (log_stream.scanf ("r %d recv()\n", &time), Op.EQ, 1);
     assert_cmpint (time, Op.GE, 20);
-    assert_cmpint (time, Op.LE, 60);
+    assert_cmpint (time, Op.LE, 60 * slow_testbed_factor);
 
     FileUtils.remove (log);
 }
@@ -887,6 +889,10 @@ int
 main (string[] args)
 {
     Test.init (ref args);
+
+    string? f = Environment.get_variable ("SLOW_TESTBED_FACTOR");
+    if (f != null && int.parse(f) > 0)
+        slow_testbed_factor = int.parse(f);
 
     // determine path of umockdev-record
     string? r = Environment.get_variable ("TOP_BUILDDIR");
