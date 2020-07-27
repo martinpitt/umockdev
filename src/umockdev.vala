@@ -1618,12 +1618,12 @@ private class ScriptRunner {
     {
         Posix.fd_set fds;
         Posix.timeval timeout = {0, 200000};
-        size_t offset = 0;
+        ssize_t len = 0;
         uint8[] buf = new uint8 [data.length];
 
         // a recorded block might be actually written in multiple smaller
         // chunks
-        while (this.running && offset < data.length) {
+        while (this.running && len < data.length) {
             Posix.FD_ZERO (out fds);
             Posix.FD_SET (this.fd, ref fds);
             int res = Posix.select (this.fd + 1, &fds, null, null, timeout);
@@ -1636,43 +1636,48 @@ private class ScriptRunner {
 
             if (res == 0) {
                 debug ("ScriptRunner[%s]: timed out on read operation on expected block '%s', trying again",
-                       this.device, encode(data[offset:data.length]));
+                       this.device, encode(data[len:data.length]));
                 continue;
             }
 
-            ssize_t len = Posix.read (this.fd, buf, data.length - offset);
+            ssize_t ret = Posix.read (this.fd, &buf[len], data.length - len);
             // if the client closes the fd, we'll get EIO
-            if (len <= 0) {
+            if (ret <= 0) {
                 debug ("ScriptRunner[%s]: got failure or EOF on read operation on expected block '%s', resetting",
-                       this.device, encode(data[offset:data.length]));
+                       this.device, encode(data[len:data.length]));
                 this.script.seek (0, FileSeek.SET);
                 return;
             }
 
-            if (this.fuzz == 0) {
-                if (Posix.memcmp (buf, data[offset:data.length], len) != 0)
-                    error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
-                           " bytes), expected block '%s'",
-                           this.device, encode(buf), len, encode(data[offset:offset+len]));
-            } else {
-                uint d = hamming (buf, data[offset:offset+len]);
-                if (d * 100 > this.fuzz * len) {
-                    error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
-                           " bytes), expected block '%s', difference %u%% > fuzz level %u%%",
-                           this.device, encode(buf), len, encode(data[offset:offset+len]),
-                           (uint) (d * 1000 / len + 5) / 10, this.fuzz);
-                } /* else {
-                    debug ("ScriptRunner op_write[%s]: data matches: got block '%s' (%" + ssize_t.FORMAT +
-                                   " bytes), expected block '%s', difference %u%% <= fuzz level %u%%\n",
-                                   this.device, encode(buf), len, encode(data[offset:offset+len]),
-                                   (d * 1000 / len + 5) / 10, this.fuzz);
-                } */
-            }
+            len += ret;
+            debug ("ScriptRunner[%s]: op_write, got %" + ssize_t.FORMAT + " bytes; expecting  %" +
+                   ssize_t.FORMAT + " more, full block size %i",
+                   this.device, ret, data.length - len, data.length);
+        }
 
-            offset += len;
-            debug ("ScriptRunner[%s]: op_write, got %" + ssize_t.FORMAT + " bytes; offset: %" +
-                   size_t.FORMAT + ", full block size %i",
-                   this.device, len, offset, data.length);
+        if (!this.running)
+            return;
+
+        assert (len == data.length);
+
+        if (this.fuzz == 0) {
+            if (Posix.memcmp (buf, data, len) != 0)
+                error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                       " bytes), expected block '%s'",
+                       this.device, encode(buf), len, encode(data));
+        } else {
+            uint d = hamming (buf, data);
+            if (d * 100 > this.fuzz * len) {
+                error ("ScriptRunner op_write[%s]: data mismatch; got block '%s' (%" + ssize_t.FORMAT +
+                       " bytes), expected block '%s', difference %u%% > fuzz level %u%%",
+                       this.device, encode(buf), len, encode(data),
+                       (uint) (d * 1000 / len + 5) / 10, this.fuzz);
+            } else {
+                debug ("ScriptRunner op_write[%s]: data matches: got block '%s' (%" + ssize_t.FORMAT +
+                       " bytes), expected block '%s', difference %u%% <= fuzz level %u%%",
+                       this.device, encode(buf), len, encode(data),
+                       (uint) (d * 1000 / len + 5) / 10, this.fuzz);
+            }
         }
     }
 
