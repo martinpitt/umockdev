@@ -24,6 +24,8 @@ const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
 
 string rootdir;
 
+int slow_testbed_factor = 1;
+
 static void
 assert_in (string needle, string haystack)
 {
@@ -559,7 +561,7 @@ t_input_evtest ()
     }
 
     // our script covers 1.4 seconds, give it some slack
-    Posix.sleep (2);
+    Posix.sleep (2 * slow_testbed_factor);
 #if VALA_0_40
     Posix.kill (evtest_pid, Posix.Signal.TERM);
 #else
@@ -646,7 +648,7 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
     }
 
     // our script covers 0.5 seconds, give it some slack
-    Posix.sleep (1);
+    Posix.sleep (1 * slow_testbed_factor);
     FileUtils.remove (evemu_file);
 #if VALA_0_40
     Posix.kill (evtest_pid, Posix.Signal.TERM);
@@ -687,6 +689,10 @@ int
 main (string[] args)
 {
   Test.init (ref args);
+
+  string? f = Environment.get_variable ("SLOW_TESTBED_FACTOR");
+  if (f != null && int.parse(f) > 0)
+    slow_testbed_factor = int.parse(f);
 
   string? top_srcdir = Environment.get_variable ("TOP_SRCDIR");
   if (top_srcdir != null)
