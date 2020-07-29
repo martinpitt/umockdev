@@ -1,4 +1,4 @@
-0.14.2 (UNRELEASED)
+0.14.2 (2020-07-29)
 -------------------
 - preload: Fix incomplete reads scripts
 - tests: Fix incomplete reads for fuzzy script tests (Debian #767908)
