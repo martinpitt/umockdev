@@ -1,3 +1,9 @@
+0.14.2 (UNRELEASED)
+-------------------
+- preload: Fix incomplete reads scripts
+- tests: Fix incomplete reads for fuzzy script tests (Debian #767908)
+- tests: Add $SLOW_TESTBED_FACTOR env var for slow architectures (LP #1831467)
+
 0.14.1 (2020-02-12)
 -------------------
 - Fix unexpected warning in unit tests (Debian #951114)
