@@ -1765,12 +1765,9 @@ private class SocketServer {
         if (!this.running)
             return;
 
-        this.running = false;
-
         // wake up the select() in our thread
         debug ("Stopping SocketServer: signalling thread");
-        char b = '1';
-        assert (Posix.write (this.ctrl_w, &b, 1) == 1);
+        Posix.close (this.ctrl_w);
 
         // merely calling remove_all() does not invoke ScriptRunner dtor, so stop manually
         foreach (unowned ScriptRunner r in this.script_runners.get_values())
@@ -1832,7 +1829,14 @@ private class SocketServer {
             if (Posix.FD_ISSET (this.ctrl_r, fds) > 0) {
                 debug ("socket server thread: woken up by control fd");
                 char buf;
-                assert (Posix.read (this.ctrl_r, &buf, 1) == 1);
+                ssize_t r = Posix.read (this.ctrl_r, &buf, 1);
+                if (r == 0) {
+                    /* EOF on ctrl_w, stop */
+                    this.running = false;
+                    Posix.close (this.ctrl_r);
+                } else {
+                    assert (r == 1);
+                }
                 continue;
             }
 
