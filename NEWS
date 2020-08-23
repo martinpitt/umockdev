@@ -1,4 +1,4 @@
-0.14.3 (UNRELEASED)
+0.14.3 (2020-08-23)
 -------------------
 - preload: Fix SocketServer control EOF handling
 
