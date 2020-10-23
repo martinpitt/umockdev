@@ -1215,8 +1215,11 @@ int prefix ## stat ## suffix (const char *path, struct stat ## suffix *st) \
 
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
- * real functionality for device nodes) */
+ * real functionality for device nodes)
+ * This family got deprecated/dropped in glibc 2.32.9000, but we still need
+ * to keep it for a while for programs that were built against previous versions */
 #define WRAP_VERSTAT(prefix, suffix) \
+int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *st); \
 int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *st) \
 { \
     const char *p;								\
