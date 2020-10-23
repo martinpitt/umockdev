@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+# keep container around if $DEBUG is set
+[ -n "${DEBUG:-}" ] || OPTS="--rm"
+
+if type podman >/dev/null 2>&1; then
+    RUNC=podman
+else
+    RUNC="sudo docker"
+fi
+
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source docker.io/fedora:${RELEASE:-latest} /bin/sh << EOF
+set -eu
+
+# install build dependencies
+dnf -y install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3-gobject-base usbutils vala xz systemd-udev
+
+# run build as user
+useradd guest
+su -s /bin/sh - guest << EOG
+set -eux
+cp -r /source /tmp
+cd /tmp/source
+./autogen.sh
+make -j4
+make check
+EOG
+
+EOF

@@ -10,6 +10,8 @@ env:
 - TEST=tests/run-ubuntu RELEASE=latest ARCH=i386
 - TEST=tests/run-alpine RELEASE=latest
 - TEST=tests/run-centos RELEASE=7
+- TEST=tests/run-fedora RELEASE=latest
+- TEST=tests/run-fedora RELEASE=rawhide
 script: $TEST
 cache:
   directories:
