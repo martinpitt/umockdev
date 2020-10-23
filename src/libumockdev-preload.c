@@ -78,15 +78,19 @@ get_libc_func(const char *f)
 	nextlib = dlopen("libc.so.6", RTLD_LAZY);
 
     fp = dlsym(nextlib, f);
-    assert(fp);
 
     return fp;
 }
 
 #define libc_func(name, rettype, ...)			\
     static rettype (*_ ## name) (__VA_ARGS__) = NULL;	\
-    if (_ ## name == NULL)				\
-        _ ## name = get_libc_func(#name);
+    if (_ ## name == NULL) {				\
+        _ ## name = get_libc_func(#name);		\
+        if (_ ## name == NULL) {			\
+            fprintf(stderr, "umockdev: could not get libc function "#name"\n"); \
+            abort();					\
+        }						\
+    }
 
 /* return rdev of a file descriptor */
 static dev_t
