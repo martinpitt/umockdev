@@ -12,6 +12,7 @@ fi
 
 $RUNC run --interactive ${OPTS:-} --volume `pwd`:/source docker.io/fedora:${RELEASE:-latest} /bin/sh << EOF
 set -eu
+dnf -y update
 
 # install build dependencies
 dnf -y install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3-gobject-base usbutils vala xz systemd-udev
