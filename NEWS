@@ -1,3 +1,7 @@
+0.14.4 (UNRELEASED)
+-------------------
+- Fix build against glibc ≥ 2.32.9000
+
 0.14.3 (2020-08-23)
 -------------------
 - preload: Fix SocketServer control EOF handling
