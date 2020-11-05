@@ -18,6 +18,12 @@
 
 set -e
 
+srcdir=`dirname $0`
+test -z "$srcdir" && srcdir=.
+
+ORIGDIR=`pwd`
+cd $srcdir
+
 mkdir -p m4
 if type gtkdocize > /dev/null; then
     gtkdocize --docdir docs/
@@ -37,4 +43,5 @@ else
 fi
 
 autoreconf --install
-[ -n "$NOCONFIGURE" ] || ./configure $args "$@"
+cd "$ORIGDIR"
+[ -n "$NOCONFIGURE" ] || "$srcdir"/configure $args "$@"
