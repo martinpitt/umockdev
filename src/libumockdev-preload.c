@@ -22,6 +22,9 @@
  * along with umockdev; If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* override -D_FILE_OFFSET_BITS, it breaks us */
+#undef _FILE_OFFSET_BITS
+
 /* for getting stat64 */
 #define _GNU_SOURCE
 
