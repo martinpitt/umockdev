@@ -66,7 +66,7 @@ sendmsg_one(uevent_sender * sender, struct msghdr *msg, const char *path)
     struct sockaddr_un event_addr;
     int fd;
     int ret;
-    ssize_t count;
+    /* ssize_t count; */
 
     /* create uevent socket address */
     strncpy(event_addr.sun_path, path, sizeof(event_addr.sun_path) - 1);
@@ -91,7 +91,7 @@ sendmsg_one(uevent_sender * sender, struct msghdr *msg, const char *path)
     }
 
     msg->msg_name = &event_addr;
-    count = sendmsg(fd, msg, 0);
+    /* count = */ sendmsg(fd, msg, 0);
     /* printf("passed %zi bytes to event socket %s\n", count, path); */
     close(fd);
 }
