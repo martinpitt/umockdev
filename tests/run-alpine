@@ -10,20 +10,20 @@ else
     RUNC="sudo docker"
 fi
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source alpine:${RELEASE:-latest} /bin/sh <<EOF
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro docker.io/alpine:${RELEASE:-latest} /bin/sh <<EOF
 
 # install build dependencies
-apk add --no-cache autoconf automake libtool gcc musl-dev glib-dev eudev-dev libgudev-dev make vala linux-headers xz usbutils
+apk add --no-cache meson gcc musl-dev glib-dev eudev-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
 
 # run build as user
 su -s /bin/sh - guest << EOG
 set -ex
-export MAKEFLAGS="-j$(nproc)"
-cp -r /source /tmp
-cd /tmp/source
-./autogen.sh
-make -j4
-make check
+cd /source
+meson setup /tmp/dbg --buildtype debug
+meson test -C /tmp/dbg -v --num-processes=1
+DESTDIR=/tmp/inst meson install -C /tmp/dbg
+echo "===== tests done; install tree: ===="
+ls -lR /tmp/inst
 EOG
 
 EOF

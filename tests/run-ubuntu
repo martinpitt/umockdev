@@ -10,7 +10,9 @@ else
     RUNC="sudo docker"
 fi
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source ${ARCH:-amd64}/ubuntu:${RELEASE:-rolling} /bin/sh << EOF
+[ -n "${PUBLISH_TAR:-}" ] || MOUNT_MODE=":ro"
+
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} docker.io/${ARCH:-amd64}/ubuntu:${RELEASE:-rolling} /bin/sh << EOF
 set -ex
 
 # go-faster apt
@@ -23,36 +25,40 @@ apt-get install -y eatmydata
 eatmydata apt-get -y --purge dist-upgrade
 
 # install build dependencies
-eatmydata apt-get install -y --no-install-recommends pkg-config dh-autoreconf autoconf-archive valac libglib2.0-dev libudev-dev libgudev-1.0-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
+eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
 
 # run build as user
 useradd build
 su -s /bin/sh - build << EOG
 set -ex
-export MAKEFLAGS="-j$(nproc)"
-cp -r /source /tmp
-cd /tmp/source
-./autogen.sh --prefix=/usr
-make
-make check
-make check-valgrind
-make distcheck
+cd /source
+meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true
+cd /tmp/dbg
+if meson dist --help | grep -q no-tests; then
+    meson dist --no-test
+else
+    # HACK: force gtk-doc build for older meson releases
+    DESTDIR=/tmp/inst meson install
+fi
+meson test -v --num-processes=1
+meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
 EOG
 
 # install and run check-installed
-make -C /tmp/source install
+meson install -C /tmp/dbg
 ldconfig
-su -c 'make -C /tmp/source check-installed' - build
+su -c 'meson test -C /tmp/dbg -v --num-processes=1 --setup installed' - build
 
 # check build without assertions
 su - build <<EOG
 set -ex
-cd /tmp/source
-make distclean
-./autogen.sh --prefix=/usr CPPFLAGS=-DNDEBUG
-make check
+cd /source
+meson setup /tmp/rel --buildtype release -Db_ndebug=true --prefix /usr -Dgtk_doc=true
+meson test -C /tmp/rel -v --num-processes=1
 EOG
 
-# copy release tarball to outside
-cp /tmp/source/umockdev-*.tar.xz /source
+# copy release tarball to outside for the release that .travis.yml releases on
+if [ -n "${PUBLISH_TAR:-}" ]; then
+    cp /tmp/dbg/meson-dist/umockdev-*.tar.xz /source
+fi
 EOF

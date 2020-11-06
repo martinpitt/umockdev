@@ -13,18 +13,18 @@ fi
 $RUNC run --interactive ${OPTS:-} --volume `pwd`:/source docker.io/centos:${RELEASE:-latest} /bin/sh << EOF
 
 # install build dependencies
-dnf -y --enablerepo=PowerTools install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3 python3-gobject-base usbutils vala
+dnf -y --enablerepo=PowerTools install meson gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3 python3-gobject-base usbutils vala
 
 # run build as user
 useradd guest
 su -s /bin/sh - guest << EOG
-set -ex
-export MAKEFLAGS="-j$(nproc)"
-cp -r /source /tmp
-cd /tmp/source
-./autogen.sh
-make
-make check
+set -eux
+cd /source
+# building gtk-doc does not yet work with meson 0.49.2
+meson setup /tmp/dbg --buildtype debug --prefix /usr # -Dgtk_doc=true
+cd /tmp/dbg
+DESTDIR=/tmp/inst meson install
+meson test -v --num-processes=1
 EOG
 
 EOF

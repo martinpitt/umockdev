@@ -1,0 +1,9 @@
+{
+    global:
+        umockdev_testbed_*;
+        umockdev_error_*;
+        umockdev_in_mock_environment*;
+
+    local:
+      *;
+};
