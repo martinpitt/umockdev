@@ -19,10 +19,11 @@ dnf -y --enablerepo=PowerTools install autoconf automake gcc glib2-devel gtk-doc
 useradd guest
 su -s /bin/sh - guest << EOG
 set -ex
+export MAKEFLAGS="-j$(nproc)"
 cp -r /source /tmp
 cd /tmp/source
 ./autogen.sh
-make -j4
+make
 make check
 EOG
 

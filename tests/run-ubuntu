@@ -29,12 +29,14 @@ eatmydata apt-get install -y --no-install-recommends pkg-config dh-autoreconf au
 useradd build
 su -s /bin/sh - build << EOG
 set -ex
+export MAKEFLAGS="-j$(nproc)"
 cp -r /source /tmp
 cd /tmp/source
 ./autogen.sh --prefix=/usr
-make -j$(nproc)
+make
+make check
 make check-valgrind
-make -j$(nproc) distcheck
+make distcheck
 EOG
 
 # install and run check-installed
@@ -48,7 +50,7 @@ set -ex
 cd /tmp/source
 make distclean
 ./autogen.sh --prefix=/usr CPPFLAGS=-DNDEBUG
-make -j$(nproc) check
+make check
 EOG
 
 # copy release tarball to outside

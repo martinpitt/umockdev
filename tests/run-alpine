@@ -18,6 +18,7 @@ apk add --no-cache autoconf automake libtool gcc musl-dev glib-dev eudev-dev lib
 # run build as user
 su -s /bin/sh - guest << EOG
 set -ex
+export MAKEFLAGS="-j$(nproc)"
 cp -r /source /tmp
 cd /tmp/source
 ./autogen.sh
