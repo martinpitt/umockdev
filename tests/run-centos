@@ -10,10 +10,10 @@ else
     RUNC="sudo docker"
 fi
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source centos:${RELEASE:-latest} /bin/sh << EOF
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source docker.io/centos:${RELEASE:-latest} /bin/sh << EOF
 
 # install build dependencies
-yum -y install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python-gobject usbutils vala
+dnf -y --enablerepo=PowerTools install autoconf automake gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3 python3-gobject-base usbutils vala
 
 # run build as user
 useradd guest
