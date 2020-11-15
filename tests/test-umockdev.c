@@ -51,6 +51,8 @@ static int slow_testbed_factor = 1;
 
 typedef struct {
     UMockdevTestbed *testbed;
+    gchar *root_dir;
+    gchar *sys_dir;
 } UMockdevTestbedFixture;
 
 static void
@@ -58,19 +60,19 @@ t_testbed_fixture_setup(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     fixture->testbed = umockdev_testbed_new();
     g_assert(fixture->testbed != NULL);
+    fixture->root_dir = umockdev_testbed_get_root_dir(fixture->testbed);
+    fixture->sys_dir = umockdev_testbed_get_sys_dir(fixture->testbed);
 }
 
 static void
 t_testbed_fixture_teardown(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *rootdir;
-    rootdir = g_strdup(umockdev_testbed_get_root_dir(fixture->testbed));
     g_object_unref(fixture->testbed);
 
     /* verify that temp dir gets cleaned up properly */
-    g_assert(!g_file_test(rootdir, G_FILE_TEST_EXISTS));
-
-    g_free(rootdir);
+    g_assert(!g_file_test(fixture->root_dir, G_FILE_TEST_EXISTS));
+    g_free(fixture->root_dir);
+    g_free(fixture->sys_dir);
 }
 
 static void
@@ -102,12 +104,11 @@ t_testbed_read_buf_delay(ulong delay, int fd, char* buf, ssize_t length)
 static guint
 num_udev_devices(void)
 {
-    GUdevClient *client;
     GUdevEnumerator *enumerator;
     GList *result;
     guint num;
 
-    client = g_udev_client_new(NULL);
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
     g_assert(client);
 
     enumerator = g_udev_enumerator_new(client);
@@ -117,7 +118,6 @@ num_udev_devices(void)
 
     g_list_free_full(result, g_object_unref);
     g_object_unref(enumerator);
-    g_object_unref(client);
 
     return num;
 }
@@ -133,11 +133,10 @@ t_testbed_empty(UMockdevTestbedFixture * fixture, gconstpointer data)
 static void
 _t_testbed_check_extkeyboard1(const gchar * syspath)
 {
-    GUdevClient *client;
     GUdevEnumerator *enumerator;
     GList *result;
     GUdevDevice *device;
-    client = g_udev_client_new(NULL);
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
     g_assert(client);
 
     enumerator = g_udev_enumerator_new(client);
@@ -163,14 +162,12 @@ _t_testbed_check_extkeyboard1(const gchar * syspath)
 
     g_list_free_full(result, g_object_unref);
     g_object_unref(enumerator);
-    g_object_unref(client);
 }
 
 /* UMockdevTestbed add_devicev() with adding one device */
 static void
 t_testbed_add_devicev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
     gchar *attributes[] = { "idVendor", "0815", "idProduct", "AFFE", NULL };
     gchar *properties[] = { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL };
     struct udev *udev;
@@ -185,7 +182,7 @@ t_testbed_add_devicev(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
     g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
 
-    syspath = umockdev_testbed_add_devicev(fixture->testbed, "usb", "extkeyboard1", NULL, attributes, properties);
+    g_autofree gchar *syspath = umockdev_testbed_add_devicev(fixture->testbed, "usb", "extkeyboard1", NULL, attributes, properties);
     g_assert_cmpstr(syspath, ==, "/sys/devices/extkeyboard1");
 
     _t_testbed_check_extkeyboard1(syspath);
@@ -197,15 +194,12 @@ t_testbed_add_devicev(UMockdevTestbedFixture * fixture, gconstpointer data)
     udev_device_unref(device);
     udev_monitor_unref(udev_mon);
     udev_unref(udev);
-
-    g_free(syspath);
 }
 
 /* UMockdevTestbed add_device() with adding one device */
 static void
 t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
     struct udev *udev;
     struct udev_monitor *udev_mon;
     struct udev_device *device;
@@ -218,11 +212,12 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
     g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
 
-    syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "extkeyboard1", NULL,
-					  /* attributes */
-					  "idVendor", "0815", "idProduct", "AFFE", NULL,
-					  /* properties */
-					  "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "usb", "extkeyboard1", NULL,
+            /* attributes */
+            "idVendor", "0815", "idProduct", "AFFE", NULL,
+            /* properties */
+            "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL);
     g_assert(syspath);
     g_assert(g_str_has_suffix(syspath, "/sys/devices/extkeyboard1"));
 
@@ -235,8 +230,6 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     udev_device_unref(device);
     udev_monitor_unref(udev_mon);
     udev_unref(udev);
-
-    g_free(syspath);
 }
 
 /* UMockdevTestbed add_device() with adding a child device */
@@ -244,7 +237,6 @@ static void
 t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *dev, *iface, *input;
-    GUdevClient *client;
     GUdevDevice *device, *device2;
     gchar *path;
 
@@ -272,7 +264,7 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(input);
     g_assert_cmpstr(input, ==, "/sys/devices/usb1/1-1/kb1");
 
-    client = g_udev_client_new(NULL);
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
 
     /* check dev device */
     device = g_udev_client_query_by_sysfs_path(client, dev);
@@ -300,10 +292,10 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(path);
 
     /* dev's bus symlinks */
-    path = g_build_filename(umockdev_testbed_get_sys_dir(fixture->testbed), "bus", "usb", "devices", "usb1", NULL);
+    path = g_build_filename(fixture->sys_dir, "bus", "usb", "devices", "usb1", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
-    path = g_build_filename(umockdev_testbed_get_sys_dir(fixture->testbed),
+    path = g_build_filename(fixture->sys_dir,
 			    "bus", "usb", "devices", "usb1", "idVendor", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
@@ -336,10 +328,10 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_free(path);
 
     /* iface's bus symlinks */
-    path = g_build_filename(umockdev_testbed_get_sys_dir(fixture->testbed), "bus", "usb", "devices", "1-1", NULL);
+    path = g_build_filename(fixture->sys_dir, "bus", "usb", "devices", "1-1", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
-    path = g_build_filename(umockdev_testbed_get_sys_dir(fixture->testbed),
+    path = g_build_filename(fixture->sys_dir,
 			    "bus", "usb", "devices", "1-1", "iClass", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
@@ -370,7 +362,6 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
 
-    g_object_unref(client);
     g_free(dev);
     g_free(iface);
     g_free(input);
@@ -380,13 +371,12 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 static void
 t_testbed_add_block_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
-
-    syspath = umockdev_testbed_add_device(fixture->testbed, "block", "scribble", NULL,
-					  /* attributes */
-					  "size", "10000", NULL,
-					  /* properties */
-					  "ID_TYPE", "disk", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "block", "scribble", NULL,
+            /* attributes */
+            "size", "10000", NULL,
+            /* properties */
+            "ID_TYPE", "disk", NULL);
     g_assert(syspath);
     g_assert_cmpstr(syspath, ==, "/sys/devices/scribble");
 
@@ -401,8 +391,6 @@ t_testbed_add_block_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     g_assert(g_file_test("/sys/block/scribble", G_FILE_TEST_IS_SYMLINK));
     g_assert(g_file_test("/sys/block/scribble/size", G_FILE_TEST_IS_REGULAR));
-
-    g_free(syspath);
 }
 
 struct TestbedErrorCatcherData {
@@ -418,8 +406,7 @@ t_testbed_error_catcher(const gchar * log_domain, GLogLevelFlags log_level, cons
 
     data->counter++;
     data->last_level = log_level;
-    if (data->last_message)
-	g_free(data->last_message);
+    g_free(data->last_message);
     data->last_message = g_strdup(message);
     return FALSE;
 }
@@ -448,6 +435,7 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     g_assert_cmpint(errors.counter, ==, 1);
     g_assert_cmpint(errors.last_level, ==, G_LOG_LEVEL_CRITICAL | G_LOG_FLAG_FATAL);
     g_assert(strstr(errors.last_message, "/sys/nosuchdevice") != NULL);
+    g_free(syspath);
 
     /* key/values do not pair up */
     log_handler = g_log_set_handler(NULL, G_LOG_LEVEL_WARNING | G_LOG_FLAG_FATAL, ignore_log_handler, NULL);
@@ -455,6 +443,7 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
 					  /* attributes */
 					  "idVendor", "0815", "idProduct", NULL, NULL);
     g_assert(syspath);
+    g_free(syspath);
     g_assert_cmpint(errors.counter, ==, 2);
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
     g_assert(strstr(errors.last_message, "idProduct") != NULL);
@@ -474,25 +463,23 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
     g_assert(strstr(errors.last_message, "File exists") != NULL);
 
     g_log_remove_handler(NULL, log_handler);
+    g_free (errors.last_message);
 }
 
 static void
 t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    GUdevClient *client;
     GUdevDevice *device;
-    gchar *syspath;
-    gchar *attrpath;
-    gchar *contents = NULL;
+    g_autofree gchar *contents = NULL;
     gsize length;
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
 
-    client = g_udev_client_new(NULL);
-
-    syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "extkeyboard1", NULL,
-					  /* attributes */
-					  "idVendor", "0815", "idProduct", "AFFE", NULL,
-					  /* properties */
-					  NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "usb", "extkeyboard1", NULL,
+            /* attributes */
+            "idVendor", "0815", "idProduct", "AFFE", NULL,
+            /* properties */
+            NULL);
 
     /* change an existing attribute */
     umockdev_testbed_set_attribute(fixture->testbed, syspath, "idProduct", "BEEF");
@@ -520,41 +507,44 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_driver(device), ==, "hub");
     g_object_unref(device);
 
-    g_object_unref(client);
-
     /* validate binary attribute */
-    attrpath = g_build_filename(syspath, "descriptor", NULL);
+    g_autofree gchar *attrpath = g_build_filename(syspath, "descriptor", NULL);
     g_assert(g_file_get_contents(attrpath, &contents, &length, NULL));
     g_assert_cmpint(length, ==, 7);
     g_assert_cmpint(memcmp(contents, "\x01\x00\xFF\x00\x05\x40\xA0", 7), ==, 0);
-    g_free(contents);
-
-    g_free(syspath);
 }
 
 static void
 t_testbed_set_property(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    GUdevClient *client;
     GUdevDevice *device;
-    gchar *syspath;
+    gchar *prop;
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
 
-    client = g_udev_client_new(NULL);
-
-    syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "extkeyboard1", NULL,
-					  /* attributes */
-					  NULL,
-					  /* properties */
-					  "ID_INPUT", "1", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "usb", "extkeyboard1", NULL,
+            /* attributes */
+            NULL,
+            /* properties */
+            "ID_INPUT", "1", NULL);
 
     /* change an existing property */
-    g_assert_cmpstr(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_INPUT"), ==, "1");
+    prop = umockdev_testbed_get_property(fixture->testbed, syspath, "ID_INPUT");
+    g_assert_cmpstr(prop, ==, "1");
+    g_free (prop);
+
     umockdev_testbed_set_property(fixture->testbed, syspath, "ID_INPUT", "0");
-    g_assert_cmpstr(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_INPUT"), ==, "0");
+    prop = umockdev_testbed_get_property(fixture->testbed, syspath, "ID_INPUT");
+    g_assert_cmpstr(prop, ==, "0");
+    g_free (prop);
+
     /* add a new one */
     g_assert(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_COLOR") == NULL);
     umockdev_testbed_set_property(fixture->testbed, syspath, "ID_COLOR", "green");
-    g_assert_cmpstr(umockdev_testbed_get_property(fixture->testbed, syspath, "ID_COLOR"), ==, "green");
+    prop = umockdev_testbed_get_property(fixture->testbed, syspath, "ID_COLOR");
+    g_assert_cmpstr(prop, ==, "green");
+    g_free (prop);
+
     /* int properties */
     umockdev_testbed_set_property_int(fixture->testbed, syspath, "COUNT", 1000);
     umockdev_testbed_set_property_hex(fixture->testbed, syspath, "ADDR", 0x1a01);
@@ -566,9 +556,6 @@ t_testbed_set_property(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_property(device, "COUNT"), ==, "1000");
     g_assert_cmpstr(g_udev_device_get_property(device, "ADDR"), ==, "1a01");
     g_object_unref(device);
-
-    g_object_unref(client);
-    g_free(syspath);
 }
 
 struct event_counter {
@@ -608,16 +595,16 @@ on_timeout(gpointer user_data)
 static void
 t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
     struct udev *udev;
     struct udev_monitor *udev_mon, *kernel_mon;
     struct udev_device *device;
 
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
-					  /* attributes */
-					  "idVendor", "0815", NULL,
-					  /* properties */
-					  "ID_INPUT", "1", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "pci", "mydev", NULL,
+            /* attributes */
+            "idVendor", "0815", NULL,
+            /* properties */
+            "ID_INPUT", "1", NULL);
     g_assert(syspath);
 
     /* set up monitors */
@@ -656,14 +643,11 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 
     /* don't trip over netlink sockets that the client side already closed */
     umockdev_testbed_uevent(fixture->testbed, syspath, "remove");
-
-    g_free(syspath);
 }
 
 static void
 t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
     struct udev *udev;
     struct udev_monitor *mon;
     struct udev_device *device;
@@ -680,11 +664,12 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer 
     g_assert_cmpint(udev_monitor_filter_update(mon), ==, 0);
     g_assert_cmpint(udev_monitor_enable_receiving(mon), ==, 0);
 
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
-					  /* attributes */
-					  "idVendor", "0815", NULL,
-					  /* properties */
-					  "ID_INPUT", "1", "DEVTYPE", "fancy", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "pci", "mydev", NULL,
+            /* attributes */
+            "idVendor", "0815", NULL,
+            /* properties */
+            "ID_INPUT", "1", "DEVTYPE", "fancy", NULL);
     g_assert(syspath);
 
     /* queue a bunch of events */
@@ -714,28 +699,25 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer 
 
     udev_monitor_unref(mon);
     udev_unref(udev);
-    g_free(syspath);
 }
 
 static void
 t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    GUdevClient *client;
-    GUdevDevice *device;
-    gchar *syspath;
     GMainLoop *mainloop;
     struct event_counter counter = { 0, 0, 0 };
     const gchar *subsystems[] = { "bluetooth", NULL };
 
-    syspath = umockdev_testbed_add_device(fixture->testbed, "bluetooth", "mydev", NULL,
-					  /* attributes */
-					  "idVendor", "0815", NULL,
-					  /* properties */
-					  "ID_INPUT", "1", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "bluetooth", "mydev", NULL,
+            /* attributes */
+            "idVendor", "0815", NULL,
+            /* properties */
+            "ID_INPUT", "1", NULL);
     g_assert(syspath);
 
     /* set up listener for uevent signal */
-    client = g_udev_client_new(subsystems);
+    g_autoptr(GUdevClient) client = g_udev_client_new(subsystems);
     g_signal_connect(client, "uevent", G_CALLBACK(on_uevent), &counter);
 
     mainloop = g_main_loop_new(NULL, FALSE);
@@ -761,27 +743,20 @@ t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_main_loop_unref(mainloop);
 
     /* ensure that properties and attributes are still intact */
-    device = g_udev_client_query_by_sysfs_path(client, syspath);
+    g_autoptr(GUdevDevice) device = g_udev_client_query_by_sysfs_path(client, syspath);
     g_assert(device);
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(device, "idVendor"), ==, "0815");
     g_assert_cmpstr(g_udev_device_get_property(device, "ID_INPUT"), ==, "1");
-
-    g_object_unref(client);
-    g_free(syspath);
 }
 
 static void
 t_testbed_uevent_no_listener(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
-
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
 
     /* generate event */
     umockdev_testbed_uevent(fixture->testbed, syspath, "add");
-
-    g_free(syspath);
 }
 
 static void
@@ -823,9 +798,7 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
 static void
 t_testbed_uevent_null_action(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
-
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
 
     if (g_test_subprocess()) {
@@ -834,16 +807,12 @@ t_testbed_uevent_null_action(UMockdevTestbedFixture * fixture, gconstpointer dat
     g_test_trap_subprocess(NULL, 0, 0);
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr ("*action != NULL*");
-
-    g_free(syspath);
 }
 
 static void
 t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
-
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
 
     /* overly long action */
@@ -856,15 +825,12 @@ t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, gconstpointer
     g_test_trap_subprocess(NULL, 0, 0);
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr ("*uevent_sender_send*Property buffer overflow*");
-
-    g_free(syspath);
 }
 
 static void
 t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    GUdevClient *client;
-    GUdevDevice *device, *subdev;
+    GUdevDevice *device;
     gchar *contents;
     gsize length;
     gboolean success;
@@ -883,7 +849,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_no_error(error);
     g_assert(success);
 
-    client = g_udev_client_new(NULL);
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
 
     /* should have exactly one device */
     g_assert_cmpuint(num_udev_devices(), ==, 1);
@@ -949,19 +915,18 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(g_file_test("/sys/devices/dev2/subsystem/devices/dev2/dev2color", G_FILE_TEST_IS_REGULAR));
 
     /* check subdev1 */
-    subdev = g_udev_client_query_by_sysfs_path(client, "/sys/devices/dev2/subdev1");
+    g_autoptr(GUdevDevice) subdev = g_udev_client_query_by_sysfs_path(client, "/sys/devices/dev2/subdev1");
     g_assert(subdev);
-    g_assert_cmpstr(g_udev_device_get_sysfs_path(g_udev_device_get_parent(subdev)), ==, "/sys/devices/dev2");
+    g_autoptr(GUdevDevice) subdev_parent = g_udev_device_get_parent(subdev);
+    g_assert_cmpstr(g_udev_device_get_sysfs_path(subdev_parent), ==, "/sys/devices/dev2");
     g_assert_cmpstr(g_udev_device_get_subsystem(subdev), ==, "input");
     g_assert_cmpstr(g_udev_device_get_sysfs_attr(subdev, "subdev1color"), ==, "yellow");
     g_assert_cmpstr(g_udev_device_get_property(subdev, "SUBDEV1COLOR"), ==, "YELLOW");
-    g_object_unref(subdev);
     g_assert(g_file_test("/sys/devices/dev2/subdev1/subsystem", G_FILE_TEST_IS_SYMLINK));
     g_assert(g_file_test("/sys/devices/dev2/subdev1/subsystem/subdev1", G_FILE_TEST_IS_SYMLINK));
     g_assert(g_file_test("/sys/devices/dev2/subdev1/subsystem/subdev1/subdev1color", G_FILE_TEST_IS_REGULAR));
 
     g_object_unref(device);
-    g_object_unref(client);
 }
 
 static void
@@ -1007,8 +972,7 @@ t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gboolean success;
     GError *error = NULL;
-    gchar *path;
-    gchar *contents = NULL;
+    g_autofree gchar *contents = NULL;
 
     success = umockdev_testbed_add_from_file(fixture->testbed, "/non/existing.umockdev", &error);
     g_assert_error(error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
@@ -1016,7 +980,7 @@ t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(!success);
 
     /* create umockdev dump file, invalid data */
-    path = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "test.umockdev", NULL);
+    g_autofree gchar* path = g_build_filename(fixture->root_dir, "test.umockdev", NULL);
     success = g_file_set_contents(path, "P: /devices/dev1\nX: Whatever\n", -1, &error);
     g_assert_no_error(error);
     g_assert(success);
@@ -1039,15 +1003,11 @@ t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_no_error(error);
     g_assert(success);
 
-    g_free(path);
-
     /* verify that device was created */
     success = g_file_get_contents("/sys/devices/dev1/simple_attr", &contents, NULL, &error);
     g_assert_no_error(error);
     g_assert(success);
     g_assert_cmpstr(contents, ==, "1");
-    g_free(contents);
-
 }
 
 static void
@@ -1141,7 +1101,7 @@ static void
 t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     gchar *syspath;
-    gchar *out, *err, *dir;
+    gchar *out, *err;
     int exit_status;
     GError *error = NULL;
     gchar *argv[] = { "lsusb", "-v", NULL };
@@ -1166,9 +1126,8 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 					  "\x02\x00\x07\x05\x83\x03\x08\x00\x09", 57);
 
     /* ensure that /dev/bus/usb/ exists, lsusb insists on it */
-    dir = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev", "bus", "usb", "002", NULL);
+    g_autofree gchar *dir = g_build_filename(fixture->root_dir, "dev", "bus", "usb", "002", NULL);
     g_mkdir_with_parents(dir, 0755);
-    g_free(dir);
 
     g_assert(g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &out, &err, &exit_status, &error));
     g_assert_no_error(error);
@@ -1187,7 +1146,7 @@ static void
 t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GStatBuf st;
-    gchar *devdir, *devpath;
+    gchar *devpath;
     int fd;
     FILE* f;
     char buf[100];
@@ -1207,7 +1166,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(buf[9], ==, 0);
 
     /* create a mock /dev/zero */
-    devdir = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev", NULL);
+    g_autofree gchar *devdir = g_build_filename(fixture->root_dir, "dev", NULL);
     devpath = g_build_filename(devdir, "zero", NULL);
     g_mkdir(devdir, 0755);
     g_assert(g_file_set_contents(devpath, "zerozerozero", -1, NULL));
@@ -1287,8 +1246,6 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
     } else {
         g_printf("(Skipping O_TMPFILE test, not supported on this kernel: %m) ");
     }
-
-    g_free(devdir);
 }
 
 static void
@@ -1320,7 +1277,7 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
 
     contents = g_file_read_link("/dev/link", &error);
     g_assert_no_error(error);
-    target = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev/target", NULL);
+    target = g_build_filename(fixture->root_dir, "dev/target", NULL);
     g_assert_cmpstr(contents, ==, target);
     g_free(target);
     g_free(contents);
@@ -1393,8 +1350,8 @@ static void
 t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GError *error = NULL;
-    GUdevClient *client;
     GUdevDevice *device;
+    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
 
     /* add fake char and block device */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
@@ -1409,7 +1366,6 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 					      "A: dev=8:1\n", &error));
     g_assert_no_error(error);
 
-    client = g_udev_client_new(NULL);
     g_assert(client);
 
     device = g_udev_client_query_by_device_file(client, "/dev/stream");
@@ -1423,8 +1379,6 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpstr(g_udev_device_get_device_file(device), ==, "/dev/disk");
     g_assert(g_str_has_suffix(g_udev_device_get_sysfs_path(device), "/block/disk"));
     g_object_unref(device);
-
-    g_object_unref(client);
 }
 
 #define ASSERT_EOF \
@@ -1437,7 +1391,7 @@ t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, gc
 {
   gboolean success;
   GError *error = NULL;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   int fd;
   char buf[1024];
 
@@ -1513,7 +1467,7 @@ t_testbed_script_replay_simple(UMockdevTestbedFixture * fixture, gconstpointer d
 {
   gboolean success;
   GError *error = NULL;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   int fd;
   char buf[1024];
 
@@ -1622,7 +1576,7 @@ t_testbed_script_replay_default_device(UMockdevTestbedFixture * fixture, gconstp
 {
   gboolean success;
   GError *error = NULL;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   int fd;
   char buf[1024];
 
@@ -1662,7 +1616,7 @@ t_testbed_script_replay_override_default_device(UMockdevTestbedFixture * fixture
 {
   gboolean success;
   GError *error = NULL;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   int fd;
   char buf[1024];
 
@@ -1702,7 +1656,7 @@ t_testbed_script_replay_socket_stream(UMockdevTestbedFixture * fixture, gconstpo
 {
   gboolean success;
   GError *error = NULL;
-  char *tmppath, *sockpath;
+  g_autofree char *tmppath = NULL, *sockpath = NULL;
   int fd;
   struct sockaddr_un saddr;
   char buf[1024];
@@ -1724,9 +1678,8 @@ r 10 ^@response\n";
   g_assert_no_error(error);
   g_assert(success);
 
-  sockpath = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev/socket/chatter", NULL);
+  sockpath = g_build_filename(fixture->root_dir, "dev/socket/chatter", NULL);
   g_assert(g_file_test(sockpath, G_FILE_TEST_EXISTS));
-  g_free(sockpath);
 
   /* start communication */
   fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -1769,7 +1722,7 @@ t_testbed_script_replay_fuzz(UMockdevTestbedFixture * fixture, gconstpointer dat
 {
   gboolean success;
   GError *error = NULL;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   int fd;
   char buf[1024];
 
@@ -1833,7 +1786,7 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   gboolean success;
   GError *error = NULL;
   int fd;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   struct timeval tv_begin, tv_end;
   struct input_event ev;
   static const char* test_data = "E: 1234.500000 0000 0000 0\n"   /* SYN */
@@ -1918,7 +1871,7 @@ t_testbed_replay_evemu_events_default_device(UMockdevTestbedFixture * fixture, g
   gboolean success;
   GError *error = NULL;
   int fd;
-  char *tmppath;
+  g_autofree char *tmppath = NULL;
   struct input_event ev;
   static const char* test_data = "# EVEMU 1.2\n"
                                  "# device /dev/input/event1\n"
@@ -1970,9 +1923,9 @@ t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
 				     "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/moo\n", &error);
     g_assert_no_error(error);
 
-    g_assert(g_file_test(umockdev_testbed_get_sys_dir(fixture->testbed), G_FILE_TEST_EXISTS));
-    dev_path = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "dev", NULL);
-    sysdev_path = g_build_filename(umockdev_testbed_get_sys_dir(fixture->testbed), "devices", NULL);
+    g_assert(g_file_test(fixture->sys_dir, G_FILE_TEST_EXISTS));
+    dev_path = g_build_filename(fixture->root_dir, "dev", NULL);
+    sysdev_path = g_build_filename(fixture->sys_dir, "devices", NULL);
     g_assert(g_file_test(dev_path, G_FILE_TEST_EXISTS));
     g_assert(g_file_test(sysdev_path, G_FILE_TEST_EXISTS));
 
@@ -1980,7 +1933,7 @@ t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
     umockdev_testbed_clear(fixture->testbed);
 
     /* we only want to keep <root>/sys, but nothing else */
-    g_assert(g_file_test(umockdev_testbed_get_sys_dir(fixture->testbed), G_FILE_TEST_EXISTS));
+    g_assert(g_file_test(fixture->sys_dir, G_FILE_TEST_EXISTS));
     g_assert(!g_file_test(dev_path, G_FILE_TEST_EXISTS));
     g_assert(!g_file_test(sysdev_path, G_FILE_TEST_EXISTS));
 
@@ -1996,7 +1949,7 @@ t_testbed_disable(UMockdevTestbedFixture * fixture, gconstpointer data)
 	return;
     }
 
-    umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL, NULL, NULL);
+    g_free (umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL, NULL, NULL));
 
     /* only our test device */
     g_assert_cmpuint(num_udev_devices(), ==, 1);
@@ -2023,7 +1976,7 @@ static gboolean
 file_in_testbed(UMockdevTestbedFixture * fixture, const char *path)
 {
     gboolean res;
-    char *p = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed),
+    char *p = g_build_filename(fixture->root_dir,
                                path, NULL);
     res = g_file_test(p, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_SYMLINK);
     g_free(p);
@@ -2034,7 +1987,6 @@ static void
 t_testbed_remove(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
     GError *error = NULL;
-    const char *syspath;
 
     /* create two /dev and /sys entries */
     umockdev_testbed_add_from_string(fixture->testbed,
@@ -2059,7 +2011,7 @@ t_testbed_remove(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_no_error(error);
 
     /* simplest possible device */
-    syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "simple", NULL, NULL, NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "simple", NULL, NULL, NULL);
     g_assert(syspath);
 
     /* remove moo */
@@ -2135,7 +2087,7 @@ t_testbed_proc(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert(found);
 
     /* mock existing /proc/cpuinfo */
-    procdir = g_build_filename(umockdev_testbed_get_root_dir(fixture->testbed), "proc", NULL);
+    procdir = g_build_filename(fixture->root_dir, "proc", NULL);
     g_assert(g_mkdir(procdir, 0755) == 0);
     path = g_build_filename (procdir, "cpuinfo", NULL);
     g_assert(g_file_set_contents(path, "Ze Calculator", -1, NULL));
