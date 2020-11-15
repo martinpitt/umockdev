@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 ROOTDIR=$(dirname $(readlink -f $0))/..
