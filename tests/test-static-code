@@ -23,7 +23,7 @@ check_empty() {
 }
 
 # internal code must not have any exported (non-static) functions
-R=$(echo "$CODE_INT" | grep -B1  '^[a-z_]\+(' | awk 'BEGIN { RS="--\n" } !/static/ { print $0 }')
+R=$(echo "$CODE_INT" | grep --text -B1  '^[a-z_]\+(' | awk 'BEGIN { RS="--\n" } !/static/ { print $0 }')
 check_empty "$R" "preload internal code part has exported function(s)"
 
 # wrappers must be exported
@@ -36,7 +36,7 @@ check_empty "$R" "preload libc wrapped code part exports function with '_'"
 
 # must not use wrapped functions in internal logic
 for fn in $LIBC_OVERRIDES; do
-    R=$(echo "$CODE_INT" | grep -w $fn | grep -Ev "(/\*|\"|libc_func|#include|^ \* ).*$fn" || true)
+    R=$(echo "$CODE_INT" | grep --text -w $fn | grep --text -Ev "(/\*|\"|libc_func|#include|^ \* ).*$fn" || true)
     check_empty "$R" "preload internal code part must not use overridden libc function $fn"
 done
 
