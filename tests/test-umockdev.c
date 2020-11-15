@@ -1100,23 +1100,24 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
 static void
 t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 {
-    gchar *syspath;
-    gchar *out, *err;
+    g_autofree gchar *out = NULL, *err = NULL;
     int exit_status;
     GError *error = NULL;
-    gchar *argv[] = { "lsusb", "-v", NULL };
+    g_autofree gchar *lsusb_path = g_find_program_in_path("lsusb");
+    gchar *argv[] = { lsusb_path, "-v", NULL };
 
-    if (g_find_program_in_path("lsusb") == NULL) {
+    if (lsusb_path == NULL) {
 	g_printf("SKIP: lsusb not installed. ");
 	return;
     }
 
-    syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL,
-					  /* attributes */
-					  "busnum", "1", "devnum", "1", "speed", "480",
-					  "bConfigurationValue", "1", NULL,
-					  /* properties */
-					  "DEVTYPE", "usb_device", "DEVNAME", "/dev/bus/usb/usb1", NULL);
+    g_autofree gchar *syspath = umockdev_testbed_add_device(
+            fixture->testbed, "usb", "usb1", NULL,
+            /* attributes */
+            "busnum", "1", "devnum", "1", "speed", "480",
+            "bConfigurationValue", "1", NULL,
+            /* properties */
+            "DEVTYPE", "usb_device", "DEVNAME", "/dev/bus/usb/usb1", NULL);
     g_assert(syspath);
     /* descriptor from a Canon PowerShot SX200 */
     umockdev_testbed_set_attribute_binary(fixture->testbed, syspath, "descriptors", (guint8 *)
