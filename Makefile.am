@@ -32,8 +32,7 @@ CHECKS =
 
 EXTRA_DIST = COPYING README.rst NEWS devices docs/script-format.txt
 DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
-TESTS_ENVIRONMENT = TOP_BUILDDIR=$(top_builddir) \
-		    TOP_SRCDIR=$(top_srcdir) \
+TESTS_ENVIRONMENT = TOP_SRCDIR=$(top_srcdir) \
 		    LD_LIBRARY_PATH=$(top_builddir)/.libs:$$LD_LIBRARY_PATH \
 		    GI_TYPELIB_PATH=$(builddir) \
 		    G_DEBUG=fatal-warnings,fatal-criticals \

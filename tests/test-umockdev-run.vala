@@ -23,6 +23,7 @@ using Assertions;
 const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
 
 string rootdir;
+string tests_dir;
 
 int slow_testbed_factor = 1;
 
@@ -281,7 +282,7 @@ w 0 bye!^J""");
     }
 
     check_program_out ("true", "-d " + umockdev_file + " -s /dev/ttyS0=" + script_file +
-                       " -- tests/chatter /dev/ttyS0",
+                       " -- " + tests_dir + "/chatter /dev/ttyS0",
                        "Got input: Joe Tester\nGot input: somejunk\n");
 
     FileUtils.remove (umockdev_file);
@@ -309,7 +310,7 @@ r 30 somejunk""");
     }
 
     check_program_out ("true", " -u /dev/socket/chatter=" + script_file +
-                       " -- tests/chatter-socket-stream /dev/socket/chatter",
+                       " -- " + tests_dir + "/chatter-socket-stream /dev/socket/chatter",
                        "Got name: Joe Tester\n\nGot recv: somejunk\n");
 
     FileUtils.remove (script_file);
@@ -699,6 +700,9 @@ main (string[] args)
       rootdir = top_srcdir;
   else
       rootdir = ".";
+  tests_dir = Path.get_dirname (args[0]);
+    if (tests_dir.has_suffix (".libs")) // libtool hack
+        tests_dir = Path.get_dirname (tests_dir);
 
   // general operations
   Test.add_func ("/umockdev-run/exit_code", t_run_exit_code);
