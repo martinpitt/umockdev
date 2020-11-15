@@ -86,10 +86,11 @@ public class Testbed: GLib.Object {
             r.stop ();
         this.dev_script_runner.remove_all();
 
+        /* FIXME: When running from `meson test`, this causes SIGHUP
         foreach (int fd in this.dev_fd.get_values()) {
             debug ("closing master pty fd %i for emulated device", fd);
             Posix.close (fd);
-        }
+        } */
 
         if (this.socket_server != null) {
             debug ("shutting down socket server thread");
