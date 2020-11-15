@@ -35,9 +35,8 @@ DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc
 TESTS_ENVIRONMENT = TOP_SRCDIR=$(top_srcdir) \
 		    LD_LIBRARY_PATH=$(top_builddir)/.libs:$$LD_LIBRARY_PATH \
 		    GI_TYPELIB_PATH=$(builddir) \
-		    G_DEBUG=fatal-warnings,fatal-criticals \
+		    G_DEBUG=fatal-warnings,fatal-criticals,gc-friendly \
 		    PATH=$(top_builddir)/src:$$PATH \
-		    G_SLICE=debug-blocks \
 		    MALLOC_PERTURB_=85 \
 		    MALLOC_CHECK_=3 \
 		    $(srcdir)/src/umockdev-wrapper
@@ -402,8 +401,11 @@ endif
 endif
 endif
 
+# only run a subset of tests
 check-valgrind:
-	EXEC_NAME="valgrind --leak-check=full --show-possibly-lost=no -q" G_DEBUG=gc-friendly $(MAKE) check
+	for t in tests/test-umockdev tests/test-umockdev-run tests/test-ioctl-tree; do \
+	    $(TESTS_ENVIRONMENT) valgrind -q --leak-check=full --show-possibly-lost=no --errors-for-leak-kinds=definite --error-exitcode=33 --trace-children=yes --trace-children-skip='/bin*,/usr/bin/*,/usr/local/bin/*' $$t; \
+	done
 
 # -------------------------------------------------------------
 # documentation
