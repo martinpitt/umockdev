@@ -11,7 +11,6 @@ env:
 - TEST=tests/run-alpine RELEASE=latest
 - TEST=tests/run-centos RELEASE=8
 - TEST=tests/run-fedora RELEASE=latest
-- TEST=tests/run-fedora RELEASE=rawhide
 script: $TEST
 deploy:
   provider: releases
