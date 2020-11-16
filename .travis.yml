@@ -1,4 +1,4 @@
-dist: bionic
+dist: focal
 language: c
 sudo: true
 services:
@@ -13,9 +13,6 @@ env:
 - TEST=tests/run-fedora RELEASE=latest
 - TEST=tests/run-fedora RELEASE=rawhide
 script: $TEST
-cache:
-  directories:
-  - /tmp/cache
 deploy:
   provider: releases
   api_key:
