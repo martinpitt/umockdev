@@ -22,4 +22,4 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    condition: "$PUBLISH_TAR = rolling"
+    condition: "$PUBLISH_TAR = 1"
