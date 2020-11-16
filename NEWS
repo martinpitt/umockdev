@@ -1,3 +1,9 @@
+0.14.5 (UNRELEASED)
+-------------------
+- Add support for builddir != srcdir
+- Fix building with -D_FILE_OFFSET_BITS
+- Fix memory leaks in unit tests, and valgrind invocation
+
 0.14.4 (2020-10-23)
 -------------------
 - Fix build against glibc ≥ 2.32.9000
