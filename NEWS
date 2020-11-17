@@ -1,3 +1,7 @@
+0.15.1 (UNRELEASED)
+-------------------
+- Fix include file install location (#111)
+
 0.15 (2020-11-16)
 -----------------
 - Switch build system to meson
