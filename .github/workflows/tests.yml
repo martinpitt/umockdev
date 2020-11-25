@@ -11,6 +11,8 @@ jobs:
           - ubuntu-latest
           - ubuntu-rolling
           - ubuntu-rolling@i386
+          # HACK: this is really Debian testing, clean this up
+          - ubuntu-testing
           - alpine-latest
           - alpine-latest@gudev
           - centos-8
@@ -22,6 +24,9 @@ jobs:
 
           - scenario: alpine-latest@gudev
             env: EXTRA_PACKAGES=libgudev-dev
+
+          - scenario: ubuntu-testing
+            env: DISTRO=debian
 
     timeout-minutes: 30
     steps:

@@ -12,7 +12,7 @@ fi
 
 [ -n "${PUBLISH_TAR:-}" ] || MOUNT_MODE=":ro"
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} docker.io/${ARCH:-amd64}/ubuntu:${RELEASE:-rolling} /bin/sh << EOF
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} docker.io/${ARCH:-amd64}/${DISTRO:-ubuntu}:${RELEASE:-rolling} /bin/sh << EOF
 set -ex
 
 # go-faster apt
@@ -44,10 +44,15 @@ meson test -v --num-processes=1
 meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
 EOG
 
-# install and run check-installed
+# install and run check-installed; make sure there is nothing on stderr (for Debian/Ubuntu autopkgtests)
 meson install -C /tmp/dbg
 ldconfig
-su -c 'meson test -C /tmp/dbg -v --num-processes=1 --setup installed' - build
+su -c 'meson test -C /tmp/dbg -v --num-processes=1 --setup installed 2>/tmp/installed-err' - build
+if [ -s /tmp/installed-err ]; then
+    echo "installed tests have output on stderr:" >&2
+    cat /tmp/installed-err >&2
+    exit 1
+fi
 
 # check build without assertions
 su - build <<EOG
