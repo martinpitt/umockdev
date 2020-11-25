@@ -183,6 +183,8 @@ add_test_setup('valgrind',
 
 add_test_setup('installed',
   exe_wrapper: 'umockdev-wrapper',
+  # podman often hangs for a while in overlayfs
+  timeout_multiplier: 5,
   env: test_env)
 
 executable('chatter', 'tests/chatter.c')
