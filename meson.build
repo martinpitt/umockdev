@@ -1,5 +1,5 @@
 project('umockdev', 'c', 'vala',
-  version: run_command('sh', '-ec', 'head -n1 NEWS | cut -f1 -d" "').stdout().strip(),
+  version: run_command('sed', '-rn', '1 { s/^.*\[([0-9.]+)\].*/\\1/; p }', 'NEWS').stdout().strip(),
   license: 'LGPLv2.1+')
 
 srcdir = meson.current_source_dir() / 'src'

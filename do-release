@@ -14,12 +14,12 @@ fi
 git clean -fdx
 
 # update NEWS
-version=$(grep '(UNRELEASED)' NEWS | cut -f1 -d' ')
+version=$(sed -rn '1 { s/^.*\[([0-9.]+)\].*/\1/; p }' NEWS)
 [ -n "$version" ] || {
-    echo "no UNRELEASED in NEWS" >&2
+    echo "failed to parse version" >&2
     exit 1
 }
-sed -i "s/(UNRELEASED)/$(date '+(%Y-%m-%d)')/" NEWS
+sed -i "s/- UNRELEASED/- $(date '+%Y-%m-%d')/" NEWS
 
 # commit the release and tag
 git commit -a -m "release $version"
