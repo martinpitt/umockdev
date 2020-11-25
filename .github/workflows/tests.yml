@@ -1,0 +1,37 @@
+name: unit-tests
+on: [push, pull_request]
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - ubuntu-devel
+          - ubuntu-latest
+          - ubuntu-rolling
+          - ubuntu-rolling@i386
+          - alpine-latest
+          - alpine-latest@gudev
+          - centos-8
+          - fedora-latest
+          - fedora-rawhide
+        include:
+          - scenario: ubuntu-rolling@i386
+            env: ARCH=i386
+
+          - scenario: alpine-latest@gudev
+            env: EXTRA_PACKAGES=libgudev-dev
+
+    timeout-minutes: 30
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Run unit tests
+        run: |
+          scenario=${{ matrix.scenario }}
+          scenario=${scenario%@*}
+          os=${scenario%-*}
+          export RELEASE=${scenario#*-}
+          ${{ matrix.env }} tests/run-$os
