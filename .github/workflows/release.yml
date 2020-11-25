@@ -1,0 +1,23 @@
+name: tag
+on:
+  push:
+    tags:
+      # this is a glob, not a regexp
+      - '[0-9]*'
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Build release tarball
+        run: PUBLISH_TAR=1 tests/run-ubuntu
+
+      - name: Create GitHub release
+        uses: docker://antonyurchenko/git-release:latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGELOG_FILE: "NEWS"
+        with:
+          args: umockdev-*.tar.xz
