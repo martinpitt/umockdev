@@ -1,4 +1,4 @@
-## [0.15.2] - UNRELEASED
+## [0.15.2] - 2020-11-25
 - Fix "installed-tests" setup to not produce stderr output with grep ≥ 3.5
 
 [0.15.2]: https://github.com/martinpitt/umockdev/compare/0.15.1...0.15.2
