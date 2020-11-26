@@ -1,32 +1,25 @@
 name: unit-tests
 on: [push, pull_request]
 jobs:
-  unit-tests:
+  OS:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         scenario:
-          - ubuntu-devel
-          - ubuntu-latest
-          - ubuntu-rolling
-          - ubuntu-rolling@i386
-          # HACK: this is really Debian testing, clean this up
-          - ubuntu-testing
+          - apt-amd64/ubuntu:devel
+          - apt-amd64/ubuntu:latest
+          - apt-amd64/ubuntu:rolling
+          - apt-i386/ubuntu:rolling
+          - apt-amd64/debian:testing
+          - dnf-fedora:latest
+          - dnf-fedora:rawhide
+          - dnf-centos:8
           - alpine-latest
           - alpine-latest@gudev
-          - centos-8
-          - fedora-latest
-          - fedora-rawhide
         include:
-          - scenario: ubuntu-rolling@i386
-            env: ARCH=i386
-
           - scenario: alpine-latest@gudev
             env: EXTRA_PACKAGES=libgudev-dev
-
-          - scenario: ubuntu-testing
-            env: DISTRO=debian
 
     timeout-minutes: 30
     steps:
@@ -37,6 +30,6 @@ jobs:
         run: |
           scenario=${{ matrix.scenario }}
           scenario=${scenario%@*}
-          os=${scenario%-*}
-          export RELEASE=${scenario#*-}
-          ${{ matrix.env }} tests/run-$os
+          script=${scenario%-*}
+          release=${scenario#*-}
+          ${{ matrix.env }} tests/run-${script} $release
