@@ -186,7 +186,7 @@ print_device_attributes(string devpath, string subdir)
     string entry;
     // filter out the uninteresting attributes, sort the others
     while ((entry = d.read_name()) != null)
-        if (entry != "subsystem" && entry != "firmware_node" && entry != "uevent")
+        if (entry != "subsystem" && entry != "uevent")
             attributes.append(entry);
         else {
             // don't look into subdirs which are devices by themselves
