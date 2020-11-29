@@ -108,6 +108,52 @@ E: DEVNAME=/dev/bus/usb/001/001
 }
 
 void
+assert_listdir (string path, string[] entries)
+{
+  var dir = Dir.open(path);
+  var files = new List<string>();
+  string? entry;
+  while ((entry = dir.read_name()) != null)
+      files.append(entry);
+  files.sort(strcmp);
+  assert_cmpuint (files.length(), Op.EQ, entries.length);
+  uint i = 0;
+  foreach (var n in files)
+      assert_cmpstr (n, Op.EQ, entries[i++]);
+}
+
+void
+t_testbed_fs_ops ()
+{
+  var tb = new UMockdev.Testbed ();
+  var orig_cwd = Environment.get_current_dir ();
+
+  var syspath = tb.add_devicev ("pci", "dev1", null, {"a", "1"}, {"DEVTYPE", "fancy"});
+  assert_cmpstr (syspath, Op.EQ, "/sys/devices/dev1");
+
+  // absolute paths
+  assert_listdir ("/sys", {"bus", "devices"});
+  assert_listdir ("/sys/devices", {"dev1"});
+  assert_listdir ("/sys/bus", {"pci"});
+  assert_listdir ("/sys/devices/dev1", {"a", "subsystem", "uevent"});
+
+  // change directory into trapped /sys
+  assert_cmpint (Posix.chdir ("/sys"), Op.EQ, 0);
+  assert_listdir (".", {"bus", "devices"});
+  assert_listdir ("bus", {"pci"});
+  assert_cmpstr (Environment.get_current_dir (), Op.EQ, "/sys");
+
+  assert_cmpint (Posix.chdir ("/sys/devices/dev1"), Op.EQ, 0);
+  assert_listdir (".", {"a", "subsystem", "uevent"});
+  assert_cmpstr (Environment.get_current_dir (), Op.EQ, "/sys/devices/dev1");
+
+  assert_cmpint (Posix.chdir ("/sys/class"), Op.EQ, -1);
+  assert_cmpint (Posix.errno, Op.EQ, Posix.ENOENT);
+
+  assert_cmpint (Posix.chdir (orig_cwd), Op.EQ, 0);
+}
+
+void
 t_usbfs_ioctl_static ()
 {
   var tb = new UMockdev.Testbed ();
@@ -665,6 +711,7 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/empty", t_testbed_empty);
   Test.add_func ("/umockdev-testbed-vala/add_devicev", t_testbed_add_device);
   Test.add_func ("/umockdev-testbed-vala/gudev-query-list", t_testbed_gudev_query_list);
+  Test.add_func ("/umockdev-testbed-vala/fs_ops", t_testbed_fs_ops);
 
   /* tests for mocking ioctls */
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);

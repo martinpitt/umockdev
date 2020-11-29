@@ -1063,8 +1063,10 @@ rettype name(const char *path)		    \
     p = trap_path(path);		    \
     if (p == NULL)			    \
 	r = failret;			    \
-    else				    \
+    else {				    \
+	DBG(DBG_PATH, "testbed wrapped " #name "(%s) -> %s\n", path, p);	\
 	r = (*_ ## name)(p);		    \
+    };					    \
     TRAP_PATH_UNLOCK;			    \
     return r;				    \
 }
@@ -1338,6 +1340,7 @@ FILE* prefix ## fopen ## suffix (const char *path, const char *mode)  \
 }
 
 WRAP_1ARG(DIR *, NULL, opendir);
+WRAP_1ARG(int, -1, chdir);
 
 WRAP_FOPEN(,);
 WRAP_2ARGS(int, -1, mkdir, mode_t);
@@ -1458,6 +1461,23 @@ WRAP_3ARGS_PATHRET(char *, NULL, __realpath_chk, char *, size_t);
 #ifdef __GLIBC__
 WRAP_1ARG_PATHRET(char *, NULL, canonicalize_file_name);
 #endif
+
+char *
+getcwd(char *buf, size_t size)
+{
+    libc_func (getcwd, char*, char*, size_t);
+    const char *prefix = getenv("UMOCKDEV_DIR");
+    char *r = _getcwd (buf, size);
+
+    if (prefix != NULL && r != NULL) {
+	size_t prefix_len = strlen (prefix);
+	if (strncmp (r, prefix, prefix_len) == 0) {
+	    DBG(DBG_PATH, "testbed wrapped getcwd: %s -> %s\n", r, r + prefix_len);
+	    memmove(r, r + prefix_len, strlen(r) - prefix_len + 1); \
+	}
+    }
+    return r;
+}
 
 ssize_t
 read(int fd, void *buf, size_t count)
