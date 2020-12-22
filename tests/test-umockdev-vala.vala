@@ -150,6 +150,17 @@ t_testbed_fs_ops ()
   assert_cmpint (Posix.chdir ("/sys/class"), Op.EQ, -1);
   assert_cmpint (Posix.errno, Op.EQ, Posix.ENOENT);
 
+  // relative paths into trapped /sys
+  assert_cmpint (Posix.chdir ("/"), Op.EQ, 0);
+  assert_listdir ("sys", {"bus", "devices"});
+  assert_listdir ("sys/devices", {"dev1"});
+  assert_listdir ("sys/bus", {"pci"});
+
+  assert_cmpint (Posix.chdir ("/etc"), Op.EQ, 0);
+  assert_listdir ("../sys", {"bus", "devices"});
+  assert_listdir ("../sys/devices", {"dev1"});
+  assert_listdir ("../sys/bus", {"pci"});
+
   assert_cmpint (Posix.chdir (orig_cwd), Op.EQ, 0);
 }
 

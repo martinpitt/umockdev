@@ -141,8 +141,11 @@ static size_t trap_path_prefix_len = 0;
 static const char *
 trap_path(const char *path)
 {
+    libc_func(realpath, char *, const char *, char *);
+    static char abspath_buf[PATH_MAX];
     static char buf[PATH_MAX * 2];
     const char *prefix;
+    const char *abspath = NULL;
     size_t path_len;
     int check_exist = 0;
 
@@ -154,12 +157,22 @@ trap_path(const char *path)
     if (prefix == NULL)
 	return path;
 
-    if (strncmp(path, "/dev/", 5) == 0 || strcmp(path, "/dev") == 0 || strncmp(path, "/proc/", 6) == 0)
+    if (path[0] != '/') {
+	int orig_errno = errno;
+	abspath = _realpath(path, abspath_buf);
+	errno = orig_errno;
+	if (abspath)
+	    DBG(DBG_PATH, "trap_path relative %s -> absolute %s\n", path, abspath);
+    }
+    if (!abspath)
+	abspath = path;
+
+    if (strncmp(abspath, "/dev/", 5) == 0 || strcmp(abspath, "/dev") == 0 || strncmp(abspath, "/proc/", 6) == 0)
 	check_exist = 1;
-    else if (strncmp(path, "/sys/", 5) != 0 && strcmp(path, "/sys") != 0)
+    else if (strncmp(abspath, "/sys/", 5) != 0 && strcmp(abspath, "/sys") != 0)
 	return path;
 
-    path_len = strlen(path);
+    path_len = strlen(abspath);
     trap_path_prefix_len = strlen(prefix);
     if (path_len + trap_path_prefix_len >= sizeof(buf)) {
 	errno = ENAMETOOLONG;
@@ -172,7 +185,7 @@ trap_path(const char *path)
     if (path_exists(buf) == 0)
 	return path;
 
-    strcpy(buf + trap_path_prefix_len, path);
+    strcpy(buf + trap_path_prefix_len, abspath);
 
     if (check_exist && path_exists(buf) < 0)
 	return path;
