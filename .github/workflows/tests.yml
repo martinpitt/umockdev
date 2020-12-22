@@ -10,7 +10,7 @@ jobs:
           - apt-amd64/ubuntu:devel
           - apt-amd64/ubuntu:latest
           - apt-amd64/ubuntu:rolling
-          - apt-i386/ubuntu:rolling
+          - apt-i386/debian:testing
           - apt-amd64/debian:testing
           - dnf-fedora:latest
           - dnf-fedora:rawhide
