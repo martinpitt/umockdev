@@ -28,6 +28,7 @@ jobs:
 
       - name: Run unit tests
         run: |
+          set -eux
           scenario=${{ matrix.scenario }}
           scenario=${scenario%@*}
           script=${scenario%-*}
