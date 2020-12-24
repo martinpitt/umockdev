@@ -130,7 +130,7 @@ write_attr(string name, uint8[] val)
     // check if it's text or binary
     string strval = (string) val;
     if (val.length == strval.length && strval.validate())
-        stdout.printf("A: %s=%s", name, strval.chomp().escape(""));
+        stdout.printf("A: %s=%s", name, strval.escape(""));
     else
         stdout.printf("H: %s=%s", name, format_hex(val));
     stdout.putc('\n');

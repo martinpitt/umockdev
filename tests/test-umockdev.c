@@ -1114,7 +1114,7 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_autofree gchar *syspath = umockdev_testbed_add_device(
             fixture->testbed, "usb", "usb1", NULL,
             /* attributes */
-            "busnum", "1", "devnum", "1", "speed", "480",
+            "busnum", "1\n", "devnum", "1\n", "speed", "480",
             "bConfigurationValue", "1", NULL,
             /* properties */
             "DEVTYPE", "usb_device", "DEVNAME", "/dev/bus/usb/usb1", NULL);
