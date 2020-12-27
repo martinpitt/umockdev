@@ -1,3 +1,8 @@
+## [0.15.3] - UNRELEASED
+- preload: Handle chdir() and getcwd() for emulated paths
+- umockdev-run: Don't strip off trailing whitespace from sysfs attributes.
+  This fixes regressions with libusb 1.0.24. (#115, Debian #978310)
+
 ## [0.15.2] - 2020-11-25
 - Fix "installed-tests" setup to not produce stderr output with grep ≥ 3.5
 
