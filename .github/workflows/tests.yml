@@ -33,5 +33,9 @@ jobs:
           scenario=${scenario%@*}
           script=${scenario%-*}
           release=${scenario#*-}
+
+          # HACK: i386 podman container fails apt signature verification
+          [ "${release#i386}" = "$release" ] || sudo dpkg -P podman
+
           # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
           sudo ${{ matrix.env }} tests/run-${script} $release
