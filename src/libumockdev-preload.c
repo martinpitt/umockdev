@@ -922,7 +922,7 @@ script_record_open(int fd)
     assert(r);
     r = fd_map_get(&script_dev_format_map, fd_dev, &data);
     assert(r);
-    fmt = (enum script_record_format) data;
+    fmt = (enum script_record_format) (long) data;
 
     DBG(DBG_SCRIPT, "script_record_open: start recording fd %i on device %i:%i into %s (format %i)\n",
 	fd, major(fd_dev), minor(fd_dev), logname, fmt);

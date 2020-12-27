@@ -27,7 +27,7 @@ else
 fi
 
 # install build dependencies
-dnf -y \${repos:-} install meson git gcc glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3 python3-gobject-base usbutils vala xz systemd-udev valgrind \$packages
+dnf -y \${repos:-} install meson git gcc clang glib2-devel gtk-doc libgudev1-devel libtool libudev-devel make python3 python3-gobject-base usbutils vala xz systemd-udev valgrind \$packages
 
 # run build as user
 useradd guest
@@ -43,6 +43,11 @@ if [ "\$coverage" = true ]; then
     meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
     cat meson-logs/coverage.txt
 fi
+
+# build with clang
+cd /source
+CC=clang meson setup /tmp/clang -Dgtk_doc=false
+meson test -C /tmp/clang -v --num-processes=1
 EOG
 
 EOF
