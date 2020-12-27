@@ -17,6 +17,7 @@ jobs:
           - dnf-centos:8
           - alpine-latest
           - alpine-latest@gudev
+          - nix
         include:
           - scenario: alpine-latest@gudev
             env: EXTRA_PACKAGES=libgudev-dev

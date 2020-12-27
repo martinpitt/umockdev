@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+# keep container around if $DEBUG is set
+[ -n "${DEBUG:-}" ] || OPTS="--rm"
+
+if type podman >/dev/null 2>&1; then
+    RUNC=podman
+else
+    RUNC="sudo docker"
+fi
+
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro docker.io/nixos/nix /bin/sh <<EOF
+# HACK: test-static-code fails: https://github.com/martinpitt/umockdev/issues/115#issuecomment-751456532
+cp -a /source /tmp/source
+sed -i '/test-static-code/d' /tmp/source/meson.build
+
+nix-build --keep-failed -E '(import (builtins.fetchTarball { url = "https://github.com/NixOS/nixpkgs/archive/master.tar.gz"; }) {}).umockdev.overrideAttrs (attrs: { src = /tmp/source; patches = []; preCheck = ""; doCheck = true; })'
+EOF
