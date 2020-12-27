@@ -1,4 +1,4 @@
-## [0.15.3] - UNRELEASED
+## [0.15.3] - 2020-12-27
 - preload: Handle chdir() and getcwd() for emulated paths
 - umockdev-run: Don't strip off trailing whitespace from sysfs attributes.
   This fixes regressions with libusb 1.0.24. (#115, Debian #978310)
