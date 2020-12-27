@@ -12,7 +12,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build release tarball
-        run: PUBLISH_TAR=1 tests/run-apt
+        # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
+        run: sudo PUBLISH_TAR=1 tests/run-apt
 
       - name: Create GitHub release
         uses: docker://antonyurchenko/git-release:latest

@@ -33,5 +33,5 @@ jobs:
           scenario=${scenario%@*}
           script=${scenario%-*}
           release=${scenario#*-}
-          # # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
+          # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
           sudo ${{ matrix.env }} tests/run-${script} $release
