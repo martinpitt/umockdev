@@ -125,6 +125,7 @@ assert_listdir (string path, string[] entries)
 void
 t_testbed_fs_ops ()
 {
+  var have_real_sys = FileUtils.test("/sys", FileTest.EXISTS);
   var tb = new UMockdev.Testbed ();
   var orig_cwd = Environment.get_current_dir ();
 
@@ -150,7 +151,12 @@ t_testbed_fs_ops ()
   assert_cmpint (Posix.chdir ("/sys/class"), Op.EQ, -1);
   assert_cmpint (Posix.errno, Op.EQ, Posix.ENOENT);
 
-  // relative paths into trapped /sys
+  // relative paths into trapped /sys; this only works if the real /sys exists, as otherwise realpath() fails in trap_path()
+  if (!have_real_sys) {
+      stdout.printf ("[SKIP relative paths: environment has no real /sys]\n");
+      return;
+  }
+
   assert_cmpint (Posix.chdir ("/"), Op.EQ, 0);
   assert_listdir ("sys", {"bus", "devices"});
   assert_listdir ("sys/devices", {"dev1"});
