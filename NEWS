@@ -1,4 +1,4 @@
-## [0.15.4] - UNRELEASED
+## [0.15.4] - 2021-01-03
 - preload: Trap relative paths into mocked directories
 - Fix tests for NixOS and enable them in CI
 
