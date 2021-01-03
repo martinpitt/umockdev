@@ -1138,7 +1138,12 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
     g_assert_cmpint(exit_status, ==, 0);
 
     /* g_printf("------ out: -------\n%s\n------ err: ------\n%s\n-----\n", out, err); */
-    g_assert(g_str_has_prefix(out, "\nBus 001 Device 001: ID 04a9:31c0"));
+    /* FIXME: In NixOS sandbox lsusb errors with "Couldn't open device, some information will be missing", and bus/device are 0 */
+    /* https://github.com/martinpitt/umockdev/issues/115 */
+    if (g_getenv("NIX_BUILD_TOP"))
+        g_assert(strstr(out, ": ID 04a9:31c0"));
+    else
+        g_assert(g_str_has_prefix(out, "\nBus 001 Device 001: ID 04a9:31c0"));
     g_assert(strstr(out, "idVendor           0x04a9"));
 
     /* Alpine's lsusb doesn't read usb.ids, and our test container does not ship it */
