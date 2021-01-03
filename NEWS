@@ -1,3 +1,7 @@
+## [0.15.4] - UNRELEASED
+- preload: Trap relative paths into mocked directories
+- Fix tests for NixOS and enable them in CI
+
 ## [0.15.3] - 2020-12-27
 - preload: Handle chdir() and getcwd() for emulated paths
 - umockdev-run: Don't strip off trailing whitespace from sysfs attributes.
