@@ -1084,9 +1084,12 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
     close(dirfd);
 
     /* sys/ in other dir should not be trapped */
+    dirfd = open("/bin", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd, >=, 0);
     errno = 0;
-    dirfd = open("/run", O_RDONLY | O_DIRECTORY);
     g_assert_cmpint(openat(dirfd, "sys", O_RDONLY), <, 0);
+    g_assert_cmpint(errno, ==, ENOENT);
+
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(openat64(dirfd, "sys", O_RDONLY), <, 0);
     close(dirfd);
