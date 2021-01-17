@@ -41,6 +41,8 @@ jobs:
 
           # HACK: i386 podman container fails apt signature verification
           [ "${release#i386}" = "$release" ] || sudo dpkg -P podman
+          # HACK: rawhide fails realpath() with Ubuntu host
 
           # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
-          sudo ${{ matrix.env }} tests/run-${script} $release
+          # Fedora-on-Ubuntu has seccomp profile incompatibilities
+          sudo ${{ matrix.env }} RUNC_OPTIONS=--security-opt=seccomp=unconfined tests/run-${script} $release
