@@ -587,22 +587,6 @@ static void ioctl_record_sigint_handler(int signum)
     raise(signum);
 }
 
-static void
-record_ioctl(IOCTL_REQUEST_TYPE request, void *arg, int result)
-{
-    ioctl_tree *node;
-
-    assert(ioctl_record_log != NULL);
-
-    node = ioctl_tree_new_from_bin(request, arg, result);
-    if (node == NULL)
-	return;
-    ioctl_tree_insert(ioctl_record, node);
-    /* handle initial node */
-    if (ioctl_record == NULL)
-	ioctl_record = node;
-}
-
 /********************************
  *
  * ioctl emulation
@@ -612,68 +596,109 @@ record_ioctl(IOCTL_REQUEST_TYPE request, void *arg, int result)
 static fd_map ioctl_wrapped_fds;
 
 struct ioctl_fd_info {
-    ioctl_tree *tree;
-    ioctl_tree *last;
+    char *dev_path;
+    int ioctl_sock;
 };
 
 static void
 ioctl_emulate_open(int fd, const char *dev_path)
 {
-    libc_func(fopen, FILE*, const char *, const char*);
-    libc_func(fclose, int, FILE *);
-    FILE *f;
-    static char ioctl_path[PATH_MAX];
+    libc_func(socket, int, int, int, int);
+    libc_func(connect, int, int, const struct sockaddr *, socklen_t);
+    int sock;
+    int ret;
     struct ioctl_fd_info *fdinfo;
+    struct sockaddr_un addr;
 
     if (strncmp(dev_path, "/dev/", 5) != 0)
 	return;
 
-    fdinfo = malloc(sizeof(struct ioctl_fd_info));
-    fdinfo->tree = NULL;
-    fdinfo->last = NULL;
-    fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/ioctl/%s", getenv("UMOCKDEV_DIR"), dev_path);
 
-    /* check if we have an ioctl tree for this */
-    snprintf(ioctl_path, sizeof(ioctl_path), "%s/ioctl/%s", getenv("UMOCKDEV_DIR"), dev_path);
-
-    f = _fopen(ioctl_path, "r");
-    if (f == NULL)
+    if (path_exists (addr.sun_path) != 0) {
+	fdinfo = malloc(sizeof(struct ioctl_fd_info));
+	fdinfo->ioctl_sock = -1;
+	fdinfo->dev_path = strdup(dev_path);
+	fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
 	return;
+    }
 
-    fdinfo->tree = ioctl_tree_read(f);
-    _fclose(f);
-    if (fdinfo->tree == NULL) {
-	fprintf(stderr, "ERROR: libumockdev-preload: failed to load ioctl record file for %s: empty or invalid format?",
+    sock = _socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock == -1) {
+	fprintf(stderr, "ERROR: libumockdev-preload: Failed to open ioctl socket for %s",
 		dev_path);
 	exit(1);
     }
-    DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): loaded ioctl tree\n", fd, dev_path);
+
+    ret = _connect(sock, (const struct sockaddr *) &addr, sizeof(addr));
+    if (ret == -1) {
+	fprintf(stderr, "ERROR: libumockdev-preload: Failed to connect to ioctl socket for %s",
+		dev_path);
+	exit(1);
+    }
+
+    fdinfo = malloc(sizeof(struct ioctl_fd_info));
+    fdinfo->ioctl_sock = sock;
+    fdinfo->dev_path = strdup(dev_path);
+
+    fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
+    DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl sockert\n", fd, dev_path);
 }
 
 static void
 ioctl_emulate_close(int fd)
 {
+    libc_func(close, int, int);
     struct ioctl_fd_info *fdinfo;
 
     if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
 	DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
 	fd_map_remove(&ioctl_wrapped_fds, fd);
-	ioctl_tree_free(fdinfo->tree);
+	if (fdinfo->ioctl_sock >= 0)
+	    _close(fdinfo->ioctl_sock);
+	free(fdinfo->dev_path);
 	free(fdinfo);
     }
 }
 
+#define IOCTL_REQ_IOCTL 1
+#define IOCTL_REQ_RES 2
+#define IOCTL_RES_DONE 3
+#define IOCTL_RES_RUN 4
+#define IOCTL_RES_READ_MEM 5
+#define IOCTL_RES_WRITE_MEM 6
+#define IOCTL_RES_ABORT 0xff
+
+/* Marshal everything as unsigned long */
+struct ioctl_request {
+    unsigned long cmd;
+    unsigned long arg1;
+    unsigned long arg2;
+};
+
 static int
 ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 {
-    ioctl_tree *ret;
-    int ioctl_result = -1;
-    int orig_errno;
+    libc_func(send, ssize_t, int, const void *, size_t, int);
+    libc_func(recv, ssize_t, int, const void *, size_t, int);
+    libc_func(ioctl, int, int, IOCTL_REQUEST_TYPE, ...);
     struct ioctl_fd_info *fdinfo;
+    struct ioctl_request req;
+    int res;
 
     IOCTL_LOCK;
 
-    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
+    if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
+	IOCTL_UNLOCK;
+	return UNHANDLED;
+    }
+
+    /* Run through an empty tree locally if we do not have a socket. */
+    if (fdinfo->ioctl_sock < 0) {
+	int ioctl_result = -1;
+	int orig_errno;
+
 	/* we default to erroring and an appropriate error code before
 	 * tree_execute, as handlers might change errno; if they succeed, we
 	 * reset errno */
@@ -686,19 +711,111 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 	    errno = ENOTTY;
 
 	/* check our ioctl tree */
-	ret = ioctl_tree_execute(fdinfo->tree, fdinfo->last, request, arg, &ioctl_result);
-	DBG(DBG_IOCTL, "ioctl_emulate: tree execute ret %p, result %i, errno %i (%m); orig errno: %i\n", ret, ioctl_result, errno, orig_errno);
-	if (ret != NULL)
-	    fdinfo->last = ret;
+	ioctl_tree_execute(NULL, NULL, request, arg, &ioctl_result);
+	DBG(DBG_IOCTL, "ioctl_emulate: empty tree execute, result %i, errno %i (%m); orig errno: %i\n", ioctl_result, errno, orig_errno);
 	if (ioctl_result != -1 && errno != 0)
 	    errno = orig_errno;
-    } else {
-	ioctl_result = UNHANDLED;
+
+	IOCTL_UNLOCK;
+
+	return ioctl_result;
     }
 
-    IOCTL_UNLOCK;
+    req.cmd = IOCTL_REQ_IOCTL;
+    req.arg1 = (long) request;
+    req.arg2 = (long) arg;
 
-    return ioctl_result;
+    do {
+        res = _send(fdinfo->ioctl_sock, &req, sizeof(req), 0);
+    } while (res < 0 && errno == EINTR);
+    if (res < 0)
+	goto con_err;
+
+    while (1) {
+	do {
+	    res = _recv(fdinfo->ioctl_sock, &req, sizeof(req), 0);
+	} while (res < 0 && errno == EINTR);
+	if (res < 0)
+	    goto con_err;
+	if (res == 0)
+	    goto con_eof;
+
+	switch (req.cmd) {
+	    case IOCTL_RES_DONE:
+		errno = req.arg2;
+
+		IOCTL_UNLOCK;
+		return req.arg1;
+
+	    case IOCTL_RES_RUN:
+		res = _ioctl(fd, request, arg);
+		req.cmd = IOCTL_REQ_RES;
+		req.arg1 = res;
+		req.arg2 = errno;
+
+		do {
+		    res = _send(fdinfo->ioctl_sock, &req, sizeof(req), 0);
+		} while (res < 0 && errno == EINTR);
+		if (res < 0)
+		    goto con_err;
+
+		break;
+
+	    case IOCTL_RES_READ_MEM: {
+		size_t done = 0;
+		do {
+		    res = _send(fdinfo->ioctl_sock, (void*) (req.arg1 + done), (size_t) req.arg2 - done, 0);
+		    if (res > 0)
+			done += res;
+		} while ((res < 0 && errno == EINTR) || (res > 0 && done < req.arg2));
+		if (res < 0 && errno == EFAULT) {
+		    fprintf(stderr, "ERROR: libumockdev-preload: emulation code requested invalid read from %p + %lx\n",
+			    (void*) req.arg1, (unsigned long) req.arg2);
+		}
+		if (res < 0)
+		    goto con_err;
+
+		break;
+	    }
+
+	    case IOCTL_RES_WRITE_MEM: {
+		size_t done = 0;
+		do {
+		    res = _recv(fdinfo->ioctl_sock, (void*) (req.arg1 + done), (size_t) req.arg2 - done, 0);
+		    if (res > 0)
+			done += res;
+		} while ((res < 0 && errno == EINTR) || (res > 0 && done < req.arg2));
+		if (res < 0 && errno == EFAULT) {
+		    fprintf(stderr, "ERROR: libumockdev-preload: emulation code requested invalid write to %p + %lx\n",
+			    (void*) req.arg1, (unsigned long) req.arg2);
+		}
+
+		if (res < 0)
+		    goto con_err;
+
+		break;
+	    }
+
+	    case IOCTL_RES_ABORT:
+		fprintf(stderr, "ERROR: libumockdev-preload: Server requested abort on device %s, exiting\n",
+			fdinfo->dev_path);
+		exit(1);
+
+	    default:
+		fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, unknown command: %ld (res: %d)\n",
+			req.cmd, res);
+		exit(1);
+	}
+    }
+
+con_eof:
+    fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, received EOF\n");
+    exit(1);
+
+con_err:
+    fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, errno: %d\n",
+	    errno);
+    exit(1);
 }
 
 /********************************
@@ -1690,12 +1807,9 @@ ioctl(int d, IOCTL_REQUEST_TYPE request, ...)
 	return result;
     }
 
-    /* call original ioctl */
+    /* fallback to call original ioctl */
     result = _ioctl(d, request, arg);
     DBG(DBG_IOCTL, "ioctl fd %i request %X: original, result %i\n", d, (unsigned) request, result);
-
-    if (result != -1 && ioctl_record_fd == d)
-	record_ioctl(request, arg, result);
 
     return result;
 }
