@@ -15,6 +15,12 @@ namespace Ioctl {
     [CCode (cheader_filename = "sys/ioctl.h")]
     public const int TIOCSBRK;
 
+    [CCode (cheader_filename = "asm-generic/ioctl.h")]
+    public const int _IOC_SIZEBITS;
+    public const int _IOC_SIZESHIFT;
+    public const int _IOC_TYPEBITS;
+    public const int _IOC_TYPESHIFT;
+
     [CCode (cname="struct usbdevfs_connectinfo", cheader_filename = "linux/usbdevice_fs.h")]
     public struct usbdevfs_connectinfo {
 	public uint devnum;
