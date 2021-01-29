@@ -20,6 +20,7 @@
 #    define __IOCTL_TREE_H
 
 #include "config.h"
+#include <stdio.h>
 
 struct ioctl_tree;
 typedef struct ioctl_tree ioctl_tree;
