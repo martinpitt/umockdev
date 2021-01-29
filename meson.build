@@ -58,7 +58,7 @@ vala_libutil = cc.find_library('util')
 # local VAPIs
 vapi_config = valac.find_library('config', dirs: srcdir)
 vapi_posix_extra = valac.find_library('posix_extra', dirs: srcdir)
-vapi_ioctl = valac.find_library('ioctl', dirs: testsdir)
+vapi_ioctl = valac.find_library('ioctl', dirs: srcdir)
 vapi_assertions = valac.find_library('assertions', dirs: testsdir)
 
 #
