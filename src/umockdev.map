@@ -2,6 +2,7 @@
     global:
         umockdev_testbed_*;
         umockdev_error_*;
+        umockdev_ioctl_*;
         umockdev_in_mock_environment*;
 
     local:

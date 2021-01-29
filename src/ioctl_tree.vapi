@@ -9,4 +9,6 @@ namespace IoctlTree {
 
       public void* execute(void* last, ulong id, void* addr, ref int ret);
   }
+
+  public int data_size_by_id(ulong id);
 }

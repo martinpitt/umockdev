@@ -54,6 +54,19 @@ private bool __in_mock_env_result = false;
  * instead of the system's real sysfs.
  */
 
+/* This avoids taking a reference on the Testbed */
+private static Thread<void>
+create_worker_thread(MainLoop loop)
+{
+    return new Thread<void> ("umockdev-testbed-worker", () => {
+            MainContext ctx = loop.get_context();
+
+            ctx.push_thread_default();
+            loop.run();
+            ctx.pop_thread_default();
+        });
+}
+
 public class Testbed: GLib.Object {
     /**
      * umockdev_testbed_new:
@@ -76,6 +89,10 @@ public class Testbed: GLib.Object {
 
         this.dev_fd = new HashTable<string, int> (str_hash, str_equal);
         this.dev_script_runner = new HashTable<string, ScriptRunner> (str_hash, str_equal);
+
+        this.worker_ctx = new MainContext();
+        this.worker_loop = new MainLoop(this.worker_ctx);
+        this.worker_thread = create_worker_thread(this.worker_loop);
 
         Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
         debug("Created udev test bed %s", this.root_dir);
@@ -103,6 +120,8 @@ public class Testbed: GLib.Object {
         debug ("Removing test bed %s", this.root_dir);
         remove_dir (this.root_dir);
         Environment.unset_variable("UMOCKDEV_DIR");
+
+        this.worker_loop.quit();
     }
 
     /**
@@ -768,13 +787,21 @@ public class Testbed: GLib.Object {
             owned_dev = header_matcher.fetch(1);
             recording.seek(0, SeekType.SET);
         }
-        string dest = Path.build_filename(this.root_dir, "ioctl", owned_dev);
+        string dest = Path.build_filename(this.root_dir, "ioctl", owned_dev + ".tree");
         assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
 
         string? contents = recording.read_upto("", 0, null);
         if (contents == null)
             contents = "";
-        return FileUtils.set_contents(dest, contents);
+        if (!FileUtils.set_contents(dest, contents))
+            return false;
+
+        IoctlTreeHandler handler = new IoctlTreeHandler(worker_ctx, dest);
+
+        string sockpath = Path.build_filename(this.root_dir, "ioctl", owned_dev);
+        handler.register_path(owned_dev, sockpath);
+
+        return true;
     }
 
     /**
@@ -1401,6 +1428,9 @@ public class Testbed: GLib.Object {
     private HashTable<string,ScriptRunner> dev_script_runner;
     private SocketServer socket_server = null;
 
+    private Thread<void> worker_thread;
+    private MainContext worker_ctx;
+    private MainLoop worker_loop;
 }
 
 
