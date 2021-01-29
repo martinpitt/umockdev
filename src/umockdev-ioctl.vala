@@ -425,8 +425,39 @@ public class IoctlClient : GLib.Object {
             handled = handler.handle_ioctl(this);
 
         if (!handled) {
-            /* -100 is a special to say that it is "unhandled" */
-            complete(-100, 0);
+            IoctlTree.Tree tree = null;
+            IoctlData? data = null;
+            ulong size = (_request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
+            ulong type = (_request >> Ioctl._IOC_TYPESHIFT) & ((1 << Ioctl._IOC_TYPEBITS) - 1);
+            int ret = -1;
+            int my_errno;
+
+            try {
+                data = _arg.resolve(0, size, true, true);
+            } catch (IOError e) {
+                warning("Error resolving IOCtl data: %s", e.message);
+
+                complete(-100, 0);
+                return;
+            }
+
+            if ((char) type == 'E') {
+                Posix.errno = Posix.ENOENT;
+            } else {
+                Posix.errno = Posix.ENOTTY;
+            }
+            if (data != null)
+                tree.execute(null, _request, (void*) data.data, ref ret);
+            else
+                tree.execute(null, _request, null, ref ret);
+            my_errno = Posix.errno;
+            Posix.errno = 0;
+
+            if (ret != -1) {
+                my_errno = 0;
+            }
+
+            complete(ret, my_errno);
         }
     }
 

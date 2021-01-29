@@ -94,6 +94,11 @@ public class Testbed: GLib.Object {
         this.worker_loop = new MainLoop(this.worker_ctx);
         this.worker_thread = create_worker_thread(this.worker_loop);
 
+        /* Create fallback ioctl handler */
+        IoctlBase handler = new IoctlBase(this.worker_ctx);
+        string sockpath = Path.build_filename(this.root_dir, "ioctl", "_default");
+        handler.register_path("_default", sockpath);
+
         Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
         debug("Created udev test bed %s", this.root_dir);
     }
