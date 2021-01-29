@@ -616,13 +616,8 @@ ioctl_emulate_open(int fd, const char *dev_path)
     addr.sun_family = AF_UNIX;
     snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/ioctl/%s", getenv("UMOCKDEV_DIR"), dev_path);
 
-    if (path_exists (addr.sun_path) != 0) {
-	fdinfo = malloc(sizeof(struct ioctl_fd_info));
-	fdinfo->ioctl_sock = -1;
-	fdinfo->dev_path = strdup(dev_path);
-	fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
-	return;
-    }
+    if (path_exists (addr.sun_path) != 0)
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/ioctl/_default", getenv("UMOCKDEV_DIR"));
 
     sock = _socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
@@ -692,33 +687,6 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
     if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
 	IOCTL_UNLOCK;
 	return UNHANDLED;
-    }
-
-    /* Run through an empty tree locally if we do not have a socket. */
-    if (fdinfo->ioctl_sock < 0) {
-	int ioctl_result = -1;
-	int orig_errno;
-
-	/* we default to erroring and an appropriate error code before
-	 * tree_execute, as handlers might change errno; if they succeed, we
-	 * reset errno */
-	orig_errno = errno;
-	/* evdev ioctls default to ENOENT; FIXME: record that instead of
-	 * hardcoding, and handle in ioctl_tree */
-	if (_IOC_TYPE(request) == 'E')
-	    errno = ENOENT;
-	else
-	    errno = ENOTTY;
-
-	/* check our ioctl tree */
-	ioctl_tree_execute(NULL, NULL, request, arg, &ioctl_result);
-	DBG(DBG_IOCTL, "ioctl_emulate: empty tree execute, result %i, errno %i (%m); orig errno: %i\n", ioctl_result, errno, orig_errno);
-	if (ioctl_result != -1 && errno != 0)
-	    errno = orig_errno;
-
-	IOCTL_UNLOCK;
-
-	return ioctl_result;
     }
 
     req.cmd = IOCTL_REQ_IOCTL;
