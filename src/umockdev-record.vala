@@ -20,6 +20,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+using UMockdevUtils;
+
 static void
 exit_error(string message, ...)
 {
@@ -362,6 +364,18 @@ const GLib.OptionEntry[] options = {
     { null }
 };
 
+GLib.MainLoop loop;
+Pid child_pid;
+int child_status;
+
+static void
+child_watch_cb (Pid pid, int status)
+{
+    /* Record status and quit mainloop. */
+    child_status = status;
+    loop.quit();
+}
+
 public static int
 main (string[] args)
 {
@@ -417,7 +431,22 @@ main (string[] args)
     foreach (string s in opt_evemu_events)
         record_script(s, "evemu");
 
-    Posix.execvp(opt_devices[0], opt_devices);
-    exit_error("Cannot run program %s: %s", opt_devices[0], strerror(errno));
-    return 0;
+    // we want to run opt_program as a subprocess instead of execve()ing, so
+    // that we can run device script threads in the background
+    loop = new GLib.MainLoop(null);
+    try {
+        child_pid = spawn_process_under_test (opt_devices, child_watch_cb);
+    } catch (Error e) {
+        stderr.printf ("Cannot run %s: %s\n", opt_devices[0], e.message);
+        Process.exit (1);
+    }
+
+    loop.run();
+
+    if (Process.if_exited (child_status))
+        return Process.exit_status (child_status);
+    if (Process.if_signaled (child_status))
+        Process.raise (Process.term_sig (child_status));
+
+    return child_status;
 }
