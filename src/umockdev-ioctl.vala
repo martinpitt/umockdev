@@ -613,6 +613,15 @@ public class IoctlBase: GLib.Object {
           listeners[devnode].cancel();
     }
 
+    internal void unregister_all()
+    {
+        lock (listeners) {
+            listeners.foreach((key, val) => {
+                val.cancel();
+            });
+        }
+    }
+
     public virtual signal void client_connected(IoctlClient client) {
     }
 
@@ -728,6 +737,116 @@ internal class IoctlTreeHandler : IoctlBase {
         client.complete(ret, my_errno);
 
         return true;
+    }
+}
+
+internal class IoctlTreeRecorder : IoctlBase {
+
+    bool write_log;
+    string logfile;
+    string device;
+    private IoctlTree.Tree tree;
+
+    public IoctlTreeRecorder(MainContext? ctx, string device, string file)
+    {
+        string existing_device_path = null;
+        Posix.FILE log;
+        base (ctx);
+
+        this.logfile = file;
+        this.device = device;
+        log = Posix.FILE.open(logfile, "r");
+        if (log == null)
+            return;
+
+        /* Check @DEV header and parse log */
+        if (log.scanf("@DEV %ms\n", &existing_device_path) == 1 && existing_device_path != device)
+            error("attempt to record two different devices to the same ioctl recording");
+        tree = new IoctlTree.Tree(log);
+    }
+
+    ~IoctlTreeRecorder()
+    {
+        flush_log();
+    }
+
+    private void flush_log() {
+        Posix.FILE log;
+
+        /* Only write log file if we ever saw a client. */
+        if (!write_log)
+            return;
+
+        log = Posix.FILE.open(logfile, "w+");
+        log.printf("@DEV %s\n", device);
+        tree.write(log);
+    }
+
+    public override bool handle_ioctl(IoctlClient client) {
+        ulong request = client.request;
+        ulong size = (request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
+        IoctlData data;
+        IoctlTree.Tree node;
+        int ret;
+        int my_errno;
+
+        try {
+            /* Execute real ioctl */
+            ret = client.execute(out my_errno);
+
+            /* We do not record errors with the ioctl tree driver. */
+            if (ret == -1) {
+                client.complete(ret, my_errno);
+                return true;
+            }
+
+            /* Resolve data */
+            data = client.arg.resolve(0, size, true, false);
+
+            /* NOTE: The C code assumes pointers are resolved, as such,
+             * all non-trivial structures need to be explicitly listed here.
+             */
+            if (data != null) {
+                IoctlData urb_data = null;
+
+                if (request == Ioctl.USBDEVFS_REAPURB ||
+                    request == Ioctl.USBDEVFS_REAPURBNDELAY) {
+
+                    urb_data = data.resolve(0, sizeof(Ioctl.usbdevfs_urb), true, false);
+                } else if (request == Ioctl.USBDEVFS_SUBMITURB) {
+                    urb_data = data;
+                }
+
+                if (urb_data != null) {
+                    Ioctl.usbdevfs_urb *urb = (Ioctl.usbdevfs_urb*) urb_data.data;
+
+                    size_t offset = (ulong) &urb.buffer - (ulong) urb;
+
+                    urb_data.resolve(offset, urb.buffer_length, true, false);
+                }
+            }
+        } catch (IOError e) {
+            warning("Error executing and recording ioctl: %s", e.message);
+            return false;
+        }
+
+        /* Record */
+        if (data != null)
+            node = new IoctlTree.Tree.from_bin(request, (void*) data.data, ret);
+        else
+            node = new IoctlTree.Tree.from_bin(request, null, ret);
+        if (node != null) {
+            tree.insert((owned) node);
+        }
+
+        /* Let client continue */
+        client.complete(ret, my_errno);
+
+        return true;
+    }
+
+    public override void client_connected(IoctlClient client) {
+        write_log = true;
     }
 }
 
