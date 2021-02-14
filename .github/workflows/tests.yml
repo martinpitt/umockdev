@@ -11,19 +11,19 @@ jobs:
       fail-fast: false
       matrix:
         scenario:
-          - apt-amd64/ubuntu:devel
-          - apt-amd64/ubuntu:latest
-          - apt-amd64/ubuntu:rolling
-          - apt-i386/debian:testing
-          - apt-amd64/debian:testing
-          - dnf-fedora:latest
-          - dnf-fedora:rawhide
-          - dnf-centos:8
-          - alpine-latest
-          - alpine-latest@gudev
-          - nix
+          - apt-docker.io/amd64/ubuntu:devel
+          - apt-docker.io/amd64/ubuntu:latest
+          - apt-docker.io/amd64/ubuntu:rolling
+          - apt-docker.io/i386/debian:testing
+          - apt-docker.io/amd64/debian:testing
+          - dnf-registry.fedoraproject.org/fedora:latest
+          - dnf-registry.fedoraproject.org/fedora:rawhide
+          - dnf-quay.io/centos/centos:stream
+          - alpine-alpine
+          - alpine@gudev-alpine
+          - nix-docker.io/nixos/nix
         include:
-          - scenario: alpine-latest@gudev
+          - scenario: alpine@gudev-alpine
             env: EXTRA_PACKAGES=libgudev-dev
 
     timeout-minutes: 30
@@ -35,14 +35,12 @@ jobs:
         run: |
           set -eux
           scenario=${{ matrix.scenario }}
-          scenario=${scenario%@*}
           script=${scenario%-*}
-          release=${scenario#*-}
+          script=${script%@*}
+          image=${scenario#*-}
 
           # HACK: i386 podman container fails apt signature verification
-          [ "${release#i386}" = "$release" ] || sudo dpkg -P podman
-          # HACK: rawhide fails realpath() with Ubuntu host
-
+          [ "${image#%i386}" = "$image" ] || sudo dpkg -P podman
           # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
           # Fedora-on-Ubuntu has seccomp profile incompatibilities
-          sudo ${{ matrix.env }} RUNC_OPTIONS=--security-opt=seccomp=unconfined tests/run-${script} $release
+          sudo ${{ matrix.env }} RUNC_OPTIONS=--security-opt=seccomp=unconfined tests/run-${script} $image

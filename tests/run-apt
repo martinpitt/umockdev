@@ -12,7 +12,7 @@ fi
 
 [ -n "${PUBLISH_TAR:-}" ] || MOUNT_MODE=":ro"
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} docker.io/${1:-amd64/ubuntu:rolling} /bin/sh << EOF
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} ${1:-docker.io/amd64/ubuntu:rolling} /bin/sh << EOF
 set -ex
 
 # go-faster apt

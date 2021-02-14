@@ -8,7 +8,7 @@ else
 fi
 
 # sandboxing requires privileged container; https://github.com/NixOS/docker#limitations
-$RUNC run --interactive ${DEBUG:+--tty} --privileged --volume `pwd`:/source:ro docker.io/nixos/nix /bin/sh <<EOF
+$RUNC run --interactive ${DEBUG:+--tty} --privileged --volume `pwd`:/source:ro ${1:-docker.io/nixos/nix} /bin/sh <<EOF
 sed -i '/sandbox/ s/false/true/' /etc/nix/nix.conf
 
 cat <<EOG > /tmp/default.nix

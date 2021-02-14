@@ -10,7 +10,7 @@ else
     RUNC="sudo docker"
 fi
 
-$RUNC run --interactive ${RUNC_OPTIONS:-} ${OPTS:-} --volume `pwd`:/source:ro docker.io/${1:-fedora:latest} /bin/sh << EOF
+$RUNC run --interactive ${RUNC_OPTIONS:-} ${OPTS:-} --volume `pwd`:/source:ro ${1:-registry.fedoraproject.org/fedora} /bin/sh << EOF
 set -eu
 dnf -y update
 
