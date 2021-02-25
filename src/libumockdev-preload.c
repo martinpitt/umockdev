@@ -492,10 +492,6 @@ ioctl_record_open(int fd)
 	    fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_DEVICE_PATH not set\n");
 	    exit(1);
 	}
-	if (getenv("UMOCKDEV_DIR") != NULL) {
-	    fprintf(stderr, "umockdev: $UMOCKDEV_DIR cannot be used while recording\n");
-	    exit(1);
-	}
 	ioctl_record_log = _fopen(path, "a+");
 	if (ioctl_record_log == NULL) {
 	    perror("umockdev: failed to open ioctl record file");
