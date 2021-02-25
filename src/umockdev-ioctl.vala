@@ -427,13 +427,14 @@ public class IoctlClient : GLib.Object {
         if (!handled) {
             IoctlTree.Tree tree = null;
             IoctlData? data = null;
-            ulong size = (_request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
+            ulong size = IoctlTree.data_size_by_id(_request);
             ulong type = (_request >> Ioctl._IOC_TYPESHIFT) & ((1 << Ioctl._IOC_TYPEBITS) - 1);
             int ret = -1;
             int my_errno;
 
             try {
-                data = _arg.resolve(0, size, true, true);
+                if (size > 0)
+                    data = _arg.resolve(0, size, true, true);
             } catch (IOError e) {
                 warning("Error resolving IOCtl data: %s", e.message);
 
@@ -446,10 +447,7 @@ public class IoctlClient : GLib.Object {
             } else {
                 Posix.errno = Posix.ENOTTY;
             }
-            if (data != null)
-                tree.execute(null, _request, (void*) data.data, ref ret);
-            else
-                tree.execute(null, _request, null, ref ret);
+            tree.execute(null, _request, *(void**) _arg.data, ref ret);
             my_errno = Posix.errno;
             Posix.errno = 0;
 
@@ -784,8 +782,8 @@ internal class IoctlTreeRecorder : IoctlBase {
 
     public override bool handle_ioctl(IoctlClient client) {
         ulong request = client.request;
-        ulong size = (request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
-        IoctlData data;
+        ulong size = IoctlTree.data_size_by_id(request);
+        IoctlData data = null;
         IoctlTree.Tree node;
         int ret;
         int my_errno;
@@ -801,7 +799,8 @@ internal class IoctlTreeRecorder : IoctlBase {
             }
 
             /* Resolve data */
-            data = client.arg.resolve(0, size, true, false);
+            if (size > 0)
+                data = client.arg.resolve(0, size, true, false);
 
             /* NOTE: The C code assumes pointers are resolved, as such,
              * all non-trivial structures need to be explicitly listed here.
@@ -831,10 +830,7 @@ internal class IoctlTreeRecorder : IoctlBase {
         }
 
         /* Record */
-        if (data != null)
-            node = new IoctlTree.Tree.from_bin(request, (void*) data.data, ret);
-        else
-            node = new IoctlTree.Tree.from_bin(request, null, ret);
+        node = new IoctlTree.Tree.from_bin(request, *(void**) client.arg.data, ret);
         if (node != null) {
             tree.insert((owned) node);
         }

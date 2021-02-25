@@ -424,167 +424,6 @@ netlink_recvmsg(int sockfd, struct msghdr * msg, int flags, ssize_t ret)
 
 /********************************
  *
- * ioctl recording
- *
- ********************************/
-
-/* global state for recording ioctls */
-int ioctl_record_fd = -1;
-FILE *ioctl_record_log;
-ioctl_tree *ioctl_record;
-struct sigaction orig_actint;
-
-static void ioctl_record_sigint_handler(int signum);
-
-static void
-ioctl_record_open(int fd)
-{
-    libc_func(fopen, FILE*, const char *, const char*);
-    static dev_t record_rdev = (dev_t) - 1;
-
-    if (fd < 0)
-	return;
-
-    /* lazily initialize record_rdev */
-    if (record_rdev == (dev_t) - 1) {
-	const char *dev = getenv("UMOCKDEV_IOCTL_RECORD_DEV");
-
-	if (dev != NULL)
-	    record_rdev = parse_dev_t(dev, "$UMOCKDEV_IOCTL_RECORD_DEV", 1);
-	else {
-	    /* not recording */
-	    record_rdev = 0;
-	}
-    }
-
-    if (record_rdev == 0)
-	return;
-
-    /* check if the opened device is the one we want to record */
-    if (dev_of_fd(fd) != record_rdev)
-	return;
-
-    /* recording is already in progress? */
-    if (ioctl_record_fd >= 0) {
-	/* libmtp opens the device multiple times, we can't do that */
-	/*
-       fprintf(stderr, "umockdev: recording for this device is already ongoing, stopping recording of previous open()\n");
-       ioctl_record_close();
-       */
-       fprintf(stderr, "umockdev: WARNING: ioctl recording for this device is already ongoing on fd %i, but application opened it a second time on fd %i without closing\n", ioctl_record_fd, fd);
-    }
-
-    ioctl_record_fd = fd;
-
-    /* lazily open the record file */
-    if (ioctl_record_log == NULL) {
-	int r;
-
-	const char *path = getenv("UMOCKDEV_IOCTL_RECORD_FILE");
-	const char *device_path = getenv("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH");
-	struct sigaction act_int;
-
-	if (path == NULL) {
-	    fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_FILE not set\n");
-	    exit(1);
-	}
-	if (device_path == NULL) {
-	    fprintf(stderr, "umockdev: $UMOCKDEV_IOCTL_RECORD_DEVICE_PATH not set\n");
-	    exit(1);
-	}
-	ioctl_record_log = _fopen(path, "a+");
-	if (ioctl_record_log == NULL) {
-	    perror("umockdev: failed to open ioctl record file");
-	    exit(1);
-	}
-	/* We record the device node for later loading without specifying
-	 * the devpath in umockdev_testbed_load_ioctl.
-	 */
-	fseek(ioctl_record_log, 0, SEEK_END);
-	if (ftell(ioctl_record_log) > 0) {
-	    /* We're updating a previous log; don't write the devnode header again,
-	     * but check that we're recording the same device as the previous log.
-	     */
-	    char *existing_device_path;
-	    char c;
-	    DBG(DBG_IOCTL, "ioctl_record_open: Updating existing record for path %s\n", path);
-	    fseek(ioctl_record_log, 0, SEEK_SET);
-
-	    /* Start by skipping any leading comments */
-	    while ((c = fgetc(ioctl_record_log)) == '#')
-		while (fgetc(ioctl_record_log) != '\n')
-		    ;
-	    ungetc(c, ioctl_record_log);
-
-	    if (fscanf(ioctl_record_log, "@DEV %ms\n", &existing_device_path) == 1)
-	    {
-		/* We have an existing "@DEV /dev/something" directive, check it matches */
-		DBG(DBG_IOCTL, "ioctl_record_open: recording %s, existing device spec in record %s\n", device_path, existing_device_path);
-		if (strcmp(device_path, existing_device_path) != 0) {
-		    fprintf(stderr, "umockdev: attempt to record two different devices to the same ioctl recording\n");
-		    exit(1);
-		}
-		free(existing_device_path);
-	    }
-
-	    /* load an already existing log */
-	    fseek(ioctl_record_log, 0, SEEK_SET);
-	    ioctl_record = ioctl_tree_read(ioctl_record_log);
-	} else {
-	    /* New log, add devnode header */
-	    DBG(DBG_IOCTL, "ioctl_record_open: Starting new record %s\n", path);
-	    fprintf(ioctl_record_log, "@DEV %s\n", device_path);
-	}
-
-	/* ensure that we write the file also on Control-C */
-	act_int.sa_handler = ioctl_record_sigint_handler;
-	r = sigemptyset(&act_int.sa_mask);
-	assert(r == 0);
-	act_int.sa_flags = 0;
-	r = sigaction(SIGINT, &act_int, &orig_actint);
-	assert(r == 0);
-
-	DBG(DBG_IOCTL, "ioctl_record_open: starting ioctl recording of fd %i into %s\n", fd, path);
-    } else {
-	DBG(DBG_IOCTL, "ioctl_record_open: ioctl recording is already ongoing, continuing on new fd %i\n", fd);
-    }
-}
-
-static void
-ioctl_record_close(int fd)
-{
-    if (fd < 0 || fd != ioctl_record_fd)
-	return;
-
-    DBG(DBG_IOCTL, "ioctl_record_close: stopping ioctl recording on fd %i\n", fd);
-    ioctl_record_fd = -1;
-
-    /* recorded anything? */
-    if (ioctl_record != NULL) {
-	int r;
-
-	rewind(ioctl_record_log);
-	r = ftruncate(fileno(ioctl_record_log), 0);
-	assert(r == 0);
-	fprintf(ioctl_record_log, "@DEV %s\n", getenv("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH"));
-	ioctl_tree_write(ioctl_record_log, ioctl_record);
-	fflush(ioctl_record_log);
-    }
-}
-
-static void ioctl_record_sigint_handler(int signum)
-{
-    int r;
-
-    DBG(DBG_IOCTL, "ioctl_record_sigint_handler: got signal %i, flushing record\n", signum);
-    ioctl_record_close(ioctl_record_fd);
-    r = sigaction(SIGINT, &orig_actint, NULL);
-    assert(r == 0);
-    raise(signum);
-}
-
-/********************************
- *
  * ioctl emulation
  *
  ********************************/
@@ -597,7 +436,7 @@ struct ioctl_fd_info {
 };
 
 static void
-ioctl_emulate_open(int fd, const char *dev_path)
+ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 {
     libc_func(socket, int, int, int, int);
     libc_func(connect, int, int, const struct sockaddr *, socklen_t);
@@ -617,16 +456,24 @@ ioctl_emulate_open(int fd, const char *dev_path)
 
     sock = _socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
-	fprintf(stderr, "ERROR: libumockdev-preload: Failed to open ioctl socket for %s",
-		dev_path);
-	exit(1);
+	if (must_exist) {
+	    fprintf(stderr, "ERROR: libumockdev-preload: Failed to open ioctl socket for %s",
+		    dev_path);
+	    exit(1);
+	} else {
+	    return;
+	}
     }
 
     ret = _connect(sock, (const struct sockaddr *) &addr, sizeof(addr));
     if (ret == -1) {
-	fprintf(stderr, "ERROR: libumockdev-preload: Failed to connect to ioctl socket for %s",
-		dev_path);
-	exit(1);
+	if (must_exist) {
+	    fprintf(stderr, "ERROR: libumockdev-preload: Failed to connect to ioctl socket for %s",
+		    dev_path);
+	    exit(1);
+	} else {
+	    return;
+	}
     }
 
     fdinfo = malloc(sizeof(struct ioctl_fd_info));
@@ -685,8 +532,10 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 	return UNHANDLED;
     }
 
+    /* We force "unsigned int" here to prevent sign extension to long
+     * which could confuse the receiving side. */
     req.cmd = IOCTL_REQ_IOCTL;
-    req.arg1 = (long) request;
+    req.arg1 = (unsigned int) request;
     req.arg2 = (long) arg;
 
     do {
@@ -1013,10 +862,9 @@ script_record_open(int fd)
 static void
 script_record_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int res)
 {
-    const char *path = getenv("UMOCKDEV_DIR");
     size_t i;
 
-    if (addr->sa_family == AF_UNIX && res == 0 && path == NULL) {
+    if (addr->sa_family == AF_UNIX && res == 0) {
 	const char *sock_path = ((struct sockaddr_un *) addr)->sun_path;
 
 	/* find out where we log it to */
@@ -1372,12 +1220,9 @@ int prefix ## open ## suffix (const char *path, int flags, ...)	    \
     } else							    \
 	ret =  _ ## prefix ## open ## suffix(p, flags);		    \
     TRAP_PATH_UNLOCK;						    \
-    if (path != p)						    \
-	ioctl_emulate_open(ret, path);				    \
-    else {							    \
-	ioctl_record_open(ret);					    \
+    ioctl_emulate_open(ret, path, path != p);			    \
+    if (path == p)						    \
 	script_record_open(ret);				    \
-    }								    \
     return ret;							    \
 }
 
@@ -1396,12 +1241,9 @@ int prefix ## open ## suffix (const char *path, int flags)	    \
     DBG(DBG_PATH, "testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
     ret =  _ ## prefix ## open ## suffix(p, flags);		    \
     TRAP_PATH_UNLOCK;						    \
-    if (path != p)						    \
-	ioctl_emulate_open(ret, path);				    \
-    else {							    \
-	ioctl_record_open(ret);					    \
+    ioctl_emulate_open(ret, path, path != p);			    \
+    if (path == p)						    \
 	script_record_open(ret);				    \
-    }								    \
     return ret;						    	    \
 }
 
@@ -1423,10 +1265,8 @@ FILE* prefix ## fopen ## suffix (const char *path, const char *mode)  \
     TRAP_PATH_UNLOCK;						    \
     if (ret != NULL) {						    \
 	int fd = fileno(ret);					    \
-	if (path != p)						    \
-	    ioctl_emulate_open(fd, path);			    \
-	else {							    \
-	    ioctl_record_open(fd);				    \
+	ioctl_emulate_open(fd, path, path != p);		    \
+	if (path == p) {					    \
 	    script_record_open(fd);				    \
 	}							    \
     }								    \
@@ -1727,7 +1567,6 @@ close(int fd)
 
     netlink_close(fd);
     ioctl_emulate_close(fd);
-    ioctl_record_close(fd);
     script_record_close(fd);
 
     return _close(fd);
@@ -1741,7 +1580,6 @@ fclose(FILE * stream)
     if (fd >= 0) {
 	netlink_close(fd);
 	ioctl_emulate_close(fd);
-	ioctl_record_close(fd);
 	script_record_close(fd);
     }
 

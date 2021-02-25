@@ -314,14 +314,19 @@ split_devfile_arg(string arg, out string dev, out string devnum, out string fnam
 }
 
 // Record ioctls for given device into outfile
-static void
-record_ioctl(string arg)
+static UMockdev.IoctlBase
+record_ioctl(string root_dir, string arg)
 {
+    UMockdev.IoctlBase handler;
     string dev, devnum, outfile;
     split_devfile_arg(arg, out dev, out devnum, out outfile);
-    Environment.set_variable("UMOCKDEV_IOCTL_RECORD_FILE", outfile, true);
-    Environment.set_variable("UMOCKDEV_IOCTL_RECORD_DEV", devnum, true);
-    Environment.set_variable("UMOCKDEV_IOCTL_RECORD_DEVICE_PATH", dev, true);
+
+    handler = new UMockdev.IoctlTreeRecorder(null, dev, outfile);
+
+    string sockpath = Path.build_filename(root_dir, "ioctl", dev);
+    handler.register_path(dev, sockpath);
+
+    return handler;
 }
 
 // Record reads/writes for given device into outfile
@@ -379,6 +384,7 @@ child_watch_cb (Pid pid, int status)
 public static int
 main (string[] args)
 {
+    UMockdev.IoctlBase? handler = null;
     string root_dir;
     var oc = new OptionContext("");
     oc.set_summary("Record Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.");
@@ -436,7 +442,7 @@ main (string[] args)
 
     // set up environment to tell our preload what to record
     if (opt_ioctl != null)
-        record_ioctl(opt_ioctl);
+        handler = record_ioctl(root_dir, opt_ioctl);
     foreach (string s in opt_script)
         record_script(s, "default");
     foreach (string s in opt_evemu_events)
@@ -454,6 +460,17 @@ main (string[] args)
     }
 
     loop.run();
+
+    debug ("Removing recording directory %s", root_dir);
+    remove_dir (root_dir);
+    Environment.unset_variable("UMOCKDEV_DIR");
+
+    Process.close_pid (child_pid);
+
+    /* Unregister all paths from handler so that it will be destroyed. */
+    if (handler != null)
+        handler.unregister_all();
+    while (GLib.MainContext.default().iteration(false)) { };
 
     if (Process.if_exited (child_status))
         return Process.exit_status (child_status);

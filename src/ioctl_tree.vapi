@@ -9,7 +9,7 @@ namespace IoctlTree {
       public Tree.from_bin(ulong id, void *addr, int ret);
 
       [ReturnsModifiedPointer]
-      public void insert(Tree node);
+      public void insert(owned Tree node);
       public void* execute(void* last, ulong id, void* addr, ref int ret);
       [CCode (instance_pos = -1)]
       public void write(Posix.FILE f);

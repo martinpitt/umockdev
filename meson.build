@@ -158,9 +158,14 @@ umockdev_run_exe = executable('umockdev-run',
   install: true)
 
 umockdev_record_exe = executable('umockdev-record',
-  'src/umockdev-record.vala',
-  dependencies: [glib, gobject, gio, vapi_posix, vapi_config],
-  link_with: [umockdev_utils_lib, umockdev_lib],
+  ['src/umockdev-record.vala',
+   'src/umockdev-ioctl.vala',
+   'src/ioctl_tree.vapi',
+   'src/ioctl_tree.c',
+   'src/debug.c'],
+  dependencies: [glib, gobject, gio_unix, vapi_posix, vapi_config, vapi_ioctl],
+  link_with: [umockdev_utils_lib],
+  include_directories: include_directories('src'),
   install: true)
 
 #
