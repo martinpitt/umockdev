@@ -323,7 +323,7 @@ t_system_ioctl_log_append_dev_mismatch ()
     spawn ("umockdev-record" + " -i /dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
-    assert_cmpint (exit, CompareOperator.EQ, 256);
+    assert_cmpint (exit, CompareOperator.EQ, 133);
     assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     // should not change original record

@@ -129,8 +129,8 @@ ioctl_tree_last_sibling(ioctl_tree * node)
 /**
  * ioctl_tree_insert:
  *
- * If an equal node already exists, return that node and do not insert "node".
- * Otherwise, insert it and return NULL.
+ * Insert the node and return the (new) root of the tree. If an equal node
+ * already exist, the node will not be inserted.
  */
 ioctl_tree *
 ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
@@ -143,7 +143,7 @@ ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
     if (tree == NULL) {
 	node->last_added = ioctl_node_list_new();
 	ioctl_node_list_append(node->last_added, node);
-	return NULL;
+	return node;
     }
 
     /* trying to insert into itself? */
@@ -153,7 +153,8 @@ ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
     if (existing) {
 	DBG(DBG_IOCTL_TREE, "ioctl_tree_insert: node of type %s ptr %p already exists\n", node->type->name, node);
 	ioctl_node_list_append(tree->last_added, existing);
-	return existing;
+	ioctl_tree_free(node);
+	return tree;
     }
 
     node->parent = node->type->insertion_parent(tree, node);
@@ -178,7 +179,7 @@ ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
     }
 
     ioctl_node_list_append(tree->last_added, node);
-    return NULL;
+    return tree;
 }
 
 ioctl_tree *
