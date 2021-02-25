@@ -379,6 +379,7 @@ child_watch_cb (Pid pid, int status)
 public static int
 main (string[] args)
 {
+    string root_dir;
     var oc = new OptionContext("");
     oc.set_summary("Record Linux devices and their ancestors from sysfs/udev, or record ioctls for a device.");
     oc.add_main_entries (options, null);
@@ -423,6 +424,16 @@ main (string[] args)
         preload = preload + ":";
     Environment.set_variable("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
 
+    try {
+        root_dir = DirUtils.make_tmp("umockdev.XXXXXX");
+        Environment.set_variable("UMOCKDEV_DIR", root_dir, true);
+    } catch (FileError e) {
+        error("Cannot create temporary directory: %s", e.message);
+    }
+
+    // "disable" the testbed, the library will still try to load the ioctl
+    FileStream.open(Path.build_filename(root_dir, "disabled"), "w");
+
     // set up environment to tell our preload what to record
     if (opt_ioctl != null)
         record_ioctl(opt_ioctl);
@@ -438,6 +449,7 @@ main (string[] args)
         child_pid = spawn_process_under_test (opt_devices, child_watch_cb);
     } catch (Error e) {
         stderr.printf ("Cannot run %s: %s\n", opt_devices[0], e.message);
+        remove_dir (root_dir);
         Process.exit (1);
     }
 

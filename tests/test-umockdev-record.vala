@@ -165,23 +165,6 @@ A: knobs/red=off
 }
 
 
-// tracing ioctls does not work in testbed
-static void
-t_testbed_no_ioctl_record ()
-{
-    string sout;
-    string serr;
-    int exit;
-
-    var tb = new UMockdev.Testbed ();
-    tb.add_devicev ("mem", "zero", null, {"dev", "1:5"}, {});
-    spawn ("umockdev-record" + " --ioctl /sys/devices/zero=/dev/stdout -- " + readbyte_path + " /dev/zero",
-           out sout, out serr, out exit);
-    assert_cmpint (exit, CompareOperator.NE, 0);
-    assert_cmpstr (sout, CompareOperator.EQ, "");
-    assert (serr.contains ("UMOCKDEV_DIR cannot be used"));
-}
-
 static void
 t_system_single ()
 {
@@ -901,7 +884,6 @@ main (string[] args)
     Test.add_func ("/umockdev-record/testbed-all-empty", t_testbed_all_empty);
     Test.add_func ("/umockdev-record/testbed-one", t_testbed_one);
     Test.add_func ("/umockdev-record/testbed-multiple", t_testbed_multiple);
-    Test.add_func ("/umockdev-record/testbed-no-ioctl-record", t_testbed_no_ioctl_record);
 
     Test.add_func ("/umockdev-record/system-single", t_system_single);
     // causes eternal hangs or crashes in some environments
