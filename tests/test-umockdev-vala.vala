@@ -38,7 +38,7 @@ t_testbed_empty ()
   var enumerator = new GUdev.Enumerator (new GUdev.Client(null));
   var devices = enumerator.execute ();
 
-  assert_cmpuint (devices.length(), Op.EQ, 0);
+  assert_cmpuint (devices.length(), CompareOperator.EQ, 0);
 }
 
 void
@@ -51,24 +51,24 @@ t_testbed_add_device ()
                                    null,
                                    { "idVendor", "0815", "idProduct", "AFFE" },
                                    { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1" });
-  assert_cmpstr (syspath, Op.EQ, "/sys/devices/extkeyboard1");
+  assert_cmpstr (syspath, CompareOperator.EQ, "/sys/devices/extkeyboard1");
 
   var enumerator = new GUdev.Enumerator (new GUdev.Client(null));
   var devices = enumerator.execute ();
-  assert_cmpuint (devices.length(), Op.EQ, 1);
+  assert_cmpuint (devices.length(), CompareOperator.EQ, 1);
 
   GUdev.Device device = devices.nth_data(0);
-  assert_cmpstr (device.get_name (), Op.EQ, "extkeyboard1");
-  assert_cmpstr (device.get_sysfs_path (), Op.EQ, "/sys/devices/extkeyboard1");
-  assert_cmpstr (device.get_subsystem (), Op.EQ, "usb");
-  assert_cmpstr (device.get_sysfs_attr ("idVendor"), Op.EQ, "0815");
-  assert_cmpstr (device.get_sysfs_attr ("idProduct"), Op.EQ, "AFFE");
-  assert_cmpstr (device.get_sysfs_attr ("noSuchAttr"), Op.EQ, null);
-  assert_cmpstr (device.get_property ("DEVPATH"), Op.EQ, "/devices/extkeyboard1");
-  assert_cmpstr (device.get_property ("SUBSYSTEM"), Op.EQ, "usb");
-  assert_cmpstr (device.get_property ("ID_INPUT"), Op.EQ, "1");
-  assert_cmpstr (device.get_property ("ID_INPUT_KEYBOARD"), Op.EQ, "1");
-  assert_cmpstr (device.get_property ("NO_SUCH_PROP"), Op.EQ, null);
+  assert_cmpstr (device.get_name (), CompareOperator.EQ, "extkeyboard1");
+  assert_cmpstr (device.get_sysfs_path (), CompareOperator.EQ, "/sys/devices/extkeyboard1");
+  assert_cmpstr (device.get_subsystem (), CompareOperator.EQ, "usb");
+  assert_cmpstr (device.get_sysfs_attr ("idVendor"), CompareOperator.EQ, "0815");
+  assert_cmpstr (device.get_sysfs_attr ("idProduct"), CompareOperator.EQ, "AFFE");
+  assert_cmpstr (device.get_sysfs_attr ("noSuchAttr"), CompareOperator.EQ, null);
+  assert_cmpstr (device.get_property ("DEVPATH"), CompareOperator.EQ, "/devices/extkeyboard1");
+  assert_cmpstr (device.get_property ("SUBSYSTEM"), CompareOperator.EQ, "usb");
+  assert_cmpstr (device.get_property ("ID_INPUT"), CompareOperator.EQ, "1");
+  assert_cmpstr (device.get_property ("ID_INPUT_KEYBOARD"), CompareOperator.EQ, "1");
+  assert_cmpstr (device.get_property ("NO_SUCH_PROP"), CompareOperator.EQ, null);
 }
 
 void
@@ -92,16 +92,16 @@ E: DEVNAME=/dev/bus/usb/001/001
   var client = new GUdev.Client (null);
   var devices = client.query_by_subsystem (null);
 
-  assert_cmpuint (devices.length (), Op.EQ, 2);
+  assert_cmpuint (devices.length (), CompareOperator.EQ, 2);
   foreach (var dev in devices) {
-      assert_cmpstr (dev.get_subsystem(), Op.EQ, "usb");
+      assert_cmpstr (dev.get_subsystem(), CompareOperator.EQ, "usb");
       if (dev.get_sysfs_path () == "/sys/devices/myusbhub") {
-          assert_cmpstr (dev.get_name(), Op.EQ, "myusbhub");
-          assert_cmpstr (dev.get_device_file(), Op.EQ, "/dev/bus/usb/001/001");
+          assert_cmpstr (dev.get_name(), CompareOperator.EQ, "myusbhub");
+          assert_cmpstr (dev.get_device_file(), CompareOperator.EQ, "/dev/bus/usb/001/001");
       } else {
-          assert_cmpstr (dev.get_sysfs_path (), Op.EQ, "/sys/devices/myusbhub/cam");
-          assert_cmpstr (dev.get_name(), Op.EQ, "cam");
-          assert_cmpstr (dev.get_device_file(), Op.EQ, "/dev/bus/usb/001/002");
+          assert_cmpstr (dev.get_sysfs_path (), CompareOperator.EQ, "/sys/devices/myusbhub/cam");
+          assert_cmpstr (dev.get_name(), CompareOperator.EQ, "cam");
+          assert_cmpstr (dev.get_device_file(), CompareOperator.EQ, "/dev/bus/usb/001/002");
       }
   }
 
@@ -116,10 +116,10 @@ assert_listdir (string path, string[] entries)
   while ((entry = dir.read_name()) != null)
       files.append(entry);
   files.sort(strcmp);
-  assert_cmpuint (files.length(), Op.EQ, entries.length);
+  assert_cmpuint (files.length(), CompareOperator.EQ, entries.length);
   uint i = 0;
   foreach (var n in files)
-      assert_cmpstr (n, Op.EQ, entries[i++]);
+      assert_cmpstr (n, CompareOperator.EQ, entries[i++]);
 }
 
 void
@@ -130,7 +130,7 @@ t_testbed_fs_ops ()
   var orig_cwd = Environment.get_current_dir ();
 
   var syspath = tb.add_devicev ("pci", "dev1", null, {"a", "1"}, {"DEVTYPE", "fancy"});
-  assert_cmpstr (syspath, Op.EQ, "/sys/devices/dev1");
+  assert_cmpstr (syspath, CompareOperator.EQ, "/sys/devices/dev1");
 
   // absolute paths
   assert_listdir ("/sys", {"bus", "devices"});
@@ -139,17 +139,17 @@ t_testbed_fs_ops ()
   assert_listdir ("/sys/devices/dev1", {"a", "subsystem", "uevent"});
 
   // change directory into trapped /sys
-  assert_cmpint (Posix.chdir ("/sys"), Op.EQ, 0);
+  assert_cmpint (Posix.chdir ("/sys"), CompareOperator.EQ, 0);
   assert_listdir (".", {"bus", "devices"});
   assert_listdir ("bus", {"pci"});
-  assert_cmpstr (Environment.get_current_dir (), Op.EQ, "/sys");
+  assert_cmpstr (Environment.get_current_dir (), CompareOperator.EQ, "/sys");
 
-  assert_cmpint (Posix.chdir ("/sys/devices/dev1"), Op.EQ, 0);
+  assert_cmpint (Posix.chdir ("/sys/devices/dev1"), CompareOperator.EQ, 0);
   assert_listdir (".", {"a", "subsystem", "uevent"});
-  assert_cmpstr (Environment.get_current_dir (), Op.EQ, "/sys/devices/dev1");
+  assert_cmpstr (Environment.get_current_dir (), CompareOperator.EQ, "/sys/devices/dev1");
 
-  assert_cmpint (Posix.chdir ("/sys/class"), Op.EQ, -1);
-  assert_cmpint (Posix.errno, Op.EQ, Posix.ENOENT);
+  assert_cmpint (Posix.chdir ("/sys/class"), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOENT);
 
   // relative paths into trapped /sys; this only works if the real /sys exists, as otherwise realpath() fails in trap_path()
   if (!have_real_sys) {
@@ -157,17 +157,17 @@ t_testbed_fs_ops ()
       return;
   }
 
-  assert_cmpint (Posix.chdir ("/"), Op.EQ, 0);
+  assert_cmpint (Posix.chdir ("/"), CompareOperator.EQ, 0);
   assert_listdir ("sys", {"bus", "devices"});
   assert_listdir ("sys/devices", {"dev1"});
   assert_listdir ("sys/bus", {"pci"});
 
-  assert_cmpint (Posix.chdir ("/etc"), Op.EQ, 0);
+  assert_cmpint (Posix.chdir ("/etc"), CompareOperator.EQ, 0);
   assert_listdir ("../sys", {"bus", "devices"});
   assert_listdir ("../sys/devices", {"dev1"});
   assert_listdir ("../sys/bus", {"pci"});
 
-  assert_cmpint (Posix.chdir (orig_cwd), Op.EQ, 0);
+  assert_cmpint (Posix.chdir (orig_cwd), CompareOperator.EQ, 0);
 }
 
 void
@@ -181,32 +181,32 @@ E: SUBSYSTEM=usb
 """);
 
   int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd, Op.GE, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
 
   int i = 1;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_GETDRIVER, ref i), Op.EQ, -1);
-  assert_cmpint (Posix.errno, Op.EQ, Posix.ENODATA);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_GETDRIVER, ref i), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENODATA);
   Posix.errno = 0;
 
   /* no ioctl tree loaded */
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, -1);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, -1);
   // usually ENOTTY, but seem to be EINVAL
-  assert_cmpint (Posix.errno, Op.GE, 22);
+  assert_cmpint (Posix.errno, CompareOperator.GE, 22);
   errno = 0;
 
   // unknown ioctls don't work on an emulated device
-  assert_cmpint (Posix.ioctl (fd, Ioctl.TIOCSBRK, 0), Op.EQ, -1);
-  assert_cmpint (Posix.errno, Op.EQ, Posix.ENOTTY);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOTTY);
   Posix.errno = 0;
 
   // unknown ioctls do work on non-emulated devices
   int fd2 = Posix.open ("/dev/tty", Posix.O_RDWR, 0);
   if (fd2 > 0) {
-      assert_cmpint (Posix.ioctl (fd2, Ioctl.TIOCSBRK, 0), Op.EQ, 0);
-      assert_cmpint (Posix.errno, Op.EQ, 0);
+      assert_cmpint (Posix.ioctl (fd2, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, 0);
+      assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
       Posix.close (fd2);
   }
 
@@ -246,13 +246,13 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   try {
       fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   } catch (Error e) { Process.abort (); }
-  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), CompareOperator.GT, 20);
 
   // ioctl emulation does not get in the way of non-/dev fds
   int i = 1;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, -1);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), CompareOperator.EQ, -1);
   // usually ENOTTY, but seem to be EINVAL
-  assert_cmpint (Posix.errno, Op.GE, 22);
+  assert_cmpint (Posix.errno, CompareOperator.GE, 22);
 
   Posix.close (fd);
   try {
@@ -264,65 +264,65 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   FileUtils.unlink (tmppath);
 
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd, Op.GE, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
 
   // static ioctl
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 11);
-  assert_cmpuint (ci.slow, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 
   /* loaded ioctl: URB */
   var urb_buffer = new uint8[4];
   Ioctl.usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (urb.status, Op.EQ, 0);
-  assert_cmpint (urb_buffer[0], Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (urb.status, CompareOperator.EQ, 0);
+  assert_cmpint (urb_buffer[0], CompareOperator.EQ, 0);
 
   Ioctl.usbdevfs_urb* urb_reap = null;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb);
-  assert_cmpint (urb.status, Op.EQ, -1);
-  assert_cmpuint (urb.buffer[0], Op.EQ, 0x99);
-  assert_cmpuint (urb.buffer[1], Op.EQ, 0x02);
-  assert_cmpuint (urb.buffer[2], Op.EQ, 0xAA);
-  assert_cmpuint (urb.buffer[3], Op.EQ, 0xFF);
+  assert_cmpint (urb.status, CompareOperator.EQ, -1);
+  assert_cmpuint (urb.buffer[0], CompareOperator.EQ, 0x99);
+  assert_cmpuint (urb.buffer[1], CompareOperator.EQ, 0x02);
+  assert_cmpuint (urb.buffer[2], CompareOperator.EQ, 0xAA);
+  assert_cmpuint (urb.buffer[3], CompareOperator.EQ, 0xFF);
 
   // open the device a second time
   int fd2 = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd2, Op.GE, 0);
+  assert_cmpint (fd2, CompareOperator.GE, 0);
 
   // exercise ioctl on fd2, should iterate from beginning
   ci.devnum = 99;
   ci.slow = 99;
-  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 11);
-  assert_cmpuint (ci.slow, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 
   // should still work on first fd, and continue with original tree state
   ci.devnum = 99;
   ci.slow = 99;
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 12);
-  assert_cmpuint (ci.slow, Op.EQ, 1);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
 
   // should work after closing first fd, advancing position
   Posix.close (fd);
   ci.devnum = 99;
   ci.slow = 99;
-  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 12);
-  assert_cmpuint (ci.slow, Op.EQ, 1);
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
   Posix.close (fd2);
 }
 
@@ -353,7 +353,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   try {
       fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   } catch (Error e) { Process.abort (); }
-  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), CompareOperator.GT, 20);
 
   Posix.close (fd);
 
@@ -366,14 +366,14 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   FileUtils.unlink (tmppath);
 
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd, Op.GE, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
 
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 11);
-  assert_cmpuint (ci.slow, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 }
 
 void
@@ -403,7 +403,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   try {
       fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   } catch (Error e) { Process.abort (); }
-  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), Op.GT, 20);
+  assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), CompareOperator.GT, 20);
 
   Posix.close (fd);
 
@@ -416,14 +416,14 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   FileUtils.unlink (tmppath);
 
   fd = Posix.open ("/dev/002", Posix.O_RDWR, 0);
-  assert_cmpint (fd, Op.GE, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
 
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 11);
-  assert_cmpuint (ci.slow, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 }
 
 
@@ -463,7 +463,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
       stderr.printf ("Cannot call xz: %s\n", e.message);
       Process.abort ();
   }
-  assert_cmpint (exit, Op.EQ, 0);
+  assert_cmpint (exit, CompareOperator.EQ, 0);
   try {
       tb.load_ioctl ("/dev/001", tmppath);
   } catch (Error e) {
@@ -473,18 +473,18 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   FileUtils.unlink (tmppath);
 
   int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
-  assert_cmpint (fd, Op.GE, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
 
   var ci = Ioctl.usbdevfs_connectinfo();
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 0);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 11);
-  assert_cmpuint (ci.slow, Op.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 
-  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), Op.EQ, 42);
-  assert_cmpint (Posix.errno, Op.EQ, 0);
-  assert_cmpuint (ci.devnum, Op.EQ, 12);
-  assert_cmpuint (ci.slow, Op.EQ, 1);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
 
   Posix.close (fd);
 }
@@ -502,10 +502,10 @@ A: dev=188:1
 
   // appears as a proper char device
   Posix.Stat st;
-  assert_cmpint (Posix.lstat ("/dev/ttyUSB1", out st), Op.EQ, 0);
+  assert_cmpint (Posix.lstat ("/dev/ttyUSB1", out st), CompareOperator.EQ, 0);
   assert (Posix.S_ISCHR (st.st_mode));
-  assert_cmpuint (Posix.hack_major (st.st_rdev), Op.EQ, 188);
-  assert_cmpuint (Posix.minor (st.st_rdev), Op.EQ, 1);
+  assert_cmpuint (Posix.hack_major (st.st_rdev), CompareOperator.EQ, 188);
+  assert_cmpuint (Posix.minor (st.st_rdev), CompareOperator.EQ, 1);
 
   // stty issues an ioctl; verify that it recognizes the fake device as a real tty
   string pout, perr;
@@ -516,8 +516,8 @@ A: dev=188:1
       stderr.printf ("Cannot call stty: %s\n", e.message);
       Process.abort ();
   }
-  assert_cmpstr (perr, Op.EQ, "");
-  assert_cmpint (pexit, Op.EQ, 0);
+  assert_cmpstr (perr, CompareOperator.EQ, "");
+  assert_cmpint (pexit, CompareOperator.EQ, 0);
   assert (pout.contains ("speed 38400 baud"));
 }
 
@@ -533,23 +533,23 @@ A: dev=4:74
 """);
 
   var client_fd = Posix.open ("/dev/ttyS10", Posix.O_RDWR, 0);
-  assert_cmpint (client_fd, Op.GE, 0);
+  assert_cmpint (client_fd, CompareOperator.GE, 0);
 
   var master_fd = tb.get_dev_fd ("/dev/ttyS10");
-  assert_cmpint (master_fd, Op.GE, 0);
+  assert_cmpint (master_fd, CompareOperator.GE, 0);
 
   char[] buf = new char[100];
 
   /* client -> master */
-  assert_cmpint ((int) Posix.write (client_fd, "hello\n", 6), Op.EQ, 6);
-  assert_cmpint ((int) Posix.read (master_fd, buf, 100), Op.EQ, 6);
-  assert_cmpstr ((string) buf, Op.EQ, "hello\n");
+  assert_cmpint ((int) Posix.write (client_fd, "hello\n", 6), CompareOperator.EQ, 6);
+  assert_cmpint ((int) Posix.read (master_fd, buf, 100), CompareOperator.EQ, 6);
+  assert_cmpstr ((string) buf, CompareOperator.EQ, "hello\n");
 
   /* master -> client */
   buf = new char[100];
-  assert_cmpint ((int) Posix.write (master_fd, "world\n", 6), Op.EQ, 6);
-  assert_cmpint ((int) Posix.read (client_fd, buf, 100), Op.EQ, 6);
-  assert_cmpstr ((string) buf, Op.EQ, "world\n");
+  assert_cmpint ((int) Posix.write (master_fd, "world\n", 6), CompareOperator.EQ, 6);
+  assert_cmpint ((int) Posix.read (client_fd, buf, 100), CompareOperator.EQ, 6);
+  assert_cmpstr ((string) buf, CompareOperator.EQ, "world\n");
 
   Posix.close (client_fd);
 }
@@ -564,10 +564,10 @@ void
 t_detects_not_running_in_testbed ()
 {
     int pipefds[2];
-    assert_cmpint (Posix.pipe(pipefds), Op.EQ, 0);
+    assert_cmpint (Posix.pipe(pipefds), CompareOperator.EQ, 0);
 
     Posix.pid_t pid = Posix.fork();
-    assert_cmpint (pid, Op.NE, -1);
+    assert_cmpint (pid, CompareOperator.NE, -1);
 
     if (pid == 0) {
         Posix.close(pipefds[0]);
@@ -578,8 +578,8 @@ t_detects_not_running_in_testbed ()
     Posix.close(pipefds[1]);
 
     char buf = 'x';
-    assert_cmpint ((int) Posix.read(pipefds[0], &buf, 1), Op.EQ, 1);
-    assert_cmpint (buf, Op.EQ, '0');
+    assert_cmpint ((int) Posix.read(pipefds[0], &buf, 1), CompareOperator.EQ, 1);
+    assert_cmpint (buf, CompareOperator.EQ, '0');
 
     Posix.close(pipefds[0]);
 }
@@ -649,11 +649,11 @@ t_mt_parallel_attr_distinct ()
   string val;
   try {
       FileUtils.get_contents(Path.build_filename(syspath, "c1"), out val);
-      assert_cmpstr (val, Op.EQ, "100");
+      assert_cmpstr (val, CompareOperator.EQ, "100");
       FileUtils.get_contents(Path.build_filename(syspath, "c2"), out val);
-      assert_cmpstr (val, Op.EQ, "100");
+      assert_cmpstr (val, CompareOperator.EQ, "100");
       FileUtils.get_contents(Path.build_filename(syspath, "c3"), out val);
-      assert_cmpstr (val, Op.EQ, "100");
+      assert_cmpstr (val, CompareOperator.EQ, "100");
   } catch (FileError e) {
       error ("failed to read attribute: %s", e.message);
   }
@@ -692,7 +692,7 @@ t_mt_uevent ()
           } catch (FileError e) {
               error ("(#changes: %u) Error opening attribute file: %s", change_count, e.message);
           }
-          assert_cmpstr (contents, Op.EQ, "1");
+          assert_cmpstr (contents, CompareOperator.EQ, "1");
           tb.set_property (syspath, "ID_FOO", "1");
       }
       return null;
@@ -711,8 +711,8 @@ t_mt_uevent ()
   t_emitter.join ();
   t_noise.join ();
 
-  assert_cmpuint (add_count, Op.EQ, 1);
-  assert_cmpuint (change_count, Op.EQ, num_changes);
+  assert_cmpuint (add_count, CompareOperator.EQ, 1);
+  assert_cmpuint (change_count, CompareOperator.EQ, num_changes);
 }
 
 

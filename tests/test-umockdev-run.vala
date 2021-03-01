@@ -84,9 +84,9 @@ check_program_out (string program, string run_command, string expected_out)
     if (!get_program_out (program, umockdev_run_command + run_command, out sout, out serr, out exit))
         return;
 
-    assert_cmpstr (sout, Op.EQ, expected_out);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, expected_out);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
 }
 
 static void
@@ -101,9 +101,9 @@ check_program_error (string program, string run_command, string expected_err)
 
     assert_in (expected_err, serr);
 
-    assert_cmpint (exit, Op.NE, 0);
+    assert_cmpint (exit, CompareOperator.NE, 0);
     assert (Process.if_exited (exit));
-    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpstr (sout, CompareOperator.EQ, "");
 }
 
 static void
@@ -118,16 +118,16 @@ t_run_exit_code ()
     // normal exit, nonzero
     get_program_out ("ls", umockdev_run_command + "ls /nonexisting", out sout, out serr, out exit);
     assert (Process.if_exited (exit));
-    assert_cmpint (Process.exit_status (exit), Op.GT, 0);
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpstr (serr, Op.NE, "");
+    assert_cmpint (Process.exit_status (exit), CompareOperator.GT, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpstr (serr, CompareOperator.NE, "");
 
     // signal exit
     get_program_out ("sh", umockdev_run_command + "-- sh -c 'kill -SEGV $$'", out sout, out serr, out exit);
     assert (Process.if_signaled (exit));
-    assert_cmpint (Process.term_sig (exit), Op.EQ, ProcessSignal.SEGV);
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpstr (serr, Op.EQ, "");
+    assert_cmpint (Process.term_sig (exit), CompareOperator.EQ, ProcessSignal.SEGV);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
 }
 
 static void
@@ -148,9 +148,9 @@ t_run_pipes ()
     assert(get_program_out ("echo", "sh -c 'echo hello | " + umockdev_run_command + "cat'",
                             out sout, out serr, out exit));
 
-    assert_cmpstr (sout, Op.EQ, "hello\n");
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "hello\n");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
 }
 
 static void
@@ -401,15 +401,15 @@ t_gphoto_thumbs ()
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -T",
             out sout, out serr, out exit);
 
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpint (exit, CompareOperator.EQ, 0);
     assert_in ("thumb_IMG_0001.jpg", sout);
     assert_in ("thumb_IMG_0002.jpg", sout);
 
     Posix.Stat st;
     assert (Posix.stat("thumb_IMG_0001.jpg", out st) == 0);
-    assert_cmpuint ((uint) st.st_size, Op.GT, 500);
+    assert_cmpuint ((uint) st.st_size, CompareOperator.GT, 500);
     assert (Posix.stat("thumb_IMG_0002.jpg", out st) == 0);
-    assert_cmpuint ((uint) st.st_size, Op.GT, 500);
+    assert_cmpuint ((uint) st.st_size, CompareOperator.GT, 500);
 
     FileUtils.remove ("thumb_IMG_0001.jpg");
     FileUtils.remove ("thumb_IMG_0002.jpg");
@@ -429,15 +429,15 @@ t_gphoto_download ()
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -P",
             out sout, out serr, out exit);
 
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpint (exit, CompareOperator.EQ, 0);
     assert_in ("IMG_0001.JPG", sout);
     assert_in ("IMG_0002.JPG", sout);
 
     Posix.Stat st;
     assert (Posix.stat("IMG_0001.JPG", out st) == 0);
-    assert_cmpuint ((uint) st.st_size, Op.GT, 5000);
+    assert_cmpuint ((uint) st.st_size, CompareOperator.GT, 5000);
     assert (Posix.stat("IMG_0002.JPG", out st) == 0);
-    assert_cmpuint ((uint) st.st_size, Op.GT, 5000);
+    assert_cmpuint ((uint) st.st_size, CompareOperator.GT, 5000);
 
     FileUtils.remove ("IMG_0001.JPG");
     FileUtils.remove ("IMG_0002.JPG");
@@ -515,12 +515,12 @@ t_input_touchpad ()
     FileUtils.remove (logfile);
     FileUtils.remove (logfile + ".old");
 
-    assert_cmpstr (xinput_err, Op.EQ, "");
-    assert_cmpint (xinput_exit, Op.EQ, 0);
+    assert_cmpstr (xinput_err, CompareOperator.EQ, "");
+    assert_cmpint (xinput_exit, CompareOperator.EQ, 0);
     assert_in ("SynPS/2 Synaptics TouchPad", xinput_out);
 
-    assert_cmpstr (props_err, Op.EQ, "");
-    assert_cmpint (props_exit, Op.EQ, 0);
+    assert_cmpstr (props_err, CompareOperator.EQ, "");
+    assert_cmpint (props_exit, CompareOperator.EQ, 0);
     assert_in ("Synaptics Two-Finger Scrolling", props_out);
     assert_in ("/dev/input/event12", props_out);
 }
@@ -582,7 +582,7 @@ t_input_evtest ()
         Process.abort();
     }
 
-    assert_cmpint ((int) sout_len, Op.GT, 10);
+    assert_cmpint ((int) sout_len, CompareOperator.GT, 10);
     sout[sout_len] = 0;
     string output = (string) sout;
 
@@ -670,7 +670,7 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
         Process.abort();
     }
 
-    assert_cmpint ((int) sout_len, Op.GT, 10);
+    assert_cmpint ((int) sout_len, CompareOperator.GT, 10);
     sout[sout_len] = 0;
     string output = (string) sout;
 
