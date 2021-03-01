@@ -71,9 +71,9 @@ t_testbed_all_empty ()
 
     spawn ("umockdev-record" + " --all", out sout, out serr, out exit);
 
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
 }
 
 // one device
@@ -95,9 +95,9 @@ t_testbed_one ()
     tb.set_attribute_link (syspath, "power/fiddle", "../some/where");
 
     spawn ("umockdev-record" + " --all", out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, """P: /devices/dev1
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, """P: /devices/dev1
 E: SIMPLE_PROP=1
 E: SUBSYSTEM=pci
 H: binary_attr=41FF0005FF00
@@ -128,9 +128,9 @@ t_testbed_multiple ()
 
     // should grab device and all parents
     spawn ("umockdev-record" + " " + subdev1, out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, """P: /devices/dev1/subdev1
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, """P: /devices/dev1/subdev1
 E: SUBDEV1COLOR=YELLOW
 E: SUBSYSTEM=pci
 A: subdev1color=yellow
@@ -145,9 +145,9 @@ A: knobs/red=off
 
     // only dev1
     spawn ("umockdev-record" + " " + dev1, out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, """P: /devices/dev1
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, """P: /devices/dev1
 E: DEV1COLOR=GREEN
 E: SUBSYSTEM=pci
 A: dev1color=green
@@ -157,8 +157,8 @@ A: knobs/red=off
 
     // with --all it should have all three
     spawn ("umockdev-record" + " --all", out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
     assert (sout.contains ("P: /devices/dev1/subdev1\n"));
     assert (sout.contains ("P: /devices/dev1\n"));
     assert (sout.contains ("P: /devices/dev2\n"));
@@ -177,8 +177,8 @@ t_testbed_no_ioctl_record ()
     tb.add_devicev ("mem", "zero", null, {"dev", "1:5"}, {});
     spawn ("umockdev-record" + " --ioctl /sys/devices/zero=/dev/stdout -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpint (exit, Op.NE, 0);
-    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpint (exit, CompareOperator.NE, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
     assert (serr.contains ("UMOCKDEV_DIR cannot be used"));
 }
 
@@ -196,8 +196,8 @@ t_system_single ()
     }
 
     spawn ("umockdev-record" + " /dev/null /dev/zero", out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
     assert_in("E: DEVNAME=/dev/null", sout);
     assert_in("P: /devices/virtual/mem/null", sout);
     assert_in("E: DEVNAME=/dev/zero", sout);
@@ -223,10 +223,10 @@ t_system_all ()
     }
 
     spawn ("umockdev-record" + " --all", out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
     assert (sout.has_prefix ("P:"));
-    assert_cmpint (sout.length, Op.GE, 100);
+    assert_cmpint (sout.length, CompareOperator.GE, 100);
 
     var tb = new UMockdev.Testbed ();
     try {
@@ -250,17 +250,17 @@ t_system_invalid ()
     }
 
     spawn ("umockdev-record" + " /sys/class", out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "Invalid device /sys/class, has no uevent attribute\n");
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpint (exit, Op.NE, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "Invalid device /sys/class, has no uevent attribute\n");
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.NE, 0);
 
     spawn ("umockdev-record" + " /sys/block/loop0/size", out sout, out serr, out exit);
     // the real path might vary
     assert (serr.contains ("Invalid device"));
     assert (serr.contains ("/block/loop0/size"));
     assert (serr.contains ("has no uevent attribute"));
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpint (exit, Op.NE, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.NE, 0);
 }
 
 /*
@@ -287,27 +287,27 @@ t_system_ioctl_log ()
     // should not log anything as that device is not touched
     spawn ("umockdev-record" + " --ioctl=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
     assert (!FileUtils.test (log, FileTest.EXISTS));
 
     // this should create a log
     spawn ("umockdev-record" + " --ioctl /dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
     assert (FileUtils.test (log, FileTest.EXISTS));
-    assert_cmpstr (file_contents (log), Op.EQ, "@DEV /dev/zero\n");
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, "@DEV /dev/zero\n");
 
     FileUtils.remove (log);
 
     // invalid syntax
     spawn ("umockdev-record" + " --ioctl /dev/null -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpint (exit, Op.NE, 1);
-    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpint (exit, CompareOperator.NE, 1);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
     assert (serr.contains ("--ioctl"));
     assert (serr.contains ("="));
     assert (!FileUtils.test (log, FileTest.EXISTS));
@@ -330,9 +330,9 @@ t_system_ioctl_log_append_dev_mismatch ()
     // should log the header plus one read
     spawn ("umockdev-record" + " -i /dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     string orig_contents = file_contents (log);
 
@@ -340,11 +340,11 @@ t_system_ioctl_log_append_dev_mismatch ()
     spawn ("umockdev-record" + " -i /dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
-    assert_cmpint (exit, Op.EQ, 256);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpint (exit, CompareOperator.EQ, 256);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     // should not change original record
-    assert_cmpstr (file_contents (log), Op.EQ, orig_contents);
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, orig_contents);
 
     FileUtils.remove (log);
 }
@@ -367,27 +367,27 @@ t_system_script_log_simple ()
     // should not log anything as that device is not touched
     spawn ("umockdev-record" + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
-    assert_cmpstr (file_contents (log), Op.EQ, "");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, "");
 
     // should log the header plus one read
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
     string[] loglines = file_contents (log).split("\n");
-    assert_cmpuint (loglines.length, Op.EQ, 2);
-    assert_cmpstr (loglines[0], Op.EQ, "d 0 /dev/zero");
+    assert_cmpuint (loglines.length, CompareOperator.EQ, 2);
+    assert_cmpstr (loglines[0], CompareOperator.EQ, "d 0 /dev/zero");
 
     string[] logwords = loglines[1].split(" ");
-    assert_cmpuint (logwords.length, Op.EQ, 3);
-    assert_cmpstr (logwords[0], Op.EQ, "r");
+    assert_cmpuint (logwords.length, CompareOperator.EQ, 3);
+    assert_cmpstr (logwords[0], CompareOperator.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
-    assert_cmpstr (logwords[2], Op.EQ, "^@");
+    assert_cmpint (int.parse(logwords[1]), CompareOperator.LE, 5 * slow_testbed_factor);
+    assert_cmpstr (logwords[2], CompareOperator.EQ, "^@");
 
     FileUtils.remove (log);
 }
@@ -412,27 +412,27 @@ t_system_script_log_simple_fopen ()
     // should not log anything as that device is not touched
     spawn ("umockdev-record" + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero fopen",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
-    assert_cmpstr (file_contents (log), Op.EQ, "");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, "");
 
     // should log the header plus one read
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero fopen",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
     string[] loglines = file_contents (log).split("\n");
-    assert_cmpuint (loglines.length, Op.EQ, 2);
-    assert_cmpstr (loglines[0], Op.EQ, "d 0 /dev/zero");
+    assert_cmpuint (loglines.length, CompareOperator.EQ, 2);
+    assert_cmpstr (loglines[0], CompareOperator.EQ, "d 0 /dev/zero");
 
     string[] logwords = loglines[1].split(" ");
-    assert_cmpuint (logwords.length, Op.EQ, 3);
-    assert_cmpstr (logwords[0], Op.EQ, "r");
+    assert_cmpuint (logwords.length, CompareOperator.EQ, 3);
+    assert_cmpstr (logwords[0], CompareOperator.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
-    assert_cmpstr (logwords[2], Op.EQ, "^@");
+    assert_cmpint (int.parse(logwords[1]), CompareOperator.LE, 5 * slow_testbed_factor);
+    assert_cmpstr (logwords[2], CompareOperator.EQ, "^@");
 
     FileUtils.remove (log);
 }
@@ -452,35 +452,35 @@ t_system_script_log_append_same_dev ()
     // should log the header plus one read
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     // should still work as it is the same device, and append
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     // should now have the header and two reads
     string[] loglines = file_contents (log).split("\n");
-    assert_cmpuint (loglines.length, Op.EQ, 3);
-    assert_cmpstr (loglines[0], Op.EQ, "d 0 /dev/zero");
+    assert_cmpuint (loglines.length, CompareOperator.EQ, 3);
+    assert_cmpstr (loglines[0], CompareOperator.EQ, "d 0 /dev/zero");
 
     string[] logwords = loglines[1].split(" ");
-    assert_cmpuint (logwords.length, Op.EQ, 3);
-    assert_cmpstr (logwords[0], Op.EQ, "r");
+    assert_cmpuint (logwords.length, CompareOperator.EQ, 3);
+    assert_cmpstr (logwords[0], CompareOperator.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
-    assert_cmpstr (logwords[2], Op.EQ, "^@");
+    assert_cmpint (int.parse(logwords[1]), CompareOperator.LE, 5 * slow_testbed_factor);
+    assert_cmpstr (logwords[2], CompareOperator.EQ, "^@");
 
     logwords = loglines[2].split(" ");
-    assert_cmpuint (logwords.length, Op.EQ, 3);
-    assert_cmpstr (logwords[0], Op.EQ, "r");
+    assert_cmpuint (logwords.length, CompareOperator.EQ, 3);
+    assert_cmpstr (logwords[0], CompareOperator.EQ, "r");
     // should be quick, give it 5 ms at most
-    assert_cmpint (int.parse(logwords[1]), Op.LE, 5 * slow_testbed_factor);
-    assert_cmpstr (logwords[2], Op.EQ, "^@");
+    assert_cmpint (int.parse(logwords[1]), CompareOperator.LE, 5 * slow_testbed_factor);
+    assert_cmpstr (logwords[2], CompareOperator.EQ, "^@");
 
     FileUtils.remove (log);
 }
@@ -500,9 +500,9 @@ t_system_script_log_append_dev_mismatch ()
     // should log the header plus one read
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     string orig_contents = file_contents (log);
 
@@ -510,11 +510,11 @@ t_system_script_log_append_dev_mismatch ()
     spawn ("umockdev-record" + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
-    assert_cmpint (exit, Op.EQ, 256);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpint (exit, CompareOperator.EQ, 256);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
 
     // should not change original record
-    assert_cmpstr (file_contents (log), Op.EQ, orig_contents);
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, orig_contents);
 
     FileUtils.remove (log);
 }
@@ -599,8 +599,8 @@ t_system_script_log_chatter ()
     assert (chatter_stream != null);
 
     // expect the first two lines
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "Hello world!\n");
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "What is your name?\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), CompareOperator.EQ, "Hello world!\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), CompareOperator.EQ, "What is your name?\n");
 
     // type name and second string after some delay
     Thread.usleep (500000);
@@ -611,34 +611,34 @@ t_system_script_log_chatter ()
     Thread.usleep (300000);
     chatter_stream.puts ("foo ☹ bar ^!\n");
 
-    assert_cmpstr (read_line_timeout (chatter_stream), Op.EQ, "bye!\n");
+    assert_cmpstr (read_line_timeout (chatter_stream), CompareOperator.EQ, "bye!\n");
 
     int status;
-    assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), Op.EQ, (int) chatter_pid);
-    assert_cmpint (status, Op.EQ, 0);
+    assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), CompareOperator.EQ, (int) chatter_pid);
+    assert_cmpint (status, CompareOperator.EQ, 0);
 
     // evaluate log
     var log_stream = FileStream.open (log, "r");
     char[] buf = new char[8192];
     int time = 0;
-    assert_cmpint (log_stream.scanf ("d 0 %s\n", buf), Op.EQ, 1);
-    assert_cmpstr ((string)buf, Op.EQ, (string)ptyname);
-    assert_cmpint (log_stream.scanf ("w %d Hello world!^JWhat is your name?^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
-    assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.GE, 450);
-    assert_cmpint (time, Op.LE, 800 * slow_testbed_factor);
-    assert_cmpint (log_stream.scanf ("w %d I ♥ John^Ja^I tab and a^J line break in one write^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
-    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar ^`!^J\n", &time), Op.EQ, 1);;
-    assert_cmpint (time, Op.GE, 250);
-    assert_cmpint (time, Op.LE, 450 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("d 0 %s\n", buf), CompareOperator.EQ, 1);
+    assert_cmpstr ((string)buf, CompareOperator.EQ, (string)ptyname);
+    assert_cmpint (log_stream.scanf ("w %d Hello world!^JWhat is your name?^J\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.LE, 20 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.GE, 450);
+    assert_cmpint (time, CompareOperator.LE, 800 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("w %d I ♥ John^Ja^I tab and a^J line break in one write^J\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.LE, 20 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("r %d foo ☹ bar ^`!^J\n", &time), CompareOperator.EQ, 1);;
+    assert_cmpint (time, CompareOperator.GE, 250);
+    assert_cmpint (time, CompareOperator.LE, 450 * slow_testbed_factor);
 
-    assert_cmpint (log_stream.scanf ("w %d bye!^J\n", &time), Op.EQ, 1);;
-    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("w %d bye!^J\n", &time), CompareOperator.EQ, 1);;
+    assert_cmpint (time, CompareOperator.LE, 20 * slow_testbed_factor);
 
     // verify EOF
-    assert_cmpint (log_stream.scanf ("%*c"), Op.EQ, -1);
+    assert_cmpint (log_stream.scanf ("%*c"), CompareOperator.EQ, -1);
 
     FileUtils.remove (log);
 }
@@ -697,7 +697,7 @@ t_system_script_log_chatter_socket_stream ()
         ssize_t len = conn.receive (buf);
         assert (len > 0);
         buf[len] = 0;
-        assert_cmpstr ((string) buf, Op.EQ, "What is your name?\n");
+        assert_cmpstr ((string) buf, CompareOperator.EQ, "What is your name?\n");
 
         // type name and second string after some delay
         Thread.usleep (300000);
@@ -707,13 +707,13 @@ t_system_script_log_chatter_socket_stream ()
         len = read_buf_delay (10000, conn, buf, 11);
         assert (len > 0);
         buf[len] = 0;
-        assert_cmpstr ((string) buf, Op.EQ, "hello John\n");
+        assert_cmpstr ((string) buf, CompareOperator.EQ, "hello John\n");
 
         // check the send message
         len = read_buf_delay (20000, conn, buf, 6);
         assert (len > 0);
         buf[len] = 0;
-        assert_cmpstr ((string) buf, Op.EQ, "send()");
+        assert_cmpstr ((string) buf, CompareOperator.EQ, "send()");
 
         // send stuff for recv()
         Thread.usleep (20000);
@@ -725,24 +725,24 @@ t_system_script_log_chatter_socket_stream ()
     FileUtils.remove (spath);
 
     int status;
-    assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), Op.EQ, (int) chatter_pid);
-    assert_cmpint (status, Op.EQ, 0);
+    assert_cmpint ((int) Posix.waitpid (chatter_pid, out status, 0), CompareOperator.EQ, (int) chatter_pid);
+    assert_cmpint (status, CompareOperator.EQ, 0);
 
     // evaluate log
     var log_stream = FileStream.open (log, "r");
     int time = 0;
-    assert_cmpint (log_stream.scanf ("w %d What is your name?^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
-    assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.GE, 250);
-    assert_cmpint (time, Op.LE, 400 * slow_testbed_factor);
-    assert_cmpint (log_stream.scanf ("w %d hello John^J\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.LE, 20 * slow_testbed_factor);
-    assert_cmpint (log_stream.scanf ("w %d send()\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.GE, 10);
-    assert_cmpint (log_stream.scanf ("r %d recv()\n", &time), Op.EQ, 1);
-    assert_cmpint (time, Op.GE, 20);
-    assert_cmpint (time, Op.LE, 60 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("w %d What is your name?^J\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.LE, 20 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("r %d John^J\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.GE, 250);
+    assert_cmpint (time, CompareOperator.LE, 400 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("w %d hello John^J\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.LE, 20 * slow_testbed_factor);
+    assert_cmpint (log_stream.scanf ("w %d send()\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.GE, 10);
+    assert_cmpint (log_stream.scanf ("r %d recv()\n", &time), CompareOperator.EQ, 1);
+    assert_cmpint (time, CompareOperator.GE, 20);
+    assert_cmpint (time, CompareOperator.LE, 60 * slow_testbed_factor);
 
     FileUtils.remove (log);
 }
@@ -770,36 +770,36 @@ t_system_evemu_log ()
 
     spawn ("umockdev-record" + " --evemu-events=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
-    assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, "# EVEMU 1.2\n# device /dev/null\n");
 
     // appending a record for the same device should work
     spawn ("umockdev-record" + " --evemu-events=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
     // appends an extra NL at the end
-    assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
 
     // appending a record for a different device should fail
     spawn ("umockdev-record" + " --evemu-events=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
            out sout, out serr, out exit);
     assert (serr.contains ("two different devices"));
-    assert_cmpint (exit, Op.EQ, 256);
-    assert_cmpstr (sout, Op.EQ, "\0");
+    assert_cmpint (exit, CompareOperator.EQ, 256);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
     // unchanged
-    assert_cmpstr (file_contents (log), Op.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
+    assert_cmpstr (file_contents (log), CompareOperator.EQ, "# EVEMU 1.2\n# device /dev/null\n\n");
 
     FileUtils.remove (log);
 
     // invalid syntax
     spawn ("umockdev-record" + " --evemu-events /dev/null -- true",
            out sout, out serr, out exit);
-    assert_cmpint (exit, Op.NE, 1);
-    assert_cmpstr (sout, Op.EQ, "");
+    assert_cmpint (exit, CompareOperator.NE, 1);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
     assert (serr.contains ("--ioctl"));
     assert (serr.contains ("="));
     assert (!FileUtils.test (log, FileTest.EXISTS));
@@ -816,8 +816,8 @@ t_run_invalid_args ()
     spawn ("umockdev-record" + " /dev/no/such/device", out sout, out serr, out exit);
 
     assert_in ("Cannot access device /dev/no/such/device: No such file", serr);
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpint (exit, Op.NE, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.NE, 0);
 }
 
 static void
@@ -859,25 +859,25 @@ t_gphoto2_record ()
     spawn ("sh -c '%s /dev/bus/usb/%s/%s > gphoto-test.umockdev'".printf(
                "umockdev-record", busnum, devnum),
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpstr (sout, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpstr (sout, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
 
     string cmd = "sh -c 'gphoto2 -l; gphoto2 -L'";
     spawn ("%s -i /dev/bus/usb/%s/%s=gphoto-test.ioctl -- %s".printf(
                "umockdev-record", busnum, devnum, cmd),
            out sout_record, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
 
     // now run the same command under umockdev-run and ensure it outputs the
     // same thing
     spawn ("%s -d gphoto-test.umockdev -i /dev/bus/usb/%s/%s=gphoto-test.ioctl -- %s".printf(
                "umockdev-run", busnum, devnum, cmd),
            out sout, out serr, out exit);
-    assert_cmpstr (serr, Op.EQ, "");
-    assert_cmpint (exit, Op.EQ, 0);
-    assert_cmpstr (sout, Op.EQ, sout_record);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, sout_record);
 
     FileUtils.remove ("gphoto-test.umockdev");
     FileUtils.remove ("gphoto-test.ioctl");
