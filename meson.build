@@ -80,7 +80,7 @@ endif
 # preload library
 #
 
-shared_library('umockdev-preload',
+preload_lib = shared_library('umockdev-preload',
   ['src/libumockdev-preload.c',
    'src/debug.c',
    'src/ioctl_tree.c'],
@@ -119,7 +119,7 @@ hacked_gir = custom_target('UMockdev-1.0 hacked gir',
   output: 'UMockdev-1.0-hacked.gir')
 
 if g_ir_compiler.found()
-custom_target('UMockdev-1.0 typelib',
+umockdev_typelib = custom_target('UMockdev-1.0 typelib',
   command: [g_ir_compiler, '--output', '@OUTPUT@', '-l', 'libumockdev.so.0', '@INPUT@'],
   input: hacked_gir,
   output: 'UMockdev-1.0.typelib',
@@ -140,13 +140,13 @@ pkgconfig.generate(umockdev_lib,
 
 install_data('src/umockdev-wrapper', install_dir: get_option('bindir'))
 
-executable('umockdev-run',
+umockdev_run_exe = executable('umockdev-run',
   'src/umockdev-run.vala',
   dependencies: [glib, gobject, gio, vapi_posix, vapi_config],
   link_with: [umockdev_lib],
   install: true)
 
-executable('umockdev-record',
+umockdev_record_exe = executable('umockdev-record',
   'src/umockdev-record.vala',
   dependencies: [glib, gobject, gio, vapi_posix, vapi_config, vapi_posix_extra],
   link_with: [umockdev_lib],
@@ -187,20 +187,22 @@ add_test_setup('installed',
   timeout_multiplier: 5,
   env: test_env)
 
-executable('chatter', 'tests/chatter.c')
-executable('chatter-socket-stream', 'tests/chatter-socket-stream.c')
-executable('readbyte', 'tests/readbyte.c')
+test_chatter_exe = executable('chatter', 'tests/chatter.c')
+test_chatter_stream_exe = executable('chatter-socket-stream', 'tests/chatter-socket-stream.c')
+test_readbyte_exe = executable('readbyte', 'tests/readbyte.c')
 
 if gudev.found()
   test('umockdev', executable('test-umockdev',
     'tests/test-umockdev.c',
     dependencies: [glib, libudev, gudev],
-    link_with: [umockdev_lib]))
+    link_with: [umockdev_lib]),
+  depends: [preload_lib])
 
   test('umockdev-vala', executable('test-umockdev-vala',
       'tests/test-umockdev-vala.vala',
       dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_posix_extra, vapi_assertions, vapi_ioctl],
       link_with: [umockdev_lib]),
+    depends: [preload_lib],
     suite: 'fails-valgrind')
 endif
 
@@ -212,14 +214,16 @@ test('ioctl-tree', executable('test-ioctl-tree',
   dependencies: [glib]))
 
 test('umockdev-run', executable('test-umockdev-run',
-  'tests/test-umockdev-run.vala',
-  dependencies: [glib, gobject, gio, vapi_posix, vapi_assertions, vapi_config],
-  link_with: [umockdev_lib]))
+    'tests/test-umockdev-run.vala',
+    dependencies: [glib, gobject, gio, vapi_posix, vapi_assertions, vapi_config],
+    link_with: [umockdev_lib]),
+  depends: [umockdev_run_exe, preload_lib, test_chatter_exe, test_chatter_stream_exe])
 
 test('umockdev-record', executable('test-umockdev-record',
     'tests/test-umockdev-record.vala',
     dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_assertions, vapi_config, vala_libutil],
     link_with: [umockdev_lib]),
+  depends: [umockdev_record_exe, preload_lib, test_readbyte_exe, test_chatter_exe, test_chatter_stream_exe],
   suite: 'fails-valgrind')
 
 test('static-code', files('tests/test-static-code'))
@@ -229,6 +233,7 @@ if g_ir_compiler.found()
   test('umockdev.py', python,
     args: ['-Wd', '-Werror::PendingDeprecationWarning', '-Werror::DeprecationWarning',
            testsdir / 'test-umockdev.py'],
+    depends: [preload_lib, umockdev_typelib],
     suite: 'fails-valgrind')
 endif
 endif
