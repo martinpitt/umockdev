@@ -1833,8 +1833,8 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
   assert_delta_t(&tv_begin, &tv_end, 10);
   tv_begin = tv_end;
-  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
-  g_assert_cmpint(ev.time.tv_usec, ==, 500000);
+  g_assert_cmpint(ev.input_event_sec, ==, 1234);
+  g_assert_cmpint(ev.input_event_usec, ==, 500000);
   g_assert_cmpint(ev.type, ==, 0);
   g_assert_cmpint(ev.code, ==, 0);
   g_assert_cmpint(ev.value, ==, 0);
@@ -1842,8 +1842,8 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   /* read RELX event, should happen after 150 ms */
   g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
   g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
-  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
-  g_assert_cmpint(ev.time.tv_usec, ==, 650000);
+  g_assert_cmpint(ev.input_event_sec, ==, 1234);
+  g_assert_cmpint(ev.input_event_usec, ==, 650000);
   g_assert_cmpint(ev.type, ==, 2);
   g_assert_cmpint(ev.code, ==, 0);
   g_assert_cmpint(ev.value, ==, 5);
@@ -1853,8 +1853,8 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   /* read RELY event, should happen immediately after */
   g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
   g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
-  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
-  g_assert_cmpint(ev.time.tv_usec, ==, 649000);
+  g_assert_cmpint(ev.input_event_sec, ==, 1234);
+  g_assert_cmpint(ev.input_event_usec, ==, 649000);
   g_assert_cmpint(ev.type, ==, 2);
   g_assert_cmpint(ev.code, ==, 1);
   g_assert_cmpint(ev.value, ==, -11);
@@ -1864,8 +1864,8 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
   /* read KEY_ZOOM event, should happen after 550 ms */
   g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
   g_assert_cmpint(gettimeofday(&tv_end, NULL), ==, 0);
-  g_assert_cmpint(ev.time.tv_sec, ==, 1235);
-  g_assert_cmpint(ev.time.tv_usec, ==, 200000);
+  g_assert_cmpint(ev.input_event_sec, ==, 1235);
+  g_assert_cmpint(ev.input_event_usec, ==, 200000);
   g_assert_cmpint(ev.type, ==, 1);
   g_assert_cmpint(ev.code, ==, 0x174);
   g_assert_cmpint(ev.value, ==, 1);
@@ -1910,8 +1910,8 @@ t_testbed_replay_evemu_events_default_device(UMockdevTestbedFixture * fixture, g
 
   /* read SYN event; that should happen immediately */
   g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
-  g_assert_cmpint(ev.time.tv_sec, ==, 1234);
-  g_assert_cmpint(ev.time.tv_usec, ==, 500000);
+  g_assert_cmpint(ev.input_event_sec, ==, 1234);
+  g_assert_cmpint(ev.input_event_usec, ==, 500000);
   g_assert_cmpint(ev.type, ==, 0);
   g_assert_cmpint(ev.code, ==, 0);
   g_assert_cmpint(ev.value, ==, 0);
