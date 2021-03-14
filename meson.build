@@ -57,7 +57,6 @@ vala_libutil = cc.find_library('util')
 
 # local VAPIs
 vapi_config = valac.find_library('config', dirs: srcdir)
-vapi_posix_extra = valac.find_library('posix_extra', dirs: srcdir)
 vapi_ioctl = valac.find_library('ioctl', dirs: srcdir)
 vapi_assertions = valac.find_library('assertions', dirs: testsdir)
 
@@ -148,7 +147,7 @@ umockdev_run_exe = executable('umockdev-run',
 
 umockdev_record_exe = executable('umockdev-record',
   'src/umockdev-record.vala',
-  dependencies: [glib, gobject, gio, vapi_posix, vapi_config, vapi_posix_extra],
+  dependencies: [glib, gobject, gio, vapi_posix, vapi_config],
   link_with: [umockdev_lib],
   install: true)
 
@@ -200,7 +199,7 @@ if gudev.found()
 
   test('umockdev-vala', executable('test-umockdev-vala',
       'tests/test-umockdev-vala.vala',
-      dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_posix_extra, vapi_assertions, vapi_ioctl],
+      dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl],
       link_with: [umockdev_lib]),
     depends: [preload_lib],
     suite: 'fails-valgrind')

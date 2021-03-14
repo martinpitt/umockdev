@@ -75,7 +75,7 @@ resolve (string dev)
     if (Posix.stat(dev, out st) != 0)
         exit_error("Cannot access device %s: %s", dev, strerror(errno));
 
-    uint maj = Posix.hack_major(st.st_rdev);
+    uint maj = Posix.major(st.st_rdev);
     uint min = Posix.minor(st.st_rdev);
 
     string link;
