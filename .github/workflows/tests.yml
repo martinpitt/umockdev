@@ -20,8 +20,9 @@ jobs:
           - dnf-registry.fedoraproject.org/fedora:latest
           - dnf-registry.fedoraproject.org/fedora:rawhide
           - dnf-quay.io/centos/centos:stream
-          - alpine-alpine
-          - alpine@gudev-alpine
+          - alpine-docker.io/alpine
+          - alpine-docker.io/i386/alpine
+          - alpine@gudev-docker.io/alpine
           - nix-docker.io/nixos/nix
         include:
           - scenario: alpine@gudev-alpine
