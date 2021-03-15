@@ -52,6 +52,7 @@ python = find_program('python3', 'python', required: false)
 
 vapi_posix = valac.find_library('posix')
 vapi_linux = valac.find_library('linux')
+vapi_linux_fixes = valac.find_library('linux_fixes', dirs: srcdir)
 vala_libudev = cc.find_library('udev')
 vala_libutil = cc.find_library('util')
 
@@ -98,7 +99,7 @@ umockdev_lib = shared_library('umockdev',
    'src/uevent_sender.c'],
   vala_vapi: 'umockdev-1.0.vapi',
   vala_gir: 'UMockdev-1.0.gir',
-  dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vala_libudev, vala_libutil],
+  dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_linux_fixes, vala_libudev, vala_libutil],
   link_depends: ['src/umockdev.map'],
   link_args: [
     '-Wl,-export-dynamic',

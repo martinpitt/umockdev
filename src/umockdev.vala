@@ -890,7 +890,7 @@ public class Testbed: GLib.Object {
         string? recorded_dev = null;
         size_t len;
         MatchInfo match;
-        Linux.Input.Event ev = {};
+        LinuxFixes.Input.Event ev = {};
         var default_dev_re = new Regex("^# device (.*)$");
         var event_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *#?");
 
@@ -916,17 +916,17 @@ public class Testbed: GLib.Object {
                 delay = 0;
                 first = false;
             } else {
-                delay = (int) (ev_sec - ev.time.tv_sec) * 1000 + (int) (ev_usec - ev.time.tv_usec) / 1000;
+                delay = (int) (ev_sec - ev.input_event_sec) * 1000 + (int) (ev_usec - ev.input_event_usec) / 1000;
                 if (delay < 0)
                     delay = 0;
             }
-            ev.time.tv_sec = ev_sec;
-            ev.time.tv_usec = ev_usec;
+            ev.input_event_sec = ev_sec;
+            ev.input_event_usec = ev_usec;
             ev.type = (uint16) match.fetch(3).to_ulong(null, 16);
             ev.code = (uint16) match.fetch(4).to_ulong(null, 16);
             ev.value = int.parse(match.fetch(5));
 
-            uint8[] ev_data = new uint8[sizeof(Linux.Input.Event)];
+            uint8[] ev_data = new uint8[sizeof(LinuxFixes.Input.Event)];
             Posix.memcpy(ev_data, &ev, ev_data.length);
             string script_line = "r " + delay.to_string() + " " + ScriptRunner.encode(ev_data) + "\n";
             assert (Posix.write(script_fd, script_line, script_line.length) == script_line.length);
