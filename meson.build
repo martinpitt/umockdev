@@ -47,6 +47,7 @@ gobject = dependency('gobject-2.0', version: '>= 2.32.0')
 gio = dependency('gio-2.0', version: '>= 2.32.0')
 gio_unix = dependency('gio-unix-2.0', version: '>= 2.32.0')
 libudev = dependency('libudev')
+libpcap = dependency('libpcap')
 gudev = dependency('gudev-1.0', required: false)
 python = find_program('python3', 'python', required: false)
 
@@ -102,6 +103,7 @@ umockdev_utils_lib = static_library('umockdev-utils',
 umockdev_lib = shared_library('umockdev',
   ['src/umockdev.vala',
    'src/umockdev-ioctl.vala',
+   'src/umockdev-pcap.vala',
    'src/uevent_sender.vapi',
    'src/uevent_sender.c',
    'src/ioctl_tree.vapi',
@@ -109,7 +111,7 @@ umockdev_lib = shared_library('umockdev',
    'src/debug.c'],
   vala_vapi: 'umockdev-1.0.vapi',
   vala_gir: 'UMockdev-1.0.gir',
-  dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_linux_fixes, vala_libudev, vala_libutil, vapi_ioctl],
+  dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_linux_fixes, vala_libudev, vala_libutil, vapi_ioctl, libpcap],
   link_with: [umockdev_utils_lib],
   link_depends: ['src/umockdev.map'],
   link_args: [
@@ -117,6 +119,7 @@ umockdev_lib = shared_library('umockdev',
     '-Wl,--no-undefined',
     '-Wl,--version-script,@0@/umockdev.map'.format(srcdir),
   ],
+  vala_args: [ '--vapidir=@0@/src'.format(meson.current_source_dir()) ],
   include_directories: include_directories('src'),
   version: lib_version,
   install: true,
@@ -160,11 +163,13 @@ umockdev_run_exe = executable('umockdev-run',
 umockdev_record_exe = executable('umockdev-record',
   ['src/umockdev-record.vala',
    'src/umockdev-ioctl.vala',
+   'src/umockdev-pcap.vala',
    'src/ioctl_tree.vapi',
    'src/ioctl_tree.c',
    'src/debug.c'],
-  dependencies: [glib, gobject, gio_unix, vapi_posix, vapi_config, vapi_ioctl],
+  dependencies: [glib, gobject, gio_unix, vapi_posix, vapi_config, vapi_ioctl, libpcap],
   link_with: [umockdev_utils_lib],
+  vala_args: [ '--vapidir=@0@/src'.format(meson.current_source_dir()) ],
   include_directories: include_directories('src'),
   install: true)
 

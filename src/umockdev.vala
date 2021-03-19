@@ -251,6 +251,19 @@ public class Testbed: GLib.Object {
         }
     }
 
+    private string get_attribute(string devpath, string name)
+    {
+        string read = null;
+        var attr_path = Path.build_filename(this.root_dir, devpath, name);
+
+        try {
+            FileUtils.get_contents(attr_path, out read);
+        } catch (FileError e) {
+            error("Cannot read attribute file: %s", e.message);
+        }
+        return read;
+    }
+
     /**
      * umockdev_testbed_get_property:
      * @self: A #UMockdevTestbed.
@@ -804,6 +817,43 @@ public class Testbed: GLib.Object {
         IoctlTreeHandler handler = new IoctlTreeHandler(worker_ctx, dest);
 
         string sockpath = Path.build_filename(this.root_dir, "ioctl", owned_dev);
+        handler.register_path(owned_dev, sockpath);
+
+        return true;
+    }
+
+    /**
+     * umockdev_testbed_load_pcap:
+     * @self: A #UMockdevTestbed.
+     * @sysfs: sysfs path for device (/sys/...)
+     * @recordfile: Path of the pcap or pcapng file.
+     * @error: return location for a GError, or %NULL
+     *
+     * Load a USB pcap/pcapng recording created using e.g. wireshark.
+     * The device must have been added previously as the device path in /dev
+     * as well as the bus and device numbers need to be extraced from the udev
+     * information.
+     *
+     * Returns: %TRUE on success, %FALSE if the recording could not be loaded
+     */
+    public bool load_pcap (string sysfs, string recordfile) throws GLib.Error, FileError, IOError, RegexError
+    {
+        string owned_dev;
+        string sockpath;
+        int busnum;
+        int devnum;
+
+        busnum = get_attribute(sysfs, "busnum").to_int();
+        devnum = get_attribute(sysfs, "devnum").to_int();
+
+        owned_dev = Path.build_filename("/dev", "bus", "usb",
+                                        busnum.to_string("%03d"), devnum.to_string("%03d"));
+
+        sockpath = Path.build_filename(this.root_dir, "ioctl", owned_dev);
+
+        assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
+
+        IoctlUsbPcapHandler handler = new IoctlUsbPcapHandler(worker_ctx, recordfile, busnum, devnum);
         handler.register_path(owned_dev, sockpath);
 
         return true;

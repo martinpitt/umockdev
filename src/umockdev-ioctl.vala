@@ -34,9 +34,10 @@ public class IoctlData {
     [CCode(array_length_cname="data_len")]
     public uint8[] data;
 
+    public ulong client_addr;
+
     private bool parent_reloaded;
     private bool need_flush;
-    private ulong client_addr;
 
     private IOStream stream;
 

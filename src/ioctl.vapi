@@ -13,7 +13,38 @@ namespace Ioctl {
     [CCode (cheader_filename = "linux/usbdevice_fs.h")]
     public const int USBDEVFS_REAPURBNDELAY;
     [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int USBDEVFS_DISCARDURB;
+    [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int USBDEVFS_GET_CAPABILITIES;
+    [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int USBDEVFS_RELEASEINTERFACE;
+    [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int USBDEVFS_CLEAR_HALT;
+    [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int USBDEVFS_RESET;
+    [CCode (cheader_filename = "sys/ioctl.h")]
+    public const int USBDEVFS_RESETEP;
+    [CCode (cheader_filename = "sys/ioctl.h")]
     public const int TIOCSBRK;
+
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_ZERO_PACKET;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_BULK_CONTINUATION;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_NO_PACKET_SIZE_LIM;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_BULK_SCATTER_GATHER;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_REAP_AFTER_DISCONNECT;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_MMAP;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_DROP_PRIVILEGES;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_CONNINFO_EX;
+    [CCode (cheader_filename = "linux/usbdevice_fs.h")]
+    public const int USBDEVFS_CAP_SUSPEND;
 
     [CCode (cheader_filename = "asm-generic/ioctl.h")]
     public const int _IOC_SIZEBITS;
