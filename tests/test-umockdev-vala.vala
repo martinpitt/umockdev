@@ -20,6 +20,8 @@
 
 using Assertions;
 
+string rootdir;
+
 static void
 tb_add_from_string (UMockdev.Testbed tb, string s)
 {
@@ -490,6 +492,78 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 }
 
 void
+t_usbfs_ioctl_pcap ()
+{
+  var tb = new UMockdev.Testbed ();
+  string device;
+  FileUtils.get_contents(Path.build_filename(rootdir + "/devices/input/usbkbd.pcap.umockdev"), out device);
+  tb_add_from_string (tb, device);
+
+  try {
+      tb.load_pcap ("/sys/devices/pci0000:00/0000:00:14.0/usb1/1-3", Path.build_filename(rootdir + "/devices/input/usbkbd.pcap.pcapng"));
+  } catch (Error e) {
+      stderr.printf ("Cannot load pcap file: %s\n", e.message);
+      Process.abort ();
+  }
+
+  int fd = Posix.open ("/dev/bus/usb/001/011", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+
+  var urb_buffer_ep1 = new uint8[8];
+  Ioctl.usbdevfs_urb urb_ep1 = {1, 0x81, 0, 0, urb_buffer_ep1, 8, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep1), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (urb_ep1.status, CompareOperator.EQ, 0);
+
+
+  /* We cannot reap any urbs yet, because we didn't make a request on EP 2 */
+  Ioctl.usbdevfs_urb* urb_reap = null;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.EAGAIN);
+
+  /* Submit on EP 2 */
+  var urb_buffer_ep2 = new uint8[4];
+  Ioctl.usbdevfs_urb urb_ep2 = {1, 0x82, 0, 0, urb_buffer_ep2, 4, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep2), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpuint (urb_ep2.status, CompareOperator.EQ, 0);
+
+  /* The first report is: 00000c0000000000 (EP1) */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert (urb_reap == &urb_ep1);
+  assert_cmpint (urb_ep1.status, CompareOperator.EQ, 0);
+  assert_cmpuint (urb_ep1.buffer[0], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[1], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[2], CompareOperator.EQ, 0x0c);
+  assert_cmpuint (urb_ep1.buffer[3], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[4], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[5], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[6], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[7], CompareOperator.EQ, 0x00);
+
+  /* Resubmit URB to get next report */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep1), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  /* The second report is: 0000000000000000 (EP1) */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert (urb_reap == &urb_ep1);
+  assert_cmpint (urb_ep1.status, CompareOperator.EQ, 0);
+  assert_cmpuint (urb_ep1.buffer[0], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[1], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[2], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[3], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[4], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[5], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[6], CompareOperator.EQ, 0x00);
+  assert_cmpuint (urb_ep1.buffer[7], CompareOperator.EQ, 0x00);
+
+  Posix.close (fd);
+}
+
+void
 t_tty_stty ()
 {
   var tb = new UMockdev.Testbed ();
@@ -719,6 +793,12 @@ t_mt_uevent ()
 int
 main (string[] args)
 {
+  string? top_srcdir = Environment.get_variable ("TOP_SRCDIR");
+  if (top_srcdir != null)
+      rootdir = top_srcdir;
+  else
+      rootdir = ".";
+
   for (int i = 0; i < args.length; i++) {
       if (args[i] == "--test-outside-testbed")
           return is_test_inside_testbed(int.parse(args[i+1]));
@@ -736,6 +816,8 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_with_default_device", t_usbfs_ioctl_tree_with_default_device);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_override_default_device", t_usbfs_ioctl_tree_override_default_device);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_xz", t_usbfs_ioctl_tree_xz);
+
+  Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_pcap", t_usbfs_ioctl_pcap);
 
   /* tests for mocking TTYs */
   Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);
