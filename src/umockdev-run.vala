@@ -18,6 +18,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+using UMockdevUtils;
+
 [CCode (array_length=false, array_null_terminated=true)]
 static string[] opt_device;
 [CCode (array_length=false, array_null_terminated=true)]
@@ -53,15 +55,16 @@ const GLib.OptionEntry[] options = {
     { null }
 };
 
+GLib.MainLoop loop;
 Pid child_pid;
+int child_status;
 
 static void
-child_sig_handler (int sig)
+child_watch_cb (Pid pid, int status)
 {
-    debug ("umockdev-run: caught signal %i, propagating to child\n", sig);
-    if (Posix.kill (child_pid, sig) != 0)
-        stderr.printf ("umockdev-run: unable to propagate signal %i to child %i: %s\n",
-                       sig, child_pid, strerror (errno));
+    /* Record status and quit mainloop. */
+    child_status = status;
+    loop.quit();
 }
 
 static int
@@ -170,44 +173,23 @@ main (string[] args)
 
     // we want to run opt_program as a subprocess instead of execve()ing, so
     // that we can run device script threads in the background
-    int status;
+    loop = new GLib.MainLoop(null);
     try {
-        Process.spawn_async (null, opt_program, null,
-                            SpawnFlags.SEARCH_PATH | SpawnFlags.CHILD_INHERITS_STDIN | SpawnFlags.DO_NOT_REAP_CHILD ,
-                            null, out child_pid);
+        child_pid = spawn_process_under_test (opt_program, child_watch_cb);
     } catch (Error e) {
-            stderr.printf ("Cannot run %s: %s\n", opt_program[0], e.message);
-            Process.exit (1);
+        stderr.printf ("Cannot run %s: %s\n", opt_program[0], e.message);
+        Process.exit (1);
     }
 
-    // propagate signals to the child
-    var act = Posix.sigaction_t() { sa_handler = child_sig_handler, sa_flags = Posix.SA_RESETHAND };
-#if VALA_0_40
-    Posix.sigemptyset (out act.sa_mask);
-    assert (Posix.sigaction (Posix.Signal.TERM, act, null) == 0);
-    assert (Posix.sigaction (Posix.Signal.HUP, act, null) == 0);
-    assert (Posix.sigaction (Posix.Signal.INT, act, null) == 0);
-    assert (Posix.sigaction (Posix.Signal.QUIT, act, null) == 0);
-    assert (Posix.sigaction (Posix.Signal.ABRT, act, null) == 0);
-#else
-    Posix.sigemptyset (act.sa_mask);
-    assert (Posix.sigaction (Posix.SIGTERM, act, null) == 0);
-    assert (Posix.sigaction (Posix.SIGHUP, act, null) == 0);
-    assert (Posix.sigaction (Posix.SIGINT, act, null) == 0);
-    assert (Posix.sigaction (Posix.SIGQUIT, act, null) == 0);
-    assert (Posix.sigaction (Posix.SIGABRT, act, null) == 0);
-#endif
-
-    Posix.waitpid (child_pid, out status, 0);
-    Process.close_pid (child_pid);
+    loop.run();
 
     // free the testbed here already, so that it gets cleaned up before raise()
     testbed = null;
 
-    if (Process.if_exited (status))
-        return Process.exit_status (status);
-    if (Process.if_signaled (status))
-        Process.raise (Process.term_sig (status));
+    if (Process.if_exited (child_status))
+        return Process.exit_status (child_status);
+    if (Process.if_signaled (child_status))
+        Process.raise (Process.term_sig (child_status));
 
-    return status;
+    return child_status;
 }
