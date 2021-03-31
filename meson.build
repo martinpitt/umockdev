@@ -93,6 +93,12 @@ preload_lib = shared_library('umockdev-preload',
 # umockdev client library
 #
 
+umockdev_utils_lib = static_library('umockdev-utils',
+  'src/umockdev-utils.vala',
+  vala_vapi: 'umockdev-utils.vapi',
+  dependencies: [glib, vapi_posix],
+  include_directories: include_directories('src'))
+
 umockdev_lib = shared_library('umockdev',
   ['src/umockdev.vala',
    'src/uevent_sender.vapi',
@@ -100,6 +106,7 @@ umockdev_lib = shared_library('umockdev',
   vala_vapi: 'umockdev-1.0.vapi',
   vala_gir: 'UMockdev-1.0.gir',
   dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_linux_fixes, vala_libudev, vala_libutil],
+  link_with: [umockdev_utils_lib],
   link_depends: ['src/umockdev.map'],
   link_args: [
     '-Wl,-export-dynamic',
@@ -143,13 +150,13 @@ install_data('src/umockdev-wrapper', install_dir: get_option('bindir'))
 umockdev_run_exe = executable('umockdev-run',
   'src/umockdev-run.vala',
   dependencies: [glib, gobject, gio, vapi_posix, vapi_config],
-  link_with: [umockdev_lib],
+  link_with: [umockdev_lib, umockdev_utils_lib],
   install: true)
 
 umockdev_record_exe = executable('umockdev-record',
   'src/umockdev-record.vala',
   dependencies: [glib, gobject, gio, vapi_posix, vapi_config],
-  link_with: [umockdev_lib],
+  link_with: [umockdev_utils_lib, umockdev_lib],
   install: true)
 
 #
