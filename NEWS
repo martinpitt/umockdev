@@ -1,4 +1,4 @@
-## [0.15.5] - UNRELEASED
+## [0.15.5] - 2021-05-03
 - Fix build with vala 0.52
 - Fix build on 32 bit Alpine
 
