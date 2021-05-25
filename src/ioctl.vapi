@@ -78,5 +78,46 @@ namespace Ioctl {
 	uint signr;
 	void *usercontext;
     }
+
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public int SPI_IOC_MESSAGE(int len);
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_RD_MODE;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_WR_MODE;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_RD_MODE32;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_WR_MODE32;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_RD_LSB_FIRST;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_WR_LSB_FIRST;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_RD_BITS_PER_WORD;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_WR_BITS_PER_WORD;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_RD_MAX_SPEED_HZ;
+    [CCode (cheader_filename = "linux/spi/spidev.h")]
+    public const int SPI_IOC_WR_MAX_SPEED_HZ;
+
+    [CCode (cname="struct spi_ioc_transfer", cheader_filename = "linux/spi/spidev.h",
+            destroy_function="")]
+    public struct spi_ioc_transfer {
+        uint64  tx_buf;
+        uint64  rx_buf;
+
+        uint32  len;
+        uint32  speed_hz;
+
+        uint16  delay_usecs;
+        uint8   bits_per_word;
+        uint8   cs_change;
+        uint8   tx_nbits;
+        uint8   rx_nbits;
+        uint8   word_delay_usecs;
+        uint8   pad;
+    }
 }
 
