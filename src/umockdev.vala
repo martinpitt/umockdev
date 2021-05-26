@@ -764,6 +764,7 @@ public class Testbed: GLib.Object {
      */
     public bool load_ioctl (string? dev, string recordfile) throws GLib.Error, FileError, IOError, RegexError
     {
+        string format = "";
         DataInputStream recording;
         // Apparently valac isn't smart enough to turn a parameter into an owned
         // variable when we assign to it, so we need an explicit copy here.
@@ -787,24 +788,26 @@ public class Testbed: GLib.Object {
         } else
             recording = new DataInputStream(File.new_for_path(recordfile).read());
 
-        if (owned_dev == null) {
-            // Use file header comment to set default device node
+        // Grab information from header file
 
-            // Ignore any leading comments
-            string line = recording.read_line();
-            while (line != null && line.has_prefix("#"))
-                line = recording.read_line();
+        // Ignore any leading comments
+        string line = recording.read_line();
+        while (line != null && line.has_prefix("#"))
+            line = recording.read_line();
 
-            // Next must be our @DEV <devicenode> header
-            if (line == null)
-                error("ioctl recording file %s has no non-comment content", recordfile);
+        // Next must be our @DEV <devicenode> header
+        MatchInfo header_matcher = null;
+        if (line != null && (new Regex("^@DEV (.*?)( \\((?P<format>[^)]*)\\))?(\n|$)")).match(line, 0, out header_matcher)) {
+            if (owned_dev == null)
+                owned_dev = header_matcher.fetch(1);
 
-            MatchInfo header_matcher;
-            if (!(new Regex("^@DEV (.*)(\n|$)")).match(line, 0, out header_matcher))
-                error("null passed for device node, but recording %s has no @DEV header", recordfile);
-            owned_dev = header_matcher.fetch(1);
-            recording.seek(0, SeekType.SET);
+            format = header_matcher.fetch_named("format");
+        } else if (owned_dev == null) {
+            error("null passed for device node, but recording %s has no @DEV header", recordfile);
         }
+
+        recording.seek(0, SeekType.SET);
+
         string dest = Path.build_filename(this.root_dir, "ioctl", owned_dev + ".tree");
         assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
 
@@ -814,7 +817,11 @@ public class Testbed: GLib.Object {
         if (!FileUtils.set_contents(dest, contents))
             return false;
 
-        IoctlTreeHandler handler = new IoctlTreeHandler(worker_ctx, dest);
+        IoctlBase handler;
+        if (format == "SPI")
+            handler = new IoctlSpiHandler(worker_ctx, dest);
+        else
+            handler = new IoctlTreeHandler(worker_ctx, dest);
 
         string sockpath = Path.build_filename(this.root_dir, "ioctl", owned_dev);
         handler.register_path(owned_dev, sockpath);
