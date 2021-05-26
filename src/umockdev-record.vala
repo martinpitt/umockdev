@@ -284,7 +284,7 @@ dump_devices(string[] devices)
 
 // split a devname=filename argument into a device number and a file name
 static void
-split_devfile_arg(string arg, out string dev, out string devnum, out string fname)
+split_devfile_arg(string arg, out string dev, out string devnum, out bool is_block, out string fname)
 {
     string[] parts = arg.split ("=", 2); // devname, ioctlfilename
     if (parts.length != 2)
@@ -297,6 +297,7 @@ split_devfile_arg(string arg, out string dev, out string devnum, out string fnam
     if (Posix.stat(dev, out st) != 0)
         exit_error("Cannot access device %s: %s", dev, strerror(errno));
 
+    is_block = Posix.S_ISBLK(st.st_mode);
     if (Posix.S_ISCHR(st.st_mode) || Posix.S_ISBLK(st.st_mode)) {
         // if we have a device node, get devnum from stat
         devnum = Posix.major(st.st_rdev).to_string() + ":" + Posix.minor(st.st_rdev).to_string();
@@ -319,9 +320,14 @@ record_ioctl(string root_dir, string arg)
 {
     UMockdev.IoctlBase handler;
     string dev, devnum, outfile;
-    split_devfile_arg(arg, out dev, out devnum, out outfile);
+    bool is_block;
+    split_devfile_arg(arg, out dev, out devnum, out is_block, out outfile);
 
-    handler = new UMockdev.IoctlTreeRecorder(null, dev, outfile);
+    /* SPI: major 153, character device */
+    if (!is_block && devnum.has_prefix("153:"))
+        handler = new UMockdev.IoctlSpiRecorder(null, dev, outfile);
+    else
+        handler = new UMockdev.IoctlTreeRecorder(null, dev, outfile);
 
     string sockpath = Path.build_filename(root_dir, "ioctl", dev);
     handler.register_path(dev, sockpath);
@@ -335,7 +341,8 @@ static void
 record_script(string arg, string format)
 {
     string dev, devnum, outfile;
-    split_devfile_arg(arg, out dev, out devnum, out outfile);
+    bool is_block;
+    split_devfile_arg(arg, out dev, out devnum, out is_block, out outfile);
     string c = record_script_counter.to_string();
 
     Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile, true);
