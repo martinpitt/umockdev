@@ -433,6 +433,8 @@ static fd_map ioctl_wrapped_fds;
 struct ioctl_fd_info {
     char *dev_path;
     int ioctl_sock;
+    int is_default;
+    pthread_mutex_t sock_lock;
 };
 
 static void
@@ -440,6 +442,7 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 {
     libc_func(socket, int, int, int, int);
     libc_func(connect, int, int, const struct sockaddr *, socklen_t);
+    int is_default = 0;
     int sock;
     int ret;
     struct ioctl_fd_info *fdinfo;
@@ -451,8 +454,10 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
     addr.sun_family = AF_UNIX;
     snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/ioctl/%s", getenv("UMOCKDEV_DIR"), dev_path);
 
-    if (path_exists (addr.sun_path) != 0)
+    if (path_exists (addr.sun_path) != 0) {
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/ioctl/_default", getenv("UMOCKDEV_DIR"));
+	is_default = 1;
+    }
 
     sock = _socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
@@ -479,6 +484,8 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
     fdinfo = malloc(sizeof(struct ioctl_fd_info));
     fdinfo->ioctl_sock = sock;
     fdinfo->dev_path = strdup(dev_path);
+    fdinfo->is_default = is_default;
+    pthread_mutex_init(&fdinfo->sock_lock, NULL);
 
     fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
     DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl sockert\n", fd, dev_path);
@@ -496,12 +503,15 @@ ioctl_emulate_close(int fd)
 	if (fdinfo->ioctl_sock >= 0)
 	    _close(fdinfo->ioctl_sock);
 	free(fdinfo->dev_path);
+	pthread_mutex_destroy(&fdinfo->sock_lock);
 	free(fdinfo);
     }
 }
 
 #define IOCTL_REQ_IOCTL 1
 #define IOCTL_REQ_RES 2
+#define IOCTL_REQ_READ 7
+#define IOCTL_REQ_WRITE 8
 #define IOCTL_RES_DONE 3
 #define IOCTL_RES_RUN 4
 #define IOCTL_RES_READ_MEM 5
@@ -516,38 +526,52 @@ struct ioctl_request {
 };
 
 static int
-ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
+remote_emulate(int fd, int cmd, long arg1, long arg2)
 {
     libc_func(send, ssize_t, int, const void *, size_t, int);
     libc_func(recv, ssize_t, int, const void *, size_t, int);
     libc_func(ioctl, int, int, IOCTL_REQUEST_TYPE, ...);
+    libc_func(read, ssize_t, int, void *, size_t);
+    libc_func(write, ssize_t, int, void *, size_t);
     struct ioctl_fd_info *fdinfo;
     struct ioctl_request req;
+    sigset_t sig_set, sig_restore;
     int res;
+
+    /* Block all signals while we are talking with the remote process. */
+    sigfillset(&sig_set);
+    pthread_sigmask(SIG_SETMASK, &sig_set, &sig_restore);
 
     IOCTL_LOCK;
 
     if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
 	IOCTL_UNLOCK;
+
+	pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
+	return UNHANDLED;
+    }
+    IOCTL_UNLOCK;
+
+    /* Only pass on ioctl requests for the default handler. */
+    if (fdinfo->is_default && cmd != IOCTL_REQ_IOCTL) {
+	pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
 	return UNHANDLED;
     }
 
+    pthread_mutex_lock (&fdinfo->sock_lock);
+
     /* We force "unsigned int" here to prevent sign extension to long
      * which could confuse the receiving side. */
-    req.cmd = IOCTL_REQ_IOCTL;
-    req.arg1 = (unsigned int) request;
-    req.arg2 = (long) arg;
+    req.cmd = cmd;
+    req.arg1 = arg1;
+    req.arg2 = arg2;
 
-    do {
-        res = _send(fdinfo->ioctl_sock, &req, sizeof(req), 0);
-    } while (res < 0 && errno == EINTR);
+    res = _send(fdinfo->ioctl_sock, &req, sizeof(req), 0);
     if (res < 0)
 	goto con_err;
 
     while (1) {
-	do {
-	    res = _recv(fdinfo->ioctl_sock, &req, sizeof(req), 0);
-	} while (res < 0 && errno == EINTR);
+	res = _recv(fdinfo->ioctl_sock, &req, sizeof(req), 0);
 	if (res < 0)
 	    goto con_err;
 	if (res == 0)
@@ -557,20 +581,27 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 	    case IOCTL_RES_DONE:
 		errno = req.arg2;
 
-		IOCTL_UNLOCK;
+		pthread_mutex_unlock (&fdinfo->sock_lock);
+		pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
 		/* Force a context switch so that other threads can take the lock */
 		usleep(0);
 		return req.arg1;
 
 	    case IOCTL_RES_RUN:
-		res = _ioctl(fd, request, arg);
+		if (cmd == IOCTL_REQ_IOCTL)
+		    res = _ioctl(fd, arg1, arg2);
+		else if (cmd == IOCTL_REQ_READ)
+		    res = _read(fd, (char*) arg1, arg2);
+		else if (cmd == IOCTL_REQ_WRITE)
+		    res = _write(fd, (char*) arg1, arg2);
+		else
+		    goto con_err;
+
 		req.cmd = IOCTL_REQ_RES;
 		req.arg1 = res;
 		req.arg2 = errno;
 
-		do {
-		    res = _send(fdinfo->ioctl_sock, &req, sizeof(req), 0);
-		} while (res < 0 && errno == EINTR);
+		res = _send(fdinfo->ioctl_sock, &req, sizeof(req), 0);
 		if (res < 0)
 		    goto con_err;
 
@@ -582,7 +613,7 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 		    res = _send(fdinfo->ioctl_sock, (void*) (req.arg1 + done), (size_t) req.arg2 - done, 0);
 		    if (res > 0)
 			done += res;
-		} while ((res < 0 && errno == EINTR) || (res > 0 && done < req.arg2));
+		} while (res > 0 && done < req.arg2);
 		if (res < 0 && errno == EFAULT) {
 		    fprintf(stderr, "ERROR: libumockdev-preload: emulation code requested invalid read from %p + %lx\n",
 			    (void*) req.arg1, (unsigned long) req.arg2);
@@ -599,7 +630,7 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 		    res = _recv(fdinfo->ioctl_sock, (void*) (req.arg1 + done), (size_t) req.arg2 - done, 0);
 		    if (res > 0)
 			done += res;
-		} while ((res < 0 && errno == EINTR) || (res > 0 && done < req.arg2));
+		} while (res > 0 && done < req.arg2);
 		if (res < 0 && errno == EFAULT) {
 		    fprintf(stderr, "ERROR: libumockdev-preload: emulation code requested invalid write to %p + %lx\n",
 			    (void*) req.arg1, (unsigned long) req.arg2);
@@ -625,11 +656,13 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 
 con_eof:
     fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, received EOF\n");
+    pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
     exit(1);
 
 con_err:
     fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, errno: %d\n",
 	    errno);
+    pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
     exit(1);
 }
 
@@ -1421,6 +1454,11 @@ read(int fd, void *buf, size_t count)
     libc_func(read, ssize_t, int, void *, size_t);
     ssize_t res;
 
+    res = remote_emulate(fd, IOCTL_REQ_READ, (long) buf, (long) count);
+    if (res != UNHANDLED) {
+	DBG(DBG_IOCTL, "ioctl fd %i read of %d bytes: emulated, result %i\n", fd, (int) count, (int) res);
+	return res;
+    }
     res = _read(fd, buf, count);
     script_record_op('r', fd, buf, res);
     return res;
@@ -1432,6 +1470,11 @@ write(int fd, const void *buf, size_t count)
     libc_func(write, ssize_t, int, const void *, size_t);
     ssize_t res;
 
+    res = remote_emulate(fd, IOCTL_REQ_WRITE, (long) buf, (long) count);
+    if (res != UNHANDLED) {
+	DBG(DBG_IOCTL, "ioctl fd %i write of %d bytes: emulated, result %i\n", fd, (int) count, (int) res);
+	return res;
+    }
     res = _write(fd, buf, count);
     script_record_op('w', fd, buf, res);
     return res;
@@ -1605,7 +1648,7 @@ ioctl(int d, IOCTL_REQUEST_TYPE request, ...)
     arg = va_arg(ap, void*);
     va_end(ap);
 
-    result = ioctl_emulate(d, request, arg);
+    result = remote_emulate(d, IOCTL_REQ_IOCTL, (unsigned int) request, (long) arg);
     if (result != UNHANDLED) {
 	DBG(DBG_IOCTL, "ioctl fd %i request %X: emulated, result %i\n", d, (unsigned) request, result);
 	return result;
