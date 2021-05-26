@@ -269,12 +269,15 @@ public class IoctlClient : GLib.Object {
       }
     }
 
+    private ulong _cmd;
     private bool _abort;
     private long result;
     private int result_errno;
 
     static construct {
         GLib.Signal.@new("handle-ioctl", typeof(IoctlClient), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 0);
+        GLib.Signal.@new("handle-read", typeof(IoctlClient), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 0);
+        GLib.Signal.@new("handle-write", typeof(IoctlClient), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 0);
     }
 
     /**
@@ -297,11 +300,11 @@ public class IoctlClient : GLib.Object {
         InputStream input = stream.get_input_stream();
         ulong args[3];
 
-        assert(_request != 0);
+        assert(_cmd != 0);
 
         arg.flush_sync();
 
-        args[0] = 4; /* RUN (original ioctl) */
+        args[0] = 4; /* RUN (original ioctl/read/write) */
         args[1] = 0; /* unused */
         args[2] = 0; /* unused */
 
@@ -330,7 +333,8 @@ public class IoctlClient : GLib.Object {
         IdleSource source;
 
         /* Nullify some of the request information */
-        assert(_request != 0);
+        assert(_cmd != 0);
+        _cmd = 0;
         _request = 0;
 
         this.result = result;
@@ -375,6 +379,7 @@ public class IoctlClient : GLib.Object {
         }
 
         /* Nullify request information */
+        _cmd = 0;
         _request = 0;
         _arg = null;
         result = 0;
@@ -412,21 +417,58 @@ public class IoctlClient : GLib.Object {
             return;
         }
 
-        assert(args[0] == 1);
+        assert(args[0] == 1 || args[0] == 7 || args[0] == 8);
+        _cmd = args[0];
 
-        _request = args[1];
-        _arg = new IoctlData(stream);
-        _arg.data = new uint8[sizeof(ulong)];
-        *(ulong*) _arg.data = args[2];
+        if (args[0] == 1) {
+            _request = args[1];
+            _arg = new IoctlData(stream);
+            _arg.data = new uint8[sizeof(ulong)];
+            *(ulong*) _arg.data = args[2];
+        } else {
+            _request = 0;
+            _arg = new IoctlData(stream);
+            _arg.data = new uint8[args[2]];
+            _arg.client_addr = args[1];
+
+            if (args[0] == 8) {
+                /* Load data for writes */
+                try {
+                    _arg.reload(false);
+                } catch (IOError e) {
+                    warning("Error resolving IOCtl data: %s", e.message);
+                    complete(-100, 0);
+                    return;
+                };
+            }
+        }
 
         bool handled = false;
 
-        GLib.Signal.emit_by_name(this, "handle-ioctl", out handled);
-        if (!handled)
-            handled = handler.handle_ioctl(this);
+        if (args[0] == 1)
+            GLib.Signal.emit_by_name(this, "handle-ioctl", out handled);
+        else if (args[0] == 7)
+            GLib.Signal.emit_by_name(this, "handle-read", out handled);
+        else
+            GLib.Signal.emit_by_name(this, "handle-write", out handled);
 
         if (!handled) {
-            GLib.Signal.emit_by_name(handler, "handle-ioctl", this, out handled);
+            if (args[0] == 1)
+                handled = handler.handle_ioctl(this);
+            else if (args[0] == 7)
+                handled = handler.handle_read(this);
+            else
+                handled = handler.handle_write(this);
+        }
+
+        if (!handled) {
+            if (args[0] == 1)
+                GLib.Signal.emit_by_name(handler, "handle-ioctl", this, out handled);
+            else if (args[0] == 7)
+                GLib.Signal.emit_by_name(handler, "handle-read", this, out handled);
+            else
+                GLib.Signal.emit_by_name(handler, "handle-write", this, out handled);
+        }
 
         if (!handled && args[0] == 1) {
             IoctlTree.Tree tree = null;
@@ -460,6 +502,8 @@ public class IoctlClient : GLib.Object {
             }
 
             complete(ret, my_errno);
+        } else if (!handled) {
+            complete(-100, 0);
         }
     }
 
@@ -534,6 +578,8 @@ public class IoctlBase: GLib.Object {
 
     static construct {
         GLib.Signal.@new("handle-ioctl", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
+        GLib.Signal.@new("handle-read", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
+        GLib.Signal.@new("handle-write", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
     }
 
     construct {
@@ -632,6 +678,14 @@ public class IoctlBase: GLib.Object {
 
     /* Not a normal signal because we need the accumulator. */
     public virtual bool handle_ioctl(IoctlClient client) {
+        return false;
+    }
+
+    public virtual bool handle_read(IoctlClient client) {
+        return false;
+    }
+
+    public virtual bool handle_write(IoctlClient client) {
         return false;
     }
 }
