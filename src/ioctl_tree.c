@@ -461,7 +461,8 @@ write_hex(FILE * file, const char *buf, size_t len)
  *
  ***********************************/
 
-#define NSIZE(node) ((node->type && node->type->real_size >= 0) ? node->type->real_size : _IOC_SIZE(node->id))
+#define TSIZE(type, id) ((type && type->real_size >= 0) ? type->real_size : _IOC_SIZE(id))
+#define NSIZE(node) TSIZE(node->type, node->id)
 
 static inline int
 id_matches_type(IOCTL_REQUEST_TYPE id, const ioctl_type *type)
@@ -837,7 +838,7 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
 
 /* ioctl which does not need to consider its data argument and has no state */
 #define I_NOSTATE(name, execute_result) \
-    {name, -1, 0, #name, NULL, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
+    {name, 0, 0, #name, NULL, NULL, NULL, NULL, NULL, ioctl_execute_ ## execute_result, NULL}
 
 /* input structs with fixed length with explicit size */
 #define I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, namestr, size, nr_range, insertion_parent_fn) \
@@ -867,8 +868,8 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
 
 /* data with custom handlers; necessary for structs with pointers to nested
  * structs, or keeping stateful handlers */
-#define I_CUSTOM(name, nr_range, fn_prefix)                     \
-    {name, -1, nr_range, #name,                                 \
+#define I_CUSTOM(name, size, nr_range, fn_prefix)               \
+    {name, size, nr_range, #name,                  \
      fn_prefix ## _init_from_bin, fn_prefix ## _init_from_text, \
      fn_prefix ## _free_data,                                   \
      fn_prefix ## _write, fn_prefix ## _equal,                  \
@@ -879,8 +880,8 @@ ioctl_type ioctl_db[] = {
 
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
-    I_CUSTOM(USBDEVFS_REAPURB, 0, usbdevfs_reapurb),
-    I_CUSTOM(USBDEVFS_REAPURBNDELAY, 0, usbdevfs_reapurb),
+    I_CUSTOM(USBDEVFS_REAPURB, -1, 0, usbdevfs_reapurb),
+    I_CUSTOM(USBDEVFS_REAPURBNDELAY, -1, 0, usbdevfs_reapurb),
 #ifdef USBDEVFS_GET_CAPABILITIES
     I_SIMPLE_STRUCT_IN(USBDEVFS_GET_CAPABILITIES, 0, ioctl_insertion_parent_stateless),
 #endif
@@ -932,6 +933,15 @@ ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id)
 	if (id_matches_type(id, cur))
 	    return cur;
     return NULL;
+}
+
+const int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id)
+{
+    ioctl_type *cur;
+    for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)
+	if (id_matches_type(id, cur))
+	    return TSIZE(cur, id);
+    return 0;
 }
 
 const ioctl_type *
