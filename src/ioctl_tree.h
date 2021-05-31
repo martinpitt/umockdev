@@ -27,7 +27,7 @@ typedef struct ioctl_tree ioctl_tree;
 
 typedef struct {
     IOCTL_REQUEST_TYPE id;
-    ssize_t real_size;		/* for legacy ioctls with _IOC_SIZE == 0 */
+    ssize_t real_size;		/* for legacy ioctls with _IOC_SIZE == 0, or zero if packed into argument */
     IOCTL_REQUEST_TYPE nr_range;
     const char name[100];
     void (*init_from_bin) (ioctl_tree *, const void *);
@@ -94,6 +94,8 @@ ioctl_tree_next_wrap(ioctl_tree * tree, ioctl_tree * node)
     ioctl_tree *t = ioctl_tree_next(node);
     return (t != NULL) ? t : tree;
 }
+
+const int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id);
 
 /* database of known ioctls; return NULL for unknown ones */
 const ioctl_type *ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id);
