@@ -19,7 +19,6 @@ jobs:
           - apt-docker.io/amd64/debian:testing
           - dnf-registry.fedoraproject.org/fedora:latest
           - dnf-registry.fedoraproject.org/fedora:rawhide
-          - dnf-quay.io/centos/centos:stream
           - alpine-docker.io/alpine
           - alpine-docker.io/i386/alpine
           - alpine@gudev-docker.io/alpine
