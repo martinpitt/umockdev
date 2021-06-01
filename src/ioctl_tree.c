@@ -350,8 +350,12 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, 
 
     DBG(DBG_IOCTL_TREE, "ioctl_tree_execute ioctl %X\n", (unsigned) id);
 
-    /* check if it's a hardware independent stateless ioctl */
     t = ioctl_type_get_by_id(id);
+    /* Ignore dummy entries that only exist for size resolution. */
+    if (t && t->execute == NULL)
+	t = NULL;
+
+    /* check if it's a hardware independent stateless ioctl */
     if (t != NULL && t->insertion_parent == NULL) {
 	DBG(DBG_IOCTL_TREE, "  ioctl_tree_execute: stateless\n");
 	if (t->execute(NULL, id, arg, &r))
@@ -876,11 +880,16 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
      fn_prefix ## _write, fn_prefix ## _equal,                  \
      fn_prefix ## _execute, fn_prefix ## _insertion_parent}
 
+#define I_DUMMY(name, size, nr_range)               \
+    {name, size, nr_range, #name,                  \
+     NULL, NULL, NULL, NULL, NULL, NULL, NULL}     \
+
 ioctl_type ioctl_db[] = {
     I_SIMPLE_STRUCT_IN(USBDEVFS_CONNECTINFO, 0, ioctl_insertion_parent_stateless),
 
     /* we assume that every SUBMITURB is followed by a REAPURB and that
      * ouput EPs don't change the buffer, so we ignore USBDEVFS_SUBMITURB */
+    I_DUMMY(USBDEVFS_SUBMITURB, -1, 0),
     I_CUSTOM(USBDEVFS_REAPURB, -1, 0, usbdevfs_reapurb),
     I_CUSTOM(USBDEVFS_REAPURBNDELAY, -1, 0, usbdevfs_reapurb),
 #ifdef USBDEVFS_GET_CAPABILITIES
