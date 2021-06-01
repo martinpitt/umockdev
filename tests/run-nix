@@ -20,6 +20,8 @@ in pkgs.umockdev.overrideAttrs (attrs: {
   preCheck = "";
   doCheck = true;
   nativeBuildInputs = attrs.nativeBuildInputs ++ [ ${DEBUG:+pkgs.breakpointHook} ];
+  # libpcap is a new dependency, it can be removed again later
+  buildInputs = attrs.buildInputs ++ [ pkgs.libpcap ];
 })
 EOG
 
