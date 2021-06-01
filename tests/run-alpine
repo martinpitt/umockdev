@@ -13,7 +13,7 @@ fi
 $RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro ${1:-docker.io/alpine} /bin/sh <<EOF
 
 # install build dependencies
-apk add --no-cache meson gcc musl-dev glib-dev eudev-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
+apk add --no-cache meson gcc musl-dev glib-dev eudev-dev libpcap-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
 
 # run build as user
 su -s /bin/sh - guest << EOG
