@@ -11,8 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         scenario:
-          # broken glibc: https://launchpad.net/bugs/1916485
-          # - apt-docker.io/amd64/ubuntu:devel
+          - apt-docker.io/amd64/ubuntu:devel
           - apt-docker.io/amd64/ubuntu:latest
           - apt-docker.io/amd64/ubuntu:rolling
           - apt-docker.io/i386/debian:testing
