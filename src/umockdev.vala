@@ -1760,7 +1760,6 @@ private class SocketServer {
         this.running = true;
         this.socket_scriptfile = new HashTable<string, string> (str_hash, str_equal);
         this.script_runners = new HashTable<string, ScriptRunner> (str_hash, str_equal);
-        this.thread = new Thread<void*> ("SocketServer", this.run);
 
         // we use a control pipe which we trigger when adding or stopping, to
         // interrupt the select()
@@ -1768,6 +1767,8 @@ private class SocketServer {
         assert (Posix.pipe (fds) == 0);
         this.ctrl_r = fds[0];
         this.ctrl_w = fds[1];
+
+        this.thread = new Thread<void*> ("SocketServer", this.run);
     }
 
     ~SocketServer ()
