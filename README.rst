@@ -45,6 +45,12 @@ Right now umockdev supports the following features:
 
 - Recording and replay of evdev (touch pads, Wacom tablets, etc.) ioctls.
 
+- Recording and replay of spidev ioctls and read/write commands using ``--ioctl``
+  for both ``umockdev-record`` and ``umockdev-run``. This is an in-order
+  record/replay of all SPI transfers. Similar to ``scripts``
+  with the difference that full duplex transfers via ioctl are supported.
+  Timinges/errors are currently not recorded.
+
 - Recording and replay of evdev input events using the evemu events format
   (https://github.com/bentiss/evemu/blob/master/README.md). Unlike recorded
   evdev scripts these are architecture independent and human readable.
