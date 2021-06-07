@@ -38,8 +38,12 @@ Right now umockdev supports the following features:
   recorded) script data doesn't perfectly match what is actually being sent
   from the tested application.
 
-- Recording and replay of usbdevfs (for PtP/MTP devices) and evdev (touch pads,
-  Wacom tablets, etc.) ioctls.
+- Replay of usbdevfs (e. g. for PtP/MTP devices). Two methods are available for
+  flexible and pure in-order replay. The ``--ioctl`` based replay may allow
+  interactive emulation while the ``pcap``/``usbmon`` based replay is purely
+  in-order and supports control transfer replay.
+
+- Recording and replay of evdev (touch pads, Wacom tablets, etc.) ioctls.
 
 - Recording and replay of evdev input events using the evemu events format
   (https://github.com/bentiss/evemu/blob/master/README.md). Unlike recorded
@@ -114,8 +118,17 @@ in the testbed, with watching what happens with ``upower --monitor-detail``.
 ``battery.c`` shows how to do that with plain GObject in C, ``battery.py`` is
 the equivalent program in Python that uses the GI binding.
 
-Command line: Record and replay PtP/MTP USB devices
----------------------------------------------------
+Command line: Record and replay PtP/MTP USB devices (unordered)
+---------------------------------------------------------------
+
+With this method of record and replay a tree of dependent USB URBs is generated
+and replayed. The advantage is that discontinuities may occur during replay,
+as the replayer will always try to find the appropriate response, possibly
+changing the order of replay.
+
+If you need completely in-order replay or USB control commands, then the pcap
+based replayer will be more appropriate.
+
 - Connect your digital camera, mobile phone, or other device which supports
   PtP or MTP, and locate it in lsusb. For example
 
@@ -151,6 +164,45 @@ Command line: Record and replay PtP/MTP USB devices
 
 Note that if your ``*.ioctl`` files get too large for some purpose, you can
 xz-compress them.
+
+Command line: Record and replay USB devices using ``usbmon`` pcap captures
+------------------------------------------------------------------------
+
+This method of USB replay is a pure in-order replay. This has the advantage that
+timeouts will be correctly emulated rather than causing discontinuities in the
+replayer and possibly incorrect device state emulation. ``pcap`` currently also
+has the advantage of correctly replaying USB control transfers.
+
+- Connect your device and locate it in lsusb. For example
+
+  ::
+
+    Bus 001 Device 004: ID 06cb:00bd Synaptics, Inc. Prometheus MIS Touch Fingerprint Reader
+
+- Dump the sysfs device and udev properties:
+
+  ::
+
+    $ umockdev-record /dev/bus/usb/001/004 > fingerprint.umockdev
+
+- Use ``wireshark`` to record the bus in question (bus 001, ``usbmon1``). By
+  default this will record all devices. To minimize the size of the capture, you
+  may use a filter to only record/save communication to the device in question.
+
+  After starting the capture, run the command to capture the required
+  interactions. For example the ``synaptics/custom.py`` test script from libfprint.
+
+- Now you can disconnect your device, and run the same operations in a mocked
+  testbed. To do so, load the sysfs device and udev properties. Then specify
+  the ``--pcap`` option with the corresponding sysfs path of the device. Doing
+  so will create the appropriate ``usbdevfs`` device node.
+
+  Note that you need to specify the sysfs path from the device description.
+
+  ::
+
+    $ umockdev-run --device fingerprint.umockdev --pcap /sys/devices/pci0000:00/0000:00:14.0/usb1/1-9=fingerprint.pcapng synaptics/custom.py
+
 
 Command line: Record and replay tty devices
 -------------------------------------------
