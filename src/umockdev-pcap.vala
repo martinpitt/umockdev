@@ -44,6 +44,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                                 USBDEVFS_CAP_ZERO_PACKET;
     private pcap.pcap rec;
     private Array<UrbInfo?> urbs;
+    private Array<UrbInfo?> discarded;
     private int bus;
     private int device;
 
@@ -61,6 +62,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
             error("Only DLT_USB_LINUX_MMAPPED recordings are supported!");
 
         urbs = new Array<UrbInfo?>();
+        discarded = new Array<UrbInfo?>();
     }
 
     public override bool handle_ioctl(IoctlClient client) {
@@ -94,7 +96,8 @@ internal class IoctlUsbPcapHandler : IoctlBase {
             case USBDEVFS_DISCARDURB:
                 for (int i = 0; i < urbs.length; i++) {
                     if (urbs.index(i).urb_data.client_addr == *((ulong*)client.arg.data)) {
-                        /* Found the urb, remove it and return success */
+                        /* Found the urb, add to discard array, remove it and return success */
+                        discarded.prepend_val(urbs.index(i));
                         urbs.remove_index(i);
                         client.complete(0, 0);
                         return true;
@@ -126,7 +129,18 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
             case USBDEVFS_REAPURB:
             case USBDEVFS_REAPURBNDELAY:
-                UrbInfo? urb_info = next_reapable_urb();
+                UrbInfo? urb_info = null;
+                if (discarded.length > 0) {
+                    urb_info = discarded.index(0);
+                    discarded.remove_index(0);
+
+                    Ioctl.usbdevfs_urb *urb = (Ioctl.usbdevfs_urb*) urb_info.urb_data.data;
+                    urb.status = -Posix.ENOENT;
+
+                    urb_info.urb_data.dirty(false);
+                } else {
+                    urb_info = next_reapable_urb();
+                }
 
                 if (urb_info != null) {
                     try {
