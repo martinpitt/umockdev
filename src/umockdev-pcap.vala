@@ -151,21 +151,56 @@ internal class IoctlUsbPcapHandler : IoctlBase {
      * packet. As such, keep it in a global state.
      */
     private pcap.pkthdr cur_hdr;
+    private uint64 last_pkt_time_ms;
+    private uint64 cur_waiting_since;
     private unowned uint8[]? cur_buf = null;
 
     private UrbInfo? next_reapable_urb() {
+         bool debug = false;
+         uint64 now = GLib.get_monotonic_time();
         /* Fetch the first packet if we do not have one. */
-        if (cur_buf == null)
+        if (cur_buf == null) {
             cur_buf = rec.next(ref cur_hdr);
 
-        for (; cur_buf != null; cur_buf = rec.next(ref cur_hdr)) {
+            usb_header_mmapped *urb_hdr = (void*) cur_buf;
+
+            cur_waiting_since = now;
+            last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+        }
+
+        for (; cur_buf != null; cur_buf = rec.next(ref cur_hdr), cur_waiting_since = now) {
             assert(cur_hdr.caplen >= 64);
 
             usb_header_mmapped *urb_hdr = (void*) cur_buf;
 
+            uint64 cur_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+
             /* Discard anything from a different bus/device */
             if (urb_hdr.bus_id != bus || urb_hdr.device_address != device)
                 continue;
+
+            /* Print out debug info, if we need 5s longer than the recording
+             * (to aovid printing debug info if we are replaying a timeout)
+             */
+            if ((now - cur_waiting_since) / 1000 > 2000 + (cur_pkt_time_ms - last_pkt_time_ms)) {
+                message("Stuck for %lu ms, recording needed %lu ms",
+                        (ulong) (now - cur_waiting_since) / 1000,
+                        (ulong) (cur_pkt_time_ms - last_pkt_time_ms));
+                message("Trying to reap at recording position %c packet of type %d, for endpoint 0x%02x with length %u, replay may be stuck",
+                        urb_hdr.event_type, urb_hdr.transfer_type, urb_hdr.endpoint_number, urb_hdr.urb_len);
+                message("The device has currently %u in-flight URBs:", urbs.length);
+
+                for (var i = 0; i < urbs.length; i++) {
+                    unowned UrbInfo? urb_data = urbs.index(i);
+                    Ioctl.usbdevfs_urb *urb = (Ioctl.usbdevfs_urb*) urb_data.urb_data.data;
+
+                    message("   URB of type %d, for endpoint 0x%02x with length %d; %ssubmitted",
+                            urb.type, urb.endpoint, urb.buffer_length,
+                            urb_data.pcap_id == 0 ? "NOT " : "");
+                }
+                cur_waiting_since = now;
+                debug = true;
+            }
 
             /* Submit */
             if (urb_hdr.event_type == 'S') {
@@ -184,8 +219,13 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
                     if ((urb.type != urb_hdr.transfer_type) ||
                         (urb.endpoint != urb_hdr.endpoint_number) ||
-                        (urb.buffer_length != urb_hdr.urb_len))
+                        (urb.buffer_length != urb_hdr.urb_len)) {
+
+                        if (debug)
+                            stderr.printf("UMockdev: Queued URB %d has a metadata mismatch!\n", i);
                         continue;
+                    }
+
 
                     if (urb_hdr.data_len > 0) {
                         /* This means the endpoint must be "& 0x1" true */
@@ -194,6 +234,21 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
                         /* Compare the full buffer (as we are outgoing) */
                         if (Posix.memcmp(urb.buffer, &cur_buf[sizeof(usb_header_mmapped)], urb.buffer_length) != 0) {
+                            if (debug) {
+                                stderr.printf("UMockdev: Queued URB %d has a buffer mismatch! Recording:", i);
+                                for (int j = 0; j < urb.buffer_length; j++) {
+                                    if (j > 0 && j % 8 == 0)
+                                        stderr.printf("\n");
+                                    stderr.printf(" %02x", cur_buf[sizeof(usb_header_mmapped) + j]);
+                                }
+                                stderr.printf("\nUMockdev: Submitted:");
+                                for (int j = 0; j < urb.buffer_length; j++) {
+                                    if (j > 0 && j % 8 == 0)
+                                        stderr.printf("\n");
+                                    stderr.printf(" %02x", urb.buffer[j]);
+                                }
+                                stderr.printf("\n");
+                            }
                             continue;
                         }
                     }
@@ -202,6 +257,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     urb_data.pcap_id = urb_hdr.id;
 
                     /* Packet was handled. */
+                    last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
                     break;
                 }
 
@@ -246,6 +302,8 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                 /* Does this need further handling? */
                 assert(urb_hdr.start_frame == 0);
                 urb.start_frame = (int) urb_hdr.start_frame;
+
+                last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
 
                 return urb_info;
             }
