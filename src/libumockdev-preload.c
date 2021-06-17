@@ -558,6 +558,8 @@ ioctl_emulate(int fd, IOCTL_REQUEST_TYPE request, void *arg)
 		errno = req.arg2;
 
 		IOCTL_UNLOCK;
+		/* Force a context switch so that other threads can take the lock */
+		usleep(0);
 		return req.arg1;
 
 	    case IOCTL_RES_RUN:
