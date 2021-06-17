@@ -176,6 +176,9 @@ internal class IoctlUsbPcapHandler : IoctlBase {
         if (cur_buf == null) {
             cur_buf = rec.next(ref cur_hdr);
 
+            if (cur_buf == null)
+                return null;
+
             usb_header_mmapped *urb_hdr = (void*) cur_buf;
 
             cur_waiting_since = now;
