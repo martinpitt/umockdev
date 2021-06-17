@@ -137,6 +137,15 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     Ioctl.usbdevfs_urb *urb = (Ioctl.usbdevfs_urb*) urb_info.urb_data.data;
                     urb.status = -Posix.ENOENT;
 
+                    /* Warn if we are discarding an urb that had no matching submit
+                     * in the recording. The replay may be stuck at this point and
+                     * we are timing out on URBs that will not replay.
+                     */
+                    if (urb_info.pcap_id == 0) {
+                        message("Replay may be stuck: Reaping discard URB of type %d, for endpoint 0x%02x with length %d without corresponding submit",
+                                urb.type, urb.endpoint, urb.buffer_length);
+                    }
+
                     urb_info.urb_data.dirty(false);
                 } else {
                     urb_info = next_reapable_urb();
