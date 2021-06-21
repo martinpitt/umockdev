@@ -564,6 +564,72 @@ t_usbfs_ioctl_pcap ()
 }
 
 void
+t_spidev_ioctl ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  string device;
+  FileUtils.get_contents(Path.build_filename(rootdir + "/devices/spi/elanfingerprint.umockdev"), out device);
+  tb_add_from_string (tb, device);
+
+  try {
+      tb.load_ioctl ("/dev/spidev0.0", Path.build_filename(rootdir + "/devices/spi/elanfingerprint.ioctl"));
+  } catch (Error e) {
+      stderr.printf ("Cannot load ioctl file: %s\n", e.message);
+      Process.abort ();
+  }
+
+  int fd = Posix.open ("/dev/spidev0.0", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+
+  /* A buffer for the xfer structs because vala doesn't compile otherwise
+   * See https://gitlab.gnome.org/GNOME/vala/-/issues/1082 */
+  var xfer_buf = new uint8[sizeof(Ioctl.spi_ioc_transfer) * 2];
+  var tx_buf = new uint8[2];
+  var rx_buf = new uint8[1];
+  Ioctl.spi_ioc_transfer *xfer = xfer_buf;
+
+  /* First a two byte write and one byte read. */
+
+  tx_buf[0] = 0x03;
+  tx_buf[1] = 0xff;
+
+  Posix.memset (xfer, 0, sizeof (Ioctl.spi_ioc_transfer) * 2);
+  xfer[0].tx_buf = (uint64) tx_buf;
+  xfer[0].len = 2;
+  xfer[1].rx_buf = (uint64) rx_buf;
+  xfer[1].len = 1;
+
+  /* Not sure if this should return 3 or 0. */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.SPI_IOC_MESSAGE (2), xfer), CompareOperator.GE, 0);
+  assert_cmpint (rx_buf[0], CompareOperator.EQ, 0x81);
+
+
+  /* One byte write, use write(). */
+  tx_buf[0] = 0x31;
+  assert_cmpint ((int) Posix.write (fd, tx_buf, 1), CompareOperator.EQ, 1);
+
+  /* Two byte write and one byte read, but doing it as three transfers
+   * and the last one even as a read(). */
+  tx_buf[0] = 0x08;
+  tx_buf[1] = 0xff;
+
+  Posix.memset (xfer, 0, sizeof (Ioctl.spi_ioc_transfer) * 2);
+  xfer[0].tx_buf = (uint64) tx_buf;
+  xfer[0].len = 1;
+  xfer[1].tx_buf = (uint64) &tx_buf[1];
+  xfer[1].len = 1;
+  xfer[1].cs_change = 1;
+
+  assert_cmpint (Posix.ioctl (fd, Ioctl.SPI_IOC_MESSAGE (2), xfer), CompareOperator.GE, 0);
+
+  assert_cmpint ((int) Posix.read (fd, rx_buf, 1), CompareOperator.EQ, 1);
+  assert_cmpint (rx_buf[0], CompareOperator.EQ, 0x5f);
+
+  Posix.close (fd);
+}
+
+void
 t_tty_stty ()
 {
   var tb = new UMockdev.Testbed ();
@@ -818,6 +884,8 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_xz", t_usbfs_ioctl_tree_xz);
 
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_pcap", t_usbfs_ioctl_pcap);
+
+  Test.add_func ("/umockdev-testbed-vala/spidev_ioctl", t_spidev_ioctl);
 
   /* tests for mocking TTYs */
   Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);
