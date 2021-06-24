@@ -20,7 +20,10 @@ umockdev_testbed_get_property
 umockdev_testbed_uevent
 umockdev_testbed_add_from_string
 umockdev_testbed_add_from_file
+umockdev_testbed_attach_ioctl
+umockdev_testbed_detach_ioctl
 umockdev_testbed_load_ioctl
+umockdev_testbed_load_pcap
 umockdev_testbed_load_script
 umockdev_testbed_load_socket_script
 umockdev_testbed_load_evemu_events
@@ -44,6 +47,30 @@ umockdev_testbed_get_type
 <FILE>functions</FILE>
 <TITLE>global functions</TITLE>
 umockdev_in_mock_environment
+</SECTION>
+
+<SECTION>
+<FILE>umockdev-ioctl</FILE>
+<TITLE>UMockdev Ioctl emulation</TITLE>
+UMockdevIoctlBase
+UMockdevIoctlBaseClass
+umockdev_ioctl_base_new
+
+UMockdevIoctlData
+umockdev_ioctl_data_ref
+umockdev_ioctl_data_unref
+umockdev_ioctl_data_resolve
+umockdev_ioctl_data_set_ptr
+umockdev_ioctl_data_reload
+
+UMockdevIoctlClient
+umockdev_ioctl_client_complete
+umockdev_ioctl_client_abort
+umockdev_ioctl_client_execute
+umockdev_ioctl_client_get_arg
+umockdev_ioctl_client_get_connected
+umockdev_ioctl_client_get_devnode
+umockdev_ioctl_client_get_request
 </SECTION>
 
 <SECTION>
