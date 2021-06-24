@@ -437,15 +437,6 @@ public class IoctlClient : GLib.Object {
 
         if (!handled) {
             if (args[0] == 1)
-                handled = handler.handle_ioctl(this);
-            else if (args[0] == 7)
-                handled = handler.handle_read(this);
-            else
-                handled = handler.handle_write(this);
-        }
-
-        if (!handled) {
-            if (args[0] == 1)
                 GLib.Signal.emit_by_name(handler, "handle-ioctl", this, out handled);
             else if (args[0] == 7)
                 GLib.Signal.emit_by_name(handler, "handle-read", this, out handled);
@@ -556,13 +547,21 @@ private class StartListenClosure {
     }
 }
 
+
+[ CCode(cname="G_STRUCT_OFFSET(UMockdevIoctlBaseClass, handle_ioctl)") ]
+extern const int IOCTL_BASE_HANDLE_IOCTL_OFFSET;
+[ CCode(cname="G_STRUCT_OFFSET(UMockdevIoctlBaseClass, handle_read)") ]
+extern const int IOCTL_BASE_HANDLE_READ_OFFSET;
+[ CCode(cname="G_STRUCT_OFFSET(UMockdevIoctlBaseClass, handle_write)") ]
+extern const int IOCTL_BASE_HANDLE_WRITE_OFFSET;
+
 public class IoctlBase: GLib.Object {
     private HashTable<string,Cancellable> listeners;
 
     static construct {
-        GLib.Signal.@new("handle-ioctl", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
-        GLib.Signal.@new("handle-read", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
-        GLib.Signal.@new("handle-write", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, 0, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
+        GLib.Signal.@new("handle-ioctl", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, IOCTL_BASE_HANDLE_IOCTL_OFFSET, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
+        GLib.Signal.@new("handle-read", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, IOCTL_BASE_HANDLE_READ_OFFSET, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
+        GLib.Signal.@new("handle-write", typeof(IoctlBase), GLib.SignalFlags.RUN_LAST, IOCTL_BASE_HANDLE_WRITE_OFFSET, signal_accumulator_true_handled, null, null, typeof(bool), 1, typeof(IoctlClient));
     }
 
     construct {
