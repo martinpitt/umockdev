@@ -48,6 +48,7 @@ gio = dependency('gio-2.0', version: '>= 2.32.0')
 gio_unix = dependency('gio-unix-2.0', version: '>= 2.32.0')
 libudev = dependency('libudev')
 libpcap = dependency('libpcap')
+pthread = cc.find_library('pthread', required: true)
 gudev = dependency('gudev-1.0', required: false)
 python = find_program('python3', 'python', required: false)
 
@@ -87,7 +88,7 @@ preload_lib = shared_library('umockdev-preload',
    'src/ioctl_tree.c'],
   c_args: ['-fvisibility=default'],
   version: '0.0.0',
-  dependencies: [dl],
+  dependencies: [dl, pthread],
   install: true)
 
 #
