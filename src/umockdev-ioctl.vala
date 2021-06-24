@@ -426,6 +426,9 @@ public class IoctlClient : GLib.Object {
             handled = handler.handle_ioctl(this);
 
         if (!handled) {
+            GLib.Signal.emit_by_name(handler, "handle-ioctl", this, out handled);
+
+        if (!handled && args[0] == 1) {
             IoctlTree.Tree tree = null;
             IoctlData? data = null;
             ulong size = IoctlTree.data_size_by_id(_request);
