@@ -71,10 +71,6 @@ private struct TransferChunk {
 
 internal abstract class IoctlSpiBase : IoctlBase {
 
-    IoctlSpiBase(MainContext? ctx) {
-        base(ctx);
-    }
-
     internal long iter_ioctl_vector(ulong count, IoctlData data, bool for_recording) {
         long transferred = 0;
 
@@ -135,10 +131,10 @@ internal class IoctlSpiHandler : IoctlSpiBase {
     long replay_chunk;
     long replay_byte;
 
-    public IoctlSpiHandler(MainContext? ctx, string file)
+    public IoctlSpiHandler(string file)
     {
         string val;
-        base (ctx);
+        base ();
 
         // Open SPI file
         try {
@@ -336,9 +332,9 @@ internal class IoctlSpiRecorder : IoctlSpiBase {
     bool cs_is_high;
     Posix.FILE log;
 
-    public IoctlSpiRecorder(MainContext? ctx, string device, string file)
+    public IoctlSpiRecorder(string device, string file)
     {
-        base (ctx);
+        base ();
 
         // Open SPI log file
         cs_is_high = false;
