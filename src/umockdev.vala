@@ -95,9 +95,9 @@ public class Testbed: GLib.Object {
         this.worker_thread = create_worker_thread(this.worker_loop);
 
         /* Create fallback ioctl handler */
-        IoctlBase handler = new IoctlBase(this.worker_ctx);
+        IoctlBase handler = new IoctlBase();
         string sockpath = Path.build_filename(this.root_dir, "ioctl", "_default");
-        handler.register_path("_default", sockpath);
+        handler.register_path(this.worker_ctx, "_default", sockpath);
 
         Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
         debug("Created udev test bed %s", this.root_dir);
@@ -819,12 +819,12 @@ public class Testbed: GLib.Object {
 
         IoctlBase handler;
         if (format == "SPI")
-            handler = new IoctlSpiHandler(worker_ctx, dest);
+            handler = new IoctlSpiHandler(dest);
         else
-            handler = new IoctlTreeHandler(worker_ctx, dest);
+            handler = new IoctlTreeHandler(dest);
 
         string sockpath = Path.build_filename(this.root_dir, "ioctl", owned_dev);
-        handler.register_path(owned_dev, sockpath);
+        handler.register_path(this.worker_ctx, owned_dev, sockpath);
 
         return true;
     }
@@ -860,8 +860,8 @@ public class Testbed: GLib.Object {
 
         assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
 
-        IoctlUsbPcapHandler handler = new IoctlUsbPcapHandler(worker_ctx, recordfile, busnum, devnum);
-        handler.register_path(owned_dev, sockpath);
+        IoctlUsbPcapHandler handler = new IoctlUsbPcapHandler(recordfile, busnum, devnum);
+        handler.register_path(this.worker_ctx, owned_dev, sockpath);
 
         return true;
     }

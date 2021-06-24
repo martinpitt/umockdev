@@ -48,10 +48,10 @@ internal class IoctlUsbPcapHandler : IoctlBase {
     private int bus;
     private int device;
 
-    public IoctlUsbPcapHandler(MainContext? ctx, string file, int bus, int device)
+    public IoctlUsbPcapHandler(string file, int bus, int device)
     {
         char errbuf[pcap.ERRBUF_SIZE];
-        base (ctx);
+        base ();
 
         this.bus = bus;
         this.device = device;

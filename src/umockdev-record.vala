@@ -325,12 +325,12 @@ record_ioctl(string root_dir, string arg)
 
     /* SPI: major 153, character device */
     if (!is_block && devnum.has_prefix("153:"))
-        handler = new UMockdev.IoctlSpiRecorder(null, dev, outfile);
+        handler = new UMockdev.IoctlSpiRecorder(dev, outfile);
     else
-        handler = new UMockdev.IoctlTreeRecorder(null, dev, outfile);
+        handler = new UMockdev.IoctlTreeRecorder(dev, outfile);
 
     string sockpath = Path.build_filename(root_dir, "ioctl", dev);
-    handler.register_path(dev, sockpath);
+    handler.register_path(null, dev, sockpath);
 
     return handler;
 }

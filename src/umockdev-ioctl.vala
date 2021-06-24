@@ -259,6 +259,7 @@ public class IoctlData {
 public class IoctlClient : GLib.Object {
     private IoctlBase handler;
     private IOStream stream;
+    private GLib.MainContext _ctx;
     public string devnode { get; }
 
     public ulong request { get; }
@@ -330,8 +331,6 @@ public class IoctlClient : GLib.Object {
      * This call is thread-safe.
      */
     public void complete(long result, int errno_) {
-        IdleSource source;
-
         /* Nullify some of the request information */
         assert(_cmd != 0);
         _cmd = 0;
@@ -341,9 +340,7 @@ public class IoctlClient : GLib.Object {
         this.result_errno = errno_;
 
         /* Push us into the correct main context. */
-        source = new IdleSource();
-        source.set_callback(complete_idle);
-        source.attach(handler.ctx);
+        _ctx.invoke(complete_idle);
     }
 
     /**
@@ -526,7 +523,7 @@ public class IoctlClient : GLib.Object {
     private void notify_closed_cb()
     {
         /* Force into correct thread. */
-        handler.ctx.invoke(notify_closed_idle);
+        _ctx.invoke(notify_closed_idle);
     }
 
     internal IoctlClient(IoctlBase handler, IOStream stream, string devnode)
@@ -534,6 +531,7 @@ public class IoctlClient : GLib.Object {
         this.handler = handler;
         this.stream = stream;
         this._devnode = devnode;
+        this._ctx = GLib.MainContext.get_thread_default();
 
         /* FIXME: There must be a better way to do this in vala? */
         GLib.Signal.connect_object(this.stream, "notify::closed", (GLib.Callback) notify_closed_cb, this, GLib.ConnectFlags.SWAPPED);
@@ -573,7 +571,6 @@ private class StartListenClosure {
 }
 
 public class IoctlBase: GLib.Object {
-    public MainContext ctx { get; set construct; }
     private HashTable<string,Cancellable> listeners;
 
     static construct {
@@ -583,17 +580,7 @@ public class IoctlBase: GLib.Object {
     }
 
     construct {
-        /* XXX: Should we use the default or thread_default? */
-        if (ctx == null)
-            ctx = GLib.MainContext.@default();
         listeners = new HashTable<string,Cancellable>(str_hash, str_equal);
-    }
-
-    public IoctlBase(MainContext? ctx)
-    {
-        /* Executed after construct, so don't overwrite the default if not set. */
-        if (ctx != null)
-            _ctx = ctx;
     }
 
     ~IoctlBase()
@@ -628,7 +615,7 @@ public class IoctlBase: GLib.Object {
           listeners.remove(devnode);
     }
 
-    internal void register_path(string devnode, string sockpath)
+    internal void register_path(GLib.MainContext? ctx, string devnode, string sockpath)
     {
         assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
 
@@ -697,9 +684,9 @@ internal class IoctlTreeHandler : IoctlBase {
 
     private IoctlTree.Tree tree;
 
-    public IoctlTreeHandler(MainContext? ctx, string file)
+    public IoctlTreeHandler(string file)
     {
-        base (ctx);
+        base ();
 
         Posix.FILE f = Posix.FILE.open(file, "r");
         tree = new IoctlTree.Tree(f);
@@ -803,11 +790,11 @@ internal class IoctlTreeRecorder : IoctlBase {
     string device;
     private IoctlTree.Tree tree;
 
-    public IoctlTreeRecorder(MainContext? ctx, string device, string file)
+    public IoctlTreeRecorder(string device, string file)
     {
         string existing_device_path = null;
         Posix.FILE log;
-        base (ctx);
+        base ();
 
         this.logfile = file;
         this.device = device;
