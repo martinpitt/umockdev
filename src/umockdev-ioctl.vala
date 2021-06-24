@@ -2,6 +2,16 @@
 
 namespace UMockdev {
 
+/**
+ * SECTION:umockdev-ioctl
+ * @title: umockdev-ioctl
+ * @short_description: Emulate ioctl and read/write calls for devices.
+ *
+ * These classes permit emulation of ioctl and read/write calls including
+ * fully customizing the behaviour by creating an #UMockdevIoctlBase instance or
+ * subclass instance and attaching it using umockdev_testbed_attach_ioctl().
+ */
+
 /* The bindings are lacking g_signal_accumulator_true_handled, but easy enough
  * to implement here.
  */
@@ -24,11 +34,14 @@ internal bool signal_accumulator_true_handled(GLib.SignalInvocationHint ihint,
 /**
  * UMockdevIoctlData:
  *
- * The #UMockdevIoctlData struct is a container designed to resolve the ioctl
- * data parameter. You will be passed an #UMockdevIoctlData container with
- * a single pointer initially, which you must immediately resolve using
- * umockdev_ioctl_data_resolve() passing 0 as the offset and the expected size
- * of the user provided structure.
+ * The #UMockdevIoctlData struct is a container designed to read and write
+ * memory from the client process.
+ *
+ * After memory has been resolved, the corresponding pointer will point to
+ * local memory that can be used normally. The memory will automatically be
+ * synced back by umockdev_ioctl_client_complete().
+ *
+ * Since: 0.16
  */
 public class IoctlData {
     /* Local cache to check if data is dirty before flushing. This is both an
@@ -149,6 +162,7 @@ public class IoctlData {
      * the data.
      *
      * Returns: #TRUE on success, #FALSE otherwise
+     * Since: 0.16
      */
     public bool reload() throws IOError {
         load_data();
@@ -240,15 +254,53 @@ public class IoctlData {
  *
  * The #UMockdevIoctlClient struct represents an opened client side FD in order
  * to emulate ioctl calls on this device.
+ *
+ * Since: 0.16
  */
+/**
+ * UMockdevIoctlClient::handle-ioctl:
+ * @client: A #UMockdevIoctlClient
+ *
+ * Called when an ioctl is requested by the client.
+ *
+ * This is the per-client signal. See #UMockdevIoctlBase::handle-ioctl on #UMockdevIoctlBase.
+ *
+ * Since: 0.16
+ */
+/**
+ * UMockdevIoctlClient::handle-read:
+ * @client: A #UMockdevIoctlClient
+ *
+ * Called when a read is requested by the client.
+ *
+ * This is the per-client signal. See #UMockdevIoctlBase::handle-read on #UMockdevIoctlBase.
+ *
+ * Since: 0.16
+ */
+/**
+ * UMockdevIoctlClient::handle-write:
+ * @client: A #UMockdevIoctlClient
+ *
+ * Called when a write is requested by the client.
+ *
+ * This is the per-client signal. See #UMockdevIoctlBase::handle-write on #UMockdevIoctlBase.
+ *
+ * Since: 0.16
+ */
+
 public class IoctlClient : GLib.Object {
     private IoctlBase handler;
     private IOStream stream;
     private GLib.MainContext _ctx;
+
+    [Description(nick = "device node", blurb = "The device node the client opened")]
     public string devnode { get; }
 
+    [Description(nick = "request", blurb = "The current ioctl request")]
     public ulong request { get; }
+    [Description(nick = "argument", blurb = "The ioctl argument, for read/write the passed buffer")]
     public IoctlData arg { get; }
+    [Description(nick = "connected", blurb = "Whether the client is still connected")]
     public bool connected {
       get {
         return !stream.is_closed();
@@ -267,19 +319,27 @@ public class IoctlClient : GLib.Object {
     }
 
     /**
-     * umockdev_ioctl_client_execute():
+     * umockdev_ioctl_client_execute:
+     * @self: A #UMockdevIoctlClient
      * @errno_: Return location for errno
+     * @error: return location for a GError, or %NULL
+     *
+     * This function is not generally useful. It exists for umockdev itself
+     * in order to implement recording.
      *
      * Execute the ioctl on the client side. Note that this flushes any
-     * modifications of the ioctl data. As such, data needs to be re-fetched
-     * afterwards.
+     * modifications of the ioctl data. As such, pointers that were already
+     * resolved (including the initial ioctl argument itself) need to be
+     * resolved again.
      *
-     * It is only valid to call this while an uncompleted ioctl is being
+     * It is only valid to call this while an uncompleted command is being
      * processed.
      *
      * This call is thread-safe.
      *
      * Returns: The client side result of the ioctl call
+     *
+     * Since: 0.16
      */
     public int execute(out int errno_) throws IOError {
         OutputStream output = stream.get_output_stream();
@@ -309,23 +369,26 @@ public class IoctlClient : GLib.Object {
     }
 
     /**
-     * umockdev_ioctl_invocation_complete():
-     * @self: A #UmockdevIoctlClient
-     * @result: Return value of ioctl
+     * umockdev_ioctl_client_complete:
+     * @self: A #UMockdevIoctlClient
+     * @res: Return value of ioctl
      * @errno_: errno of ioctl
      *
      * Asynchronously completes the ioctl invocation of the client. This is
-     * equivalent to calling umockdev_ioctl_complete() with the invocation.
+     * equivalent to calling umockdev_ioctl_client_complete() with the
+     * invocation.
      *
      * This call is thread-safe.
+     *
+     * Since: 0.16
      */
-    public void complete(long result, int errno_) {
+    public void complete(long res, int errno_) {
         /* Nullify some of the request information */
         assert(_cmd != 0);
         _cmd = 0;
         _request = 0;
 
-        this.result = result;
+        this.result = res;
         this.result_errno = errno_;
 
         /* Push us into the correct main context. */
@@ -333,14 +396,14 @@ public class IoctlClient : GLib.Object {
     }
 
     /**
-     * umockdev_ioctl_invocation_abort():
-     * @self: A #UmockdevIoctlClient
-     * @result: Return value of ioctl
-     * @errno_: errno of ioctl
+     * umockdev_ioctl_client_abort:
+     * @self: A #UMockdevIoctlClient
      *
      * Asynchronously terminates the child by asking it to execute exit(1).
      *
      * This call is thread-safe.
+     *
+     * Since: 0.16
      */
     public void abort() {
         this._abort = true;
@@ -521,6 +584,20 @@ public class IoctlClient : GLib.Object {
     }
 }
 
+/**
+ * UMockdevIoctlBaseClass:
+ * @handle_ioctl: Override ioctl emulation
+ * @handle_read: Override read emulation
+ * @handle_write: Override write_emulation
+ * @client_connected: A device was opened
+ * @client_vanished: A device was closed
+ *
+ * The base class for an device ioctl and read/write handling. You can either
+ * override the corresponding vfuncs or connect to the signals to customize
+ * the emulation.
+ *
+ * Since: 0.16
+ */
 
 /**
  * UMockdevIoctlBase:
@@ -528,6 +605,70 @@ public class IoctlClient : GLib.Object {
  * The #UMockdevIoctlBase class is a base class to emulate and record ioctl
  * operations of a client. It can be attached to an emulated device in the
  * testbed and will then be used.
+ *
+ * Since: 0.16
+ */
+/**
+ * UMockdevIoctlBase::handle-ioctl:
+ * @handler: A #UMockdevIoctlBase
+ * @client: A #UMockdevIoctlClient
+ *
+ * Called when an ioctl is requested by the client.
+ *
+ * Access the #UMockdevIoctlClient::arg property of @client to retrieve the
+ * argument of the ioctl. This is a pointer sized buffer initially with the
+ * original argument passed to the ioctl. If this is pointing to a struct, use
+ * umockdev_ioctl_data_resolve() to retrieve the underlying memory and update
+ * the pointer. Resolve any further pointers in the structure in the same way.
+ *
+ * After resolving the memory, you can access it as if it was local. The memory
+ * will be synced back to the client automatically if it has been modified
+ * locally.
+ *
+ * Once processing is done, use umockdev_ioctl_client_complete() to let the
+ * client continue with the result of the emulation. You can also use
+ * umockdev_ioctl_client_abort() to kill the client. Note that this handling
+ * does not need to be immediate. It is valid to immediately return #TRUE from
+ * this function and call umockdev_ioctl_client_complete() at a later point.
+ *
+ * Note that this function will be called from a worker thread with a private
+ * #GMainContext for the #UMockdevTestbed. Do not block this context for longer
+ * periods. The complete handler may be called from a different thread.
+ *
+ * Returns: #TRUE if the request is being handled, #FALSE otherwise.
+ * Since: 0.16
+ */
+/**
+ * UMockdevIoctlBase::handle-read:
+ * @handler: A #UMockdevIoctlBase
+ * @client: A #UMockdevIoctlClient
+ *
+ * Called when a read is requested by the client.
+ *
+ * The result buffer is represented by #UMockdevIoctlClient::arg of @client.
+ * Retrieve its length to find out the requested read length. The content of
+ * the buffer has already been retrieved, and you can freely use and update it.
+ *
+ * See #UMockdevIoctlBase::handle-ioctl for some more information.
+ *
+ * Returns: #TRUE if the request is being handled, #FALSE otherwise.
+ * Since: 0.16
+ */
+/**
+ * UMockdevIoctlBase::handle-write:
+ * @handler: A #UMockdevIoctlBase
+ * @client: A #UMockdevIoctlClient
+ *
+ * Called when a write is requested by the client.
+ *
+ * The written buffer is represented by #UMockdevIoctlClient::arg of @client.
+ * Retrieve its length to find out the requested write length. The content of
+ * the buffer has already been retrieved, and you can freely use it.
+ *
+ * See #UMockdevIoctlBase::handle-ioctl for some more information.
+ *
+ * Returns: #TRUE if the request is being handled, #FALSE otherwise.
+ * Since: 0.16
  */
 
 private class StartListenClosure {

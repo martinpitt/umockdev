@@ -764,6 +764,7 @@ public class Testbed: GLib.Object {
      * support.
      *
      * Returns: %TRUE on success, %FALSE on error.
+     * Since: 0.16
      */
     public bool attach_ioctl (string dev, IoctlBase handler) throws GLib.Error
     {
@@ -788,6 +789,7 @@ public class Testbed: GLib.Object {
      * if the path is not currently attached.
      *
      * Returns: %TRUE on success, %FALSE on error.
+     * Since: 0.16
      */
     public bool detach_ioctl (string dev) throws GLib.Error
     {
@@ -899,6 +901,7 @@ public class Testbed: GLib.Object {
      * information.
      *
      * Returns: %TRUE on success, %FALSE if the recording could not be loaded
+     * Since: 0.16
      */
     public bool load_pcap (string sysfs, string recordfile) throws GLib.Error, FileError, IOError, RegexError
     {
