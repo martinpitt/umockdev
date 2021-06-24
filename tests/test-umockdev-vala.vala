@@ -855,6 +855,114 @@ t_mt_uevent ()
   assert_cmpuint (change_count, CompareOperator.EQ, num_changes);
 }
 
+static bool
+ioctl_custom_handle_ioctl_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient client)
+{
+    if (client.request == 1) {
+        client.complete(*(long*)client.arg.data, 0);
+    } else if (client.request == 2) {
+        client.complete(-1, Posix.ENOMEM);
+    } else if (client.request ==3 ) {
+        var data = client.arg.resolve(0, sizeof(int));
+
+        *(int*) data.data = (int) 0xc00fffee;
+
+        client.complete(0, 0);
+    } else {
+        client.complete(-5, 1);
+    }
+    return true;
+}
+
+static bool
+ioctl_custom_handle_write_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient client)
+{
+    /* NOTE:
+     *
+     * This code uses g_object_{get,set}_data for simplicity. Any real code
+     * should likely subclass IoctlBase, override the vfunc's and keep its
+     * state in there (this only works if you do not need a per-client state).
+     */
+    client.set_data("written", client.arg);
+    client.complete(client.arg.data.length, 0);
+    return true;
+}
+
+static bool
+ioctl_custom_handle_read_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient client)
+{
+    UMockdev.IoctlData written = client.steal_data("written");
+
+    /* Return EAGAIN if nothing has been written. */
+    if (written == null) {
+        client.complete(-1, Posix.EAGAIN);
+        return true;
+    }
+
+    /* Return the first n bytes of the buffer, then discard the rest. Real code
+     * would likely need to track the offset.
+     */
+    ssize_t read_len = ssize_t.min(written.data.length, client.arg.data.length);
+
+    Posix.memcpy(client.arg.data, written.data, read_len);
+
+    client.complete(read_len, 0);
+
+    return true;
+}
+
+void
+t_ioctl_custom()
+{
+  var tb = new UMockdev.Testbed ();
+
+  tb_add_from_string (tb, """P: /devices/test
+N: test
+E: SUBSYSTEM=test
+""");
+
+  var handler = new UMockdev.IoctlBase();
+  var write_buf = new uint8[10] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+  var read_buf = new uint8[10] { 0 };
+  int ioctl_target = 0;
+
+  /* These are not native vala signals because of the accumulator. */
+  handler.connect("signal::handle-ioctl", ioctl_custom_handle_ioctl_cb, null);
+  handler.connect("signal::handle-read", ioctl_custom_handle_read_cb, null);
+  handler.connect("signal::handle-write", ioctl_custom_handle_write_cb, null);
+
+  tb.attach_ioctl("/dev/test", handler);
+
+  int fd = Posix.open ("/dev/test", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+
+  assert_cmpint (Posix.ioctl (fd, 1, 0xdeadbeef), CompareOperator.EQ, (int) 0xdeadbeef);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  assert_cmpint (Posix.ioctl (fd, 2, 0xdeadbeef), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOMEM);
+
+  assert_cmpint (Posix.ioctl (fd, 3, &ioctl_target), CompareOperator.EQ, 0);
+  assert_cmpint (ioctl_target, CompareOperator.EQ, (int) 0xc00fffee);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  /* Test whether we can write and get the value mirrored back. */
+  assert_cmpint ((int) Posix.write (fd, write_buf, 10), CompareOperator.EQ, 10);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  assert_cmpint ((int) Posix.read (fd, read_buf, 10), CompareOperator.EQ, 10);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpint (Posix.memcmp (read_buf, write_buf, 10), CompareOperator.EQ, 0);
+
+  /* A further read returns EAGAIN */
+  assert_cmpint ((int) Posix.read (fd, read_buf, 10), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.EAGAIN);
+
+
+  Posix.close(fd);
+
+  tb.detach_ioctl("/dev/test");
+}
 
 int
 main (string[] args)
@@ -898,6 +1006,9 @@ main (string[] args)
   /* tests for multi-thread safety */
   Test.add_func ("/umockdev-testbed-vala/mt_parallel_attr_distinct", t_mt_parallel_attr_distinct);
   Test.add_func ("/umockdev-testbed-vala/mt_uevent", t_mt_uevent);
+
+  /* test IoctlBase attachment and signals */
+  Test.add_func ("/umockdev-testbed-vala/ioctl_custom", t_ioctl_custom);
 
   return Test.run();
 }

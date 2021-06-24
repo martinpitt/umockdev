@@ -89,6 +89,7 @@ public class Testbed: GLib.Object {
 
         this.dev_fd = new HashTable<string, int> (str_hash, str_equal);
         this.dev_script_runner = new HashTable<string, ScriptRunner> (str_hash, str_equal);
+        this.custom_handlers = new HashTable<string, IoctlBase> (str_hash, str_equal);
 
         this.worker_ctx = new MainContext();
         this.worker_loop = new MainLoop(this.worker_ctx);
@@ -109,6 +110,11 @@ public class Testbed: GLib.Object {
         foreach (unowned ScriptRunner r in this.dev_script_runner.get_values())
             r.stop ();
         this.dev_script_runner.remove_all();
+
+        this.custom_handlers.foreach((key, val) => {
+            val.unregister_path(key);
+        });
+        this.custom_handlers.remove_all();
 
         /* FIXME: When running from `meson test`, this causes SIGHUP
         foreach (int fd in this.dev_fd.get_values()) {
@@ -743,6 +749,57 @@ public class Testbed: GLib.Object {
         }
         debug("umockdev_testbed_uevent: sending uevent %s for device %s", action, devpath);
         this.ev_sender.send(devpath, action);
+    }
+
+    /**
+     * umockdev_testbed_attach_ioctl:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) to attach to.
+     * @handler: a #UMockdevIoctlBase instance to handle requests
+     * @error: return location for a GError, or %NULL
+     *
+     * Attach an #UMockdevIoctlBase object to handle ioctl, read and write
+     * syscalls on the given device file. This allows emulating arbitrary
+     * ioctl's and read/write calls for which umockdev does not have builtin
+     * support.
+     *
+     * Returns: %TRUE on success, %FALSE on error.
+     */
+    public bool attach_ioctl (string dev, IoctlBase handler) throws GLib.Error
+    {
+        assert (!this.custom_handlers.contains (dev));
+
+        string sockpath = Path.build_filename(this.root_dir, "ioctl", dev);
+        handler.register_path(this.worker_ctx, dev, sockpath);
+
+        this.custom_handlers.insert(dev, handler);
+
+        return true;
+    }
+
+    /**
+     * umockdev_testbed_detach_ioctl:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) to detach.
+     * @error: return location for a GError, or %NULL
+     *
+     * Detach a custom #UMockdevIoctlBase object from an device node again. See
+     * umockdev_testbed_attach_ioctl(). It is an error to call this function
+     * if the path is not currently attached.
+     *
+     * Returns: %TRUE on success, %FALSE on error.
+     */
+    public bool detach_ioctl (string dev) throws GLib.Error
+    {
+        IoctlBase handler = this.custom_handlers[dev];
+
+        if (handler == null)
+            throw new IOError.NOT_FOUND("No handler for device was registered.");
+
+        handler.unregister_path(dev);
+        this.custom_handlers.remove(dev);
+
+        return true;
     }
 
     /**
@@ -1489,6 +1546,8 @@ public class Testbed: GLib.Object {
     private HashTable<string,int> dev_fd;
     private HashTable<string,ScriptRunner> dev_script_runner;
     private SocketServer socket_server = null;
+
+    private HashTable<string,IoctlBase> custom_handlers;
 
     private Thread<void> worker_thread;
     private MainContext worker_ctx;
