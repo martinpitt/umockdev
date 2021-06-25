@@ -29,7 +29,7 @@ private bool __in_mock_env_result = false;
  * @short_description: Build a test bed for testing software that handles Linux
  * hardware devices.
  *
- * Please see README.rst about an overview of the parts of umockdev, and how
+ * Please see README.md about an overview of the parts of umockdev, and how
  * they fit together.
  */
 

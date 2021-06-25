@@ -8,7 +8,7 @@ developers of software like gphoto or libmtp to receive these records in bug
 reports and recreate the problem on their system without having access to the
 affected hardware.
 
-The ``UMockdevTestbed`` class builds a temporary sandbox for mock devices.
+The `UMockdevTestbed` class builds a temporary sandbox for mock devices.
 You can add a number of devices including arbitrary sysfs attributes and udev
 properties, and then run your software in that test bed that is independent of
 the actual hardware it is running on.  With this you can simulate particular
@@ -33,27 +33,28 @@ Right now umockdev supports the following features:
 
 - Recording and replay of read()s/recv()s and write()s/send()s from/to a
   character device (e. g. for emulating modems) or an Unix socket (e. g. for
-  Android's /dev/socket/rild). These records are called ``scripts``. Replay can
+  Android's /dev/socket/rild). These records are called "scripts". Replay can
   optionally use a configurable fuzz factor in case the expected (previously
   recorded) script data doesn't perfectly match what is actually being sent
   from the tested application.
 
 - Replay of usbdevfs (e. g. for PtP/MTP devices). Two methods are available for
-  flexible and pure in-order replay. The ``--ioctl`` based replay may allow
-  interactive emulation while the ``pcap``/``usbmon`` based replay is purely
+  flexible and pure in-order replay. The `--ioctl` based replay may allow
+  interactive emulation while the `pcap`/`usbmon` based replay is purely
   in-order and supports control transfer replay.
 
 - Recording and replay of evdev (touch pads, Wacom tablets, etc.) ioctls.
 
-- Recording and replay of spidev ioctls and read/write commands using ``--ioctl``
-  for both ``umockdev-record`` and ``umockdev-run``. This is an in-order
-  record/replay of all SPI transfers. Similar to ``scripts``
+- Recording and replay of spidev ioctls and read/write commands using `--ioctl`
+  for both `umockdev-record` and `umockdev-run`. This is an in-order
+  record/replay of all SPI transfers. Similar to scripts
   with the difference that full duplex transfers via ioctl are supported.
   Timinges/errors are currently not recorded.
 
-- Recording and replay of evdev input events using the evemu events format
-  (https://github.com/bentiss/evemu/blob/master/README.md). Unlike recorded
-  evdev scripts these are architecture independent and human readable.
+- Recording and replay of evdev input events using the
+  [evemu events format](https://github.com/bentiss/evemu/blob/master/README.md).
+  Unlike recorded evdev scripts these are architecture independent and human
+  readable.
 
 - Mocking of files and directories in /proc
 
@@ -63,52 +64,51 @@ Component overview
 ==================
 umockdev consists of the following parts:
 
-- The ``umockdev-record`` program generates text dumps (conventionally called
-  ``*.umockdev``) of some specified, or all of the system's devices and their
+- The `umockdev-record` program generates text dumps (conventionally called
+  `*.umockdev`) of some specified, or all of the system's devices and their
   sysfs attributes and udev properties. It can also record ioctls and
   reads/writes that a particular program sends and receives to/from a device,
-  and store them into a text file (conventionally called ``*.ioctl`` for ioctl
-  records, and ``*.script`` for read/write records).
+  and store them into a text file (conventionally called `*.ioctl` for ioctl
+  records, and `*.script` for read/write records).
 
-- The libumockdev library provides the ``UMockdevTestbed`` GObject class which
+- The libumockdev library provides the `UMockdevTestbed` GObject class which
   builds sysfs and /dev testbeds, provides API to generate devices,
-  attributes, properties, and uevents on the fly, and can load ``*.umockdev``
-  and ``*.ioctl`` records into them. It provides VAPI and GI bindings, so you
+  attributes, properties, and uevents on the fly, and can load `*.umockdev`
+  and `*.ioctl` records into them. It provides VAPI and GI bindings, so you
   can use it from C, Vala, and any programming language that supports
   introspection. This is the API that you should use for writing regression
-  tests. You can find the API documentation in ``docs/reference`` in the
-  source directory.
+  tests. You can find the API documentation in [docs/reference/](./docs/reference/).
 
 - The libumockdev-preload library intercepts access to /sys, /dev/, /proc/, the
   kernel's netlink socket (for uevents) and ioctl() and re-routes them into
   the sandbox built by libumockdev. You don't interface with this library
   directly, instead you need to run your test suite or other program that uses
-  libumockdev through the ``umockdev-wrapper`` program.
+  libumockdev through the `umockdev-wrapper` program.
 
-- The ``umockdev-run`` program builds a sandbox using libumockdev, can load
-  ``*.umockdev``, ``*.ioctl``, and ``*.script`` files into it, and run a
+- The `umockdev-run` program builds a sandbox using libumockdev, can load
+  `*.umockdev`, `*.ioctl`, and `*.script` files into it, and run a
   program in that sandbox. I. e. it is a CLI interface to libumockdev, which is
   useful in the "debug a failure with a particular device" use case if you get
   the text dumps from a bug report. This automatically takes care of using the
-  preload library, i. e. you don't need ``umockdev-wrapper`` with this. You
+  preload library, i. e. you don't need `umockdev-wrapper` with this. You
   cannot use this program if you need to simulate uevents or change
   attributes/properties on the fly; for those you need to use libumockdev
   directly.
 
 Mocking /proc and /dev
 ======================
-When enabled, the preload library diverts access to ``/proc`` and ``/dev`` to
-the corresponding directories in ``$UMOCKDEV_DIR``, aka.
-``umockdev_testbed_get_root()``. However, if a path does not exist there, it
-falls through the real ``/proc`` and ``/dev``. Thus you can easily replace
-files like ``/proc/cpuinfo`` or add new ones without losing standard files such
-as ``/dev/null`` or ``/proc/pid/*``. Currently there is no way to
+When enabled, the preload library diverts access to `/proc` and `/dev` to
+the corresponding directories in `$UMOCKDEV_DIR`, aka.
+`umockdev_testbed_get_root()`. However, if a path does not exist there, it
+falls through the real `/proc` and `/dev`. Thus you can easily replace
+files like `/proc/cpuinfo` or add new ones without losing standard files such
+as `/dev/null` or `/proc/pid/*`. Currently there is no way to
 "remove" files from the real directories or fully control them. You can get the
 effect of removing a file by creating a broken symlink in the umockdev
 directory though.
 
-In contrast, an ``UMockdevTestbed`` fully controls the visible ``/sys``
-directory; for a program there is no (regular) way to see the real ``/sys``,
+In contrast, an `UMockdevTestbed` fully controls the visible `/sys`
+directory; for a program there is no (regular) way to see the real `/sys`,
 unless it circumvents the libc API.
 
 Examples
@@ -117,11 +117,11 @@ API: Create a fake battery
 --------------------------
 Batteries, and power supplies in general, are simple devices in the sense that
 userspace programs such as upower only communicate with them through sysfs and
-uevents. No /dev nor ioctls are necessary. ``docs/examples/`` has two example
+uevents. No /dev nor ioctls are necessary. [docs/examples/](./docs/examples/) has two example
 programs how to use libumockdev to create a fake battery device, change it to
 low charge, sending an uevent, and running upower on a local test system D-BUS
-in the testbed, with watching what happens with ``upower --monitor-detail``.
-``battery.c`` shows how to do that with plain GObject in C, ``battery.py`` is
+in the testbed, with watching what happens with `upower --monitor-detail`.
+`battery.c` shows how to do that with plain GObject in C, `battery.py` is
 the equivalent program in Python that uses the GI binding.
 
 Command line: Record and replay PtP/MTP USB devices (unordered)
@@ -138,76 +138,62 @@ based replayer will be more appropriate.
 - Connect your digital camera, mobile phone, or other device which supports
   PtP or MTP, and locate it in lsusb. For example
 
-  ::
-
-    Bus 001 Device 012: ID 0fce:0166 Sony Ericsson Xperia Mini Pro
+      Bus 001 Device 012: ID 0fce:0166 Sony Ericsson Xperia Mini Pro
 
 - Dump the sysfs device and udev properties:
 
-  ::
-
-    $ umockdev-record /dev/bus/usb/001/012 > mobile.umockdev
+      umockdev-record /dev/bus/usb/001/012 > mobile.umockdev
 
 - Now record the dynamic behaviour (i. e. usbfs ioctls) of various operations.
   You can store multiple different operations in the same file, which will
   share the common communication between them. For example:
 
-  ::
-
-    $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
-    $ umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
+      umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
+      umockdev-record --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
 
 - Now you can disconnect your device, and run the same operations in a mocked
-  testbed. Please note that ``/dev/bus/usb/001/012`` merely echoes what is in
-  ``mobile.umockdev`` and it is independent of what is actually in the real
-  /dev directory. You can rename that device in the generated ``*.umockdev``
+  testbed. Please note that `/dev/bus/usb/001/012` merely echoes what is in
+  `mobile.umockdev` and it is independent of what is actually in the real
+  /dev directory. You can rename that device in the generated `*.umockdev`
   files and on the command line.
 
-  ::
+      umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
+      umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
 
-    $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-detect
-    $ umockdev-run --device mobile.umockdev --ioctl /dev/bus/usb/001/012=mobile.ioctl mtp-emptyfolders
-
-Note that if your ``*.ioctl`` files get too large for some purpose, you can
+Note that if your `*.ioctl` files get too large for some purpose, you can
 xz-compress them.
 
-Command line: Record and replay USB devices using ``usbmon`` pcap captures
+Command line: Record and replay USB devices using `usbmon` pcap captures
 ------------------------------------------------------------------------
 
 This method of USB replay is a pure in-order replay. This has the advantage that
 timeouts will be correctly emulated rather than causing discontinuities in the
-replayer and possibly incorrect device state emulation. ``pcap`` currently also
+replayer and possibly incorrect device state emulation. `pcap` currently also
 has the advantage of correctly replaying USB control transfers.
 
 - Connect your device and locate it in lsusb. For example
 
-  ::
-
-    Bus 001 Device 004: ID 06cb:00bd Synaptics, Inc. Prometheus MIS Touch Fingerprint Reader
+      Bus 001 Device 004: ID 06cb:00bd Synaptics, Inc. Prometheus MIS Touch Fingerprint Reader
 
 - Dump the sysfs device and udev properties:
 
-  ::
+      umockdev-record /dev/bus/usb/001/004 > fingerprint.umockdev
 
-    $ umockdev-record /dev/bus/usb/001/004 > fingerprint.umockdev
-
-- Use ``wireshark`` to record the bus in question (bus 001, ``usbmon1``). By
+- Use `wireshark` to record the bus in question (bus 001, `usbmon1`). By
   default this will record all devices. To minimize the size of the capture, you
   may use a filter to only record/save communication to the device in question.
 
   After starting the capture, run the command to capture the required
-  interactions. For example the ``synaptics/custom.py`` test script from libfprint.
+  interactions. For example the `synaptics/custom.py` test script from libfprint.
 
 - Now you can disconnect your device, and run the same operations in a mocked
   testbed. To do so, load the sysfs device and udev properties. Then specify
-  the ``--pcap`` option with the corresponding sysfs path of the device. Doing
-  so will create the appropriate ``usbdevfs`` device node.
+  the `--pcap` option with the corresponding sysfs path of the device. Doing
+  so will create the appropriate `usbdevfs` device node.
 
   Note that you need to specify the sysfs path from the device description.
 
-  ::
-
-    $ umockdev-run --device fingerprint.umockdev --pcap /sys/devices/pci0000:00/0000:00:14.0/usb1/1-9=fingerprint.pcapng synaptics/custom.py
+      umockdev-run --device fingerprint.umockdev --pcap /sys/devices/pci0000:00/0000:00:14.0/usb1/1-9=fingerprint.pcapng synaptics/custom.py
 
 
 Command line: Record and replay tty devices
@@ -217,43 +203,35 @@ This example records the behaviour of an USB 3G stick with ModemManager.
 - Dump the sysfs device and udev properties of the relevant tty devices (a
   Huawei stick creates ttyUSB{0,1,2}):
 
-  ::
-
-    umockdev-record /dev/ttyUSB* > huawei.umockdev
+      umockdev-record /dev/ttyUSB* > huawei.umockdev
 
 
 - Record the communication that goes on between ModemManager and the 3G stick
   into a file ("script"):
 
-  ::
+      umockdev-record -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
+          -s /dev/ttyUSB2=2.script -- modem-manager --debug
 
-    umockdev-record -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
-        -s /dev/ttyUSB2=2.script -- modem-manager --debug
-
-  (The --debug option for ModemManager is not necessary, but it's nice to see
+  (The `--debug` option for ModemManager is not necessary, but it's nice to see
   what's going on). Note that you should shut down the running system instance
   for that, or run this on a private D-BUS.
 
 - Now you can disconnect the stick (not necessary, just to clearly prove that
   the following does not actually talk to the stick), and replay in a test bed:
 
-  ::
-
-    umockdev-run -d huawei.umockdev -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
-         -s /dev/ttyUSB2=2.script -- modem-manager --debug
+      umockdev-run -d huawei.umockdev -s /dev/ttyUSB0=0.script -s /dev/ttyUSB1=1.script \
+           -s /dev/ttyUSB2=2.script -- modem-manager --debug
 
 
 Record and replay an Unix socket
 --------------------------------
 This example records the behaviour of ofonod when talking to Android's rild
-through ``/dev/socket/rild``.
+through `/dev/socket/rild`.
 
 - Record the communication:
 
-  ::
-
-    sudo pkill ofonod
-    sudo umockdev-record -s /dev/socket/rild=phonecall.script -- ofonod -n -d
+      sudo pkill ofonod
+      sudo umockdev-record -s /dev/socket/rild=phonecall.script -- ofonod -n -d
 
   Now make a call, send a SMS, or anything else you want to replay later.
   Press Control-C when you are done.
@@ -263,140 +241,113 @@ through ``/dev/socket/rild``.
   a fuzz factor of 5, i. e. at most 5% of the bytes in a message are allowed
   to be different from the recorded ones. Insert a line
 
-  ::
+      f 5 -
 
-     f 5 -
-
-  at the top of the file. See docs/script-format.txt for details.
+  at the top of the file. See [docs/script-format.txt](./docs/script-format.txt) for details.
 
 - Now you can run ofonod in a testbed with the mocked rild:
 
-  ::
-
-    sudo pkill ofonod
-    sudo umockdev-run -u /dev/socket/rild=phonecall.script -- ofonod -n -d
+      sudo pkill ofonod
+      sudo umockdev-run -u /dev/socket/rild=phonecall.script -- ofonod -n -d
 
   Note that you don't need to record device properties or specify -d/--device
   for unix sockets, since their path is all that is to be known about them.
 
   With the API, you would do this with a call like
 
-  ::
+      umockdev_testbed_load_socket_script(testbed, "/dev/socket/rild",
+                                          SOCK_STREAM, "phonecall.script", &error);
 
-    umockdev_testbed_load_socket_script(testbed, "/dev/socket/rild",
-                                        SOCK_STREAM, "phonecall.script", &error);
-
-  Note that for Unix sockets you cannot ``use umockdev_testbed_get_dev_fd()``,
+  Note that for Unix sockets you cannot `use umockdev_testbed_get_dev_fd()`,
   you can only use scripts with them. If you need full control in your test suite,
-  you can of course create the socket in <testbed root>/<socket path> and
+  you can of course create the socket in `<testbed root>/<socket path>` and
   handle the bind/accept/communication yourself.
 
 Record and replay input devices
 -------------------------------
-For those the "evemu" format is preferrable as it is platform independent
+For those the "evemu" format is preferable as it is platform independent
 (scripts depend on the architecture endianess and size of time_t) and human
 readable. ioctls need to be recorded as well, as they specify the input
 device's capability beyond what it is already exposed in sysfs, particularly
 for multi-touch devices.
 
-This uses the "evtest" program, but you can use anything which listens to evdev
+This uses the `evtest` program, but you can use anything which listens to evdev
 devices.
 
 - Record the static device data, ioctls, and some events. This needs to run as
   root:
 
-  ::
-
-    umockdev-record /dev/input/event3 > mouse.umockdev
-    umockdev-record -i /dev/input/event3=mouse.ioctl -e /dev/input/event3=mouse.events \
-        -- evtest /dev/input/event3
+      sudo umockdev-record /dev/input/event3 > mouse.umockdev
+      sudo umockdev-record -i /dev/input/event3=mouse.ioctl \
+        -e /dev/input/event3=mouse.events -- evtest /dev/input/event3
 
   Now cause some events on the devices (key presses, mouse clicks, touch
   clicks, etc.), and stop evtest with Control-C.
 
 - Replay is straightforward. It does not need root privileges:
 
-  ::
-
-    umockdev-run -d mouse.umockdev -i /dev/input/event3=mouse.ioctl \
-        -e /dev/input/event3=mouse.events -- evtest /dev/input/event3
+      umockdev-run -d mouse.umockdev -i /dev/input/event3=mouse.ioctl \
+          -e /dev/input/event3=mouse.events -- evtest /dev/input/event3
 
   Press Control-C again to stop evtest.
 
 Command line: Mock file in /proc
 ================================
-By default, ``/proc`` is the standard system directory:
+By default, `/proc` is the standard system directory:
 
-::
-
-  $ umockdev-run -- head -n2 /proc/cpuinfo
-  processor	: 0
-  vendor_id	: GenuineIntel
+    $ umockdev-run -- head -n2 /proc/cpuinfo
+    processor	: 0
+    vendor_id	: GenuineIntel
 
 But you can replace files (or directories) in it by the ones in the mock dir:
 
-::
-
-  $ umockdev-run -- sh -c 'mkdir $UMOCKDEV_DIR/proc;
-  >   echo hello > $UMOCKDEV_DIR/proc/cpuinfo;
-  >   cat /proc/cpuinfo'
-  hello
+    $ umockdev-run -- sh -c 'mkdir $UMOCKDEV_DIR/proc;
+    >   echo hello > $UMOCKDEV_DIR/proc/cpuinfo;
+    >   cat /proc/cpuinfo'
+    hello
 
 
 Build, Test, Run
 ================
-If you want to build umockdev from a git checkout, run ./autogen.sh to build
+If you want to build umockdev from a git checkout, run `./autogen.sh` to build
 the autotools files; you need autoreconf, autoconf, automake, libtool, and
 gtk-doc-tools for this.
 
 After that, or if you build from a release tarball, umockdev uses a standard
 autotools build system:
 
-- Run ``./configure`` first; you may want to supply ``--prefix``,
-  ``--sysconfdir``, and other options, see ``./configure --help``.
-- Run ``make`` to build the project.
-- Run ``make check`` to run the tests against the build tree.
-- Run ``make check-code-coverage`` to run the tests against the build tree and
+- Run `./configure` first; you may want to supply `--prefix`,
+  `--sysconfdir`, and other options, see `./configure --help`.
+- Run `make` to build the project.
+- Run `make check` to run the tests against the build tree.
+- Run `make check-code-coverage` to run the tests against the build tree and
   measure the code coverage (requires configuring with --enable-code-coverage).
-  Report will be written to ``umockdev-*-coverage/index.html``.
-- Run ``make install`` as root to install into the configured prefix
-  (``/usr/local`` by default).
-- Run ``make check-installed`` to run the test suite against the installed
+  Report will be written to `umockdev-*-coverage/index.html`.
+- Run `make install` as root to install into the configured prefix
+  (`/usr/local` by default).
+- Run `make check-installed` to run the test suite against the installed
   version of umockdev.
 
 If you don't want to install umockdev but use it from the build tree, set
 these environment variables, assuming that your current directory is the
 top-level directory of the umockdev tree:
 
-::
-
-  LD_LIBRARY_PATH=`pwd`/.libs:$LD_LIBRARY_PATH
-  GI_TYPELIB_PATH=`pwd`:$GI_TYPELIB_PATH
-  PATH=`pwd`/src:$PATH
+    LD_LIBRARY_PATH=`pwd`/.libs:$LD_LIBRARY_PATH
+    GI_TYPELIB_PATH=`pwd`:$GI_TYPELIB_PATH
+    PATH=`pwd`/src:$PATH
 
 Debugging
 =========
 To debug umockdev itself and what it's doing, you can set the
-``$UMOCKDEV_DEBUG`` environment variable to a list (comma or space separated)
+`$UMOCKDEV_DEBUG` environment variable to a list (comma or space separated)
 of
 
-path
-   Redirection of paths in ``/sys``, ``/dev`` etc. to testbed
-
-netlink
-   Redirection of netlink socket and uevent synthesis
-
-script
-   Script (device reads/writes) recording and replay
-
-ioctl
-   ioctl recording and replay
-
-ioctl-tree
-   detailed parsing and traversal of recorded ioctl trees
-
-all
-   All debug categories
+- `path`: Redirection of paths in `/sys`, `/dev` etc. to testbed
+- `netlink`: Redirection of netlink socket and uevent synthesis
+- `script`: Script (device reads/writes) recording and replay
+- `ioctl`: ioctl recording and replay
+- `ioctl-tree`: detailed parsing and traversal of recorded ioctl trees
+- `all`: All debug categories
 
 Development
 ===========
@@ -415,8 +366,8 @@ scripts/ioctls, etc.), unless it is a feature request.
 
 License
 =======
-Copyright (C) 2012 - 2014 Canonical Ltd.
-Copyright (C) 2017 - 2020 Martin Pitt
+- Copyright (C) 2012 - 2014 Canonical Ltd.
+- Copyright (C) 2017 - 2021 Martin Pitt
 
 umockdev is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by
