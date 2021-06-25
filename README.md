@@ -309,32 +309,35 @@ But you can replace files (or directories) in it by the ones in the mock dir:
 
 Build, Test, Run
 ================
-If you want to build umockdev from a git checkout, run `./autogen.sh` to build
-the autotools files; you need autoreconf, autoconf, automake, libtool, and
-gtk-doc-tools for this.
 
-After that, or if you build from a release tarball, umockdev uses a standard
-autotools build system:
+If you want to build umockdev from a git checkout, install the necessary build
+dependencies first. On a Debian based system:
 
-- Run `./configure` first; you may want to supply `--prefix`,
-  `--sysconfdir`, and other options, see `./configure --help`.
-- Run `make` to build the project.
-- Run `make check` to run the tests against the build tree.
-- Run `make check-code-coverage` to run the tests against the build tree and
-  measure the code coverage (requires configuring with --enable-code-coverage).
-  Report will be written to `umockdev-*-coverage/index.html`.
-- Run `make install` as root to install into the configured prefix
-  (`/usr/local` by default).
-- Run `make check-installed` to run the test suite against the installed
-  version of umockdev.
+    sudo apt install -y meson pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev libpcap-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools
 
-If you don't want to install umockdev but use it from the build tree, set
-these environment variables, assuming that your current directory is the
-top-level directory of the umockdev tree:
+In order to run all integration tests, install the test dependencies:
 
-    LD_LIBRARY_PATH=`pwd`/.libs:$LD_LIBRARY_PATH
-    GI_TYPELIB_PATH=`pwd`:$GI_TYPELIB_PATH
-    PATH=`pwd`/src:$PATH
+    sudo apt install -y udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2
+
+umockdev uses the [meson build system](https://mesonbuild.com/). Configure a
+build tree with desired options with
+
+    meson setup build/
+    cd build/
+
+You may want to supply `--prefix=/usr` or similar options, see `meson setup --help`.
+
+- Build the configured build directory with `meson compile`.
+- Run tests against the build tree with `meson test`.
+- Generate a code coverage report with configuring the build tree with `-Db_coverage=true`
+  and running `ninja coverage-text`.
+- Install into the configured prefix with `sudo meson install` (`/usr/local` by default).
+
+If you don't want to install umockdev but use it from the build tree, run the
+programs with these environment variables, assuming that your current directory is the build
+directory:
+
+    LD_LIBRARY_PATH=`pwd` GI_TYPELIB_PATH=`pwd` ./umockdev-run ...
 
 Debugging
 =========
