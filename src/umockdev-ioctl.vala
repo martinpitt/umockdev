@@ -144,38 +144,17 @@ public class IoctlData {
      * between two separate ioctl's).
      * It is very unlikely that such an explicit reload is needed.
      *
-     * Note pointers modified cannot be reloaded. As such, you may need to
-     * resolve the data again and it is usually a good idea to do so.
-     *
-     * The function will try to recursively update any resolved pointers. If
-     * the pointer was modified by the client it will not be resolved
-     * afterwards!
+     * Doing this unresolves any resolved pointers. Take care to re-resolve
+     * them and use the newly resolved #IoctlData in case you need to access
+     * the data.
      *
      * Returns: #TRUE on success, #FALSE otherwise
      */
     public bool reload() throws IOError {
         load_data();
 
-        IoctlData[] old_children = children;
-        size_t[] old_offsets = children_offset;
-
         children.resize(0);
         children_offset.resize(0);
-
-        for (int i = 0; i < old_children.length; i++) {
-            /* If the pointer has an unexpected value, then just drop the reference. */
-            if (*((size_t*) &data[old_offsets[i]]) != old_children[i].client_addr)
-                continue;
-
-            /* Reload and set correct pointer. */
-            old_children[i].reload();
-
-            *((void**) &data[old_offsets[i]]) = old_children[i].data;
-
-            /* Store in our new children array. */
-            children += old_children[i];
-            children_offset += old_offsets[i];
-        }
 
         return true;
     }
