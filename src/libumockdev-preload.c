@@ -645,25 +645,25 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
 	    case IOCTL_RES_ABORT:
 		fprintf(stderr, "ERROR: libumockdev-preload: Server requested abort on device %s, exiting\n",
 			fdinfo->dev_path);
-		exit(1);
+		abort();
 
 	    default:
 		fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, unknown command: %ld (res: %d)\n",
 			req.cmd, res);
-		exit(1);
+		abort();
 	}
     }
 
 con_eof:
     fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, received EOF\n");
     pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
-    exit(1);
+    abort();
 
 con_err:
     fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, errno: %d\n",
 	    errno);
     pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
-    exit(1);
+    abort();
 }
 
 /********************************
