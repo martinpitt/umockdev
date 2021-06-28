@@ -71,7 +71,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
         ulong size = (request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
 
         try {
-            data = client.arg.resolve(0, size, true, true);
+            data = client.arg.resolve(0, size);
         } catch (IOError e) {
             warning("Error resolving IOCtl data: %s", e.message);
             return false;
@@ -80,7 +80,6 @@ internal class IoctlUsbPcapHandler : IoctlBase {
         switch (request) {
             case USBDEVFS_GET_CAPABILITIES:
                 *(uint32*) data.data = capabilities;
-                data.dirty(false);
 
                 client.complete(0, 0);
                 return true;
@@ -116,7 +115,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
                 info.urb_data = data;
                 try {
-                    info.buffer_data = data.resolve(offset, urb.buffer_length, true, false);;
+                    info.buffer_data = data.resolve(offset, urb.buffer_length);
                 } catch (IOError e) {
                     warning("Error resolving IOCtl data: %s", e.message);
                     return false;
@@ -145,20 +144,14 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                         message("Replay may be stuck: Reaping discard URB of type %d, for endpoint 0x%02x with length %d without corresponding submit",
                                 urb.type, urb.endpoint, urb.buffer_length);
                     }
-
-                    urb_info.urb_data.dirty(false);
                 } else {
                     urb_info = next_reapable_urb();
                 }
 
                 if (urb_info != null) {
-                    try {
-                        data.set_ptr(0, urb_info.urb_data);
-                        client.complete(0, 0);
-                        return true;
-                    } catch (IOError e) {
-                        return false;
-                    }
+                     data.set_ptr(0, urb_info.urb_data);
+                     client.complete(0, 0);
+                     return true;
                 } else {
                     client.complete(-1, Posix.EAGAIN);
                     return true;
@@ -316,14 +309,12 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     continue;
 
                 /* We can reap this urb!
-                 * Copy data back if we have it. */
-                if (urb_hdr.data_len > 0) {
+                 * Copy data back if we have it.
+                 */
+                if (urb_hdr.data_len > 0)
                     Posix.memcpy(urb.buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_hdr.data_len);
-                    urb_info.buffer_data.dirty(false);
-                }
                 urb.status = (int) urb_hdr.status;
                 urb.actual_length = (int) urb_hdr.urb_len;
-                urb_info.urb_data.dirty(false);
 
                 /* Does this need further handling? */
                 assert(urb_hdr.start_frame == 0);
