@@ -96,9 +96,9 @@ internal abstract class IoctlSpiBase : IoctlBase {
             // Resolves buffers. Mark RX buf as dirty as we will need to write it back (and don't load it).
             try {
                 if (transfer.tx_buf != 0)
-                    tx = data.resolve((ulong) &transfer.tx_buf - (ulong) data.data, transfer.len, true, false);
+                    tx = data.resolve((ulong) &transfer.tx_buf - (ulong) data.data, transfer.len);
                 if (transfer.rx_buf != 0)
-                    rx = data.resolve((ulong) &transfer.rx_buf - (ulong) data.data, transfer.len, for_recording, !for_recording);
+                    rx = data.resolve((ulong) &transfer.rx_buf - (ulong) data.data, transfer.len);
             } catch (IOError e) {
                 warning("Error resolving IOCtl data: %s", e.message);
                 return -100;
@@ -199,7 +199,7 @@ internal class IoctlSpiHandler : IoctlSpiBase {
         ulong size = (request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
 
         try {
-            data = client.arg.resolve(0, size, true, true);
+            data = client.arg.resolve(0, size);
         } catch (IOError e) {
             warning("Error resolving IOCtl data: %s", e.message);
             return false;
@@ -241,7 +241,6 @@ internal class IoctlSpiHandler : IoctlSpiBase {
     public override bool handle_read(IoctlClient client) {
         long res = handle_read_write(null, client.arg, false);
 
-        client.arg.dirty(false);
         if (res < 0)
             client.complete(-1, - (int) res);
         else
@@ -253,7 +252,6 @@ internal class IoctlSpiHandler : IoctlSpiBase {
     public override bool handle_write(IoctlClient client) {
         long res = handle_read_write(client.arg, null, false);
 
-        client.arg.dirty(false);
         if (res < 0)
             client.complete(-1, - (int) res);
         else
@@ -349,7 +347,7 @@ internal class IoctlSpiRecorder : IoctlSpiBase {
         ulong size = (request >> Ioctl._IOC_SIZESHIFT) & ((1 << Ioctl._IOC_SIZEBITS) - 1);
 
         try {
-            data = client.arg.resolve(0, size, true, true);
+            data = client.arg.resolve(0, size);
         } catch (IOError e) {
             warning("Error resolving IOCtl data: %s", e.message);
             return false;
@@ -406,12 +404,6 @@ internal class IoctlSpiRecorder : IoctlSpiBase {
             client.complete(-1, my_errno);
             return true;
         }
-        /* Read memory is not resolved yet. */
-        try {
-            client.arg.reload(false);
-        } catch (GLib.IOError e) {
-            return false;
-        };
         client.complete(res, 0);
 
         handle_read_write(null, client.arg, false);

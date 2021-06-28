@@ -31,13 +31,16 @@ internal bool signal_accumulator_true_handled(GLib.SignalInvocationHint ihint,
  * of the user provided structure.
  */
 public class IoctlData {
+    /* Local cache to check if data is dirty before flushing. This is both an
+     * optimization as it avoids flushes, but is also necessary to avoid
+     * writing into read-only memory.
+     */
+    private uint8[] client_data;
+
     [CCode(array_length_cname="data_len")]
     public uint8[] data;
 
     public ulong client_addr;
-
-    private bool parent_reloaded;
-    private bool need_flush;
 
     private IOStream stream;
 
@@ -50,33 +53,29 @@ public class IoctlData {
     }
 
     /**
-     * umockdev_ioctl_data_resolve():
-     * @self: A #UmockdevIoctlData
+     * umockdev_ioctl_data_resolve:
+     * @self: A #UMockdevIoctlData
      * @offset: Byte offset of pointer inside data
      * @len: Length of the to be resolved data
-     * @load: Load memory from client
-     * @dirty: Write memory to client when done
+     * @error: return location for a GError, or %NULL
      *
-     * Resolve and address inside the data. After this operation, the pointer
-     * inside data points to a local copy or a zero initilized memory depending
-     * on whether @load is set.
+     * Resolve an address inside the data. After this operation, the pointer
+     * inside data points to a local copy of the memory. Any local modifications
+     * will be synced back by umockdev_ioctl_client_complete() and
+     * umockdev_ioctl_client_execute().
      *
      * You may call this multiple times on the same pointer in order to fetch
      * the existing information.
+     *
+     * Returns: #IoctlData, or #NULL on error
+     * Since: 0.16
      */
-    public IoctlData? resolve(size_t offset, size_t len, bool load, bool dirty) throws IOError {
+    public IoctlData? resolve(size_t offset, size_t len) throws IOError {
         IoctlData res;
 
         for (int i = 0; i < children.length; i++) {
-            if (children_offset[i] == offset) {
-                if (load && children[i].parent_reloaded)
-                    children[i].reload(false);
-
-                if (dirty)
-                    children[i].dirty(false);
-
+            if (children_offset[i] == offset)
                 return children[i];
-            }
         }
 
         if (offset + sizeof(size_t) > data.length)
@@ -84,7 +83,6 @@ public class IoctlData {
 
         res = new IoctlData(stream);
         res.data = new uint8[len];
-        res.need_flush = dirty;
         res.client_addr = *((size_t*) &data[offset]);
 
         children += res;
@@ -96,17 +94,17 @@ public class IoctlData {
 
         *((size_t*) &data[offset]) = (size_t) res.data;
 
-        if (load)
-            res.load_data();
+        res.load_data();
 
         return res;
     }
 
     /**
-     * umockdev_ioctl_data_set_ptr():
-     * @self: A #UmockdevIoctlData
+     * umockdev_ioctl_data_set_ptr:
+     * @self: A #UMockdevIoctlData
      * @offset: Byte offset of pointer inside data
      * @child: Memory block that the pointer should point to
+     * @error: return location for a GError, or %NULL
      *
      * Basically the reverse operation of umockdev_ioctl_data_resolve(). It sets
      * the pointer at @offset to point to the data from @child in a way that
@@ -116,8 +114,11 @@ public class IoctlData {
      *
      * The function will only work correctly for pointer elements that have not
      * been resolved before.
+     *
+     * Returns: %TRUE on success, %FALSE
+     * Since: 0.16
      */
-    public void set_ptr(size_t offset, IoctlData child) throws IOError {
+    public bool set_ptr(size_t offset, IoctlData child) throws GLib.Error {
 
         foreach (size_t o in children_offset) {
             assert(o != offset);
@@ -129,24 +130,30 @@ public class IoctlData {
         children_offset += offset;
 
         *((size_t*) &data[offset]) = (size_t) child.data;
-        need_flush = true;
+
+        return true;
     }
 
     /**
-     * umockdev_ioctl_data_reload():
+     * umockdev_ioctl_data_reload:
      * @self: A #UmockdevIoctlData
-     * @recurse: Whether to recursively reload children
+     * @error: return location for a GError, or %NULL
      *
-     * Use this function after executing an ioctl from the client using
-     * umockdev_ioctl_client_execute() or if you kept data from a previous
-     * ioctl to refetch the memory. It will reload the data of this buffer
-     * and resolvse known pointers within. The pointed to buffers will also
-     * be reloaded if requested.
+     * This function allows reloading the data from the client side in case
+     * you expect client modifications to have happened in the meantime (e.g.
+     * between two separate ioctl's).
+     * It is very unlikely that such an explicit reload is needed.
      *
      * Note pointers modified cannot be reloaded. As such, you may need to
      * resolve the data again and it is usually a good idea to do so.
+     *
+     * The function will try to recursively update any resolved pointers. If
+     * the pointer was modified by the client it will not be resolved
+     * afterwards!
+     *
+     * Returns: #TRUE on success, #FALSE otherwise
      */
-    public void reload(bool recurse) throws IOError {
+    public bool reload() throws IOError {
         load_data();
 
         IoctlData[] old_children = children;
@@ -161,10 +168,7 @@ public class IoctlData {
                 continue;
 
             /* Reload and set correct pointer. */
-            if (recurse)
-                old_children[i].reload(recurse);
-            else
-                old_children[i].parent_reloaded = true;
+            old_children[i].reload();
 
             *((void**) &data[old_offsets[i]]) = old_children[i].data;
 
@@ -172,29 +176,29 @@ public class IoctlData {
             children += old_children[i];
             children_offset += old_offsets[i];
         }
+
+        return true;
     }
 
-    public void dirty(bool recursive) {
-        need_flush = true;
-
-        if (!recursive)
-            return;
-
-        foreach (unowned IoctlData child in children)
-            child.dirty(true);
-    }
-
-    private void load_data() throws IOError {
+    internal void load_data() throws IOError {
         OutputStream output = stream.get_output_stream();
         InputStream input = stream.get_input_stream();
         ulong args[3];
+
+        /* The original argument has no memory associated to it */
+        if (client_addr == 0)
+            return;
+
+        client_data = new uint8[data.length];
 
         args[0] = 5; /* READ_MEM */
         args[1] = client_addr;
         args[2] = data.length;
 
         output.write_all((uint8[])args, null, null);
-        input.read_all(data, null, null);
+        input.read_all(client_data, null, null);
+
+        Posix.memcpy(data, client_data, data.length);
     }
 
     /*
@@ -210,7 +214,10 @@ public class IoctlData {
             *((size_t*) &submit_data[children_offset[i]]) = children[i].client_addr;
         }
 
-        if (need_flush) {
+        if (client_addr != 0 &&
+            submit_data.length == client_data.length &&
+            Posix.memcmp(submit_data, client_data, submit_data.length) != 0) {
+
             OutputStream output = stream.get_output_stream();
             ulong args[3];
 
@@ -220,8 +227,6 @@ public class IoctlData {
 
             yield output.write_all_async((uint8[])args, 0, null, null);
             yield output.write_all_async(submit_data, 0, null, null);
-
-            need_flush = false;
         }
     }
 
@@ -234,7 +239,10 @@ public class IoctlData {
             *((ulong*) &submit_data[children_offset[i]]) = children[i].client_addr;
         }
 
-        if (need_flush) {
+        if (client_addr != 0 &&
+            submit_data.length == client_data.length &&
+            Posix.memcmp(submit_data, client_data, submit_data.length) != 0) {
+
             OutputStream output = stream.get_output_stream();
             ulong args[3];
 
@@ -244,8 +252,6 @@ public class IoctlData {
 
             output.write_all((uint8[])args, null, null);
             output.write_all(submit_data, null, null);
-
-            need_flush = false;
         }
     }
 }
@@ -313,6 +319,10 @@ public class IoctlClient : GLib.Object {
         input.read_all((uint8[])args, null, null);
 
         assert(args[0] == 2); /* RES (result) */
+
+        /* Reload data, will usually not do anything for ioctl's as nothing
+         * will have been resolved. */
+        _arg.reload();
 
         errno_ = (int) args[2];
 
@@ -428,15 +438,12 @@ public class IoctlClient : GLib.Object {
             _arg.data = new uint8[args[2]];
             _arg.client_addr = args[1];
 
-            if (args[0] == 8) {
-                /* Load data for writes */
-                try {
-                    _arg.reload(false);
-                } catch (IOError e) {
-                    warning("Error resolving IOCtl data: %s", e.message);
-                    complete(-100, 0);
-                    return;
-                };
+            try {
+                _arg.load_data();
+            } catch (IOError e) {
+                warning("Error resolving IOCtl data: %s", e.message);
+                complete(-100, 0);
+                return;
             }
         }
 
@@ -477,7 +484,7 @@ public class IoctlClient : GLib.Object {
 
             try {
                 if (size > 0)
-                    data = _arg.resolve(0, size, true, true);
+                    data = _arg.resolve(0, size);
             } catch (IOError e) {
                 warning("Error resolving IOCtl data: %s", e.message);
 
@@ -709,7 +716,7 @@ internal class IoctlTreeHandler : IoctlBase {
 
         try {
             if (size > 0)
-                data = client.arg.resolve(0, size, true, true);
+                data = client.arg.resolve(0, size);
 
             /* NOTE: The C code assumes pointers are resolved, as such,
              * all non-trivial structures need to be explicitly listed here.
@@ -720,7 +727,7 @@ internal class IoctlTreeHandler : IoctlBase {
 
                     size_t offset = (ulong) &urb.buffer - (ulong) urb;
 
-                    data.resolve(offset, urb.buffer_length, true, false);
+                    data.resolve(offset, urb.buffer_length);
                 }
             }
         } catch (IOError e) {
@@ -757,21 +764,7 @@ internal class IoctlTreeHandler : IoctlBase {
              * just always check.
              */
             if (*(void**) data.data == (void*) last_submit_urb.data) {
-                try {
-                    data.set_ptr(0, last_submit_urb);
-                } catch (IOError e) {
-                    return false;
-                }
-
-                Ioctl.usbdevfs_urb *urb = (Ioctl.usbdevfs_urb*) last_submit_urb.data;
-
-                /* Note that the client side buffer may be de-allocated at this point.
-                 * As such, we only mark dirty recursively (i.e. including the buffer)
-                 * if this was an input EP */
-                if ((urb.endpoint & 0x80) == 0x80)
-                    last_submit_urb.dirty(true);
-                else
-                    last_submit_urb.dirty(false);
+                data.set_ptr(0, last_submit_urb);
 
                 last_submit_urb = null;
             }
@@ -845,7 +838,7 @@ internal class IoctlTreeRecorder : IoctlBase {
 
             /* Resolve data */
             if (size > 0)
-                data = client.arg.resolve(0, size, true, false);
+                data = client.arg.resolve(0, size);
 
             /* NOTE: The C code assumes pointers are resolved, as such,
              * all non-trivial structures need to be explicitly listed here.
@@ -856,7 +849,7 @@ internal class IoctlTreeRecorder : IoctlBase {
                 if (request == Ioctl.USBDEVFS_REAPURB ||
                     request == Ioctl.USBDEVFS_REAPURBNDELAY) {
 
-                    urb_data = data.resolve(0, sizeof(Ioctl.usbdevfs_urb), true, false);
+                    urb_data = data.resolve(0, sizeof(Ioctl.usbdevfs_urb));
                 } else if (request == Ioctl.USBDEVFS_SUBMITURB) {
                     urb_data = data;
                 }
@@ -866,7 +859,7 @@ internal class IoctlTreeRecorder : IoctlBase {
 
                     size_t offset = (ulong) &urb.buffer - (ulong) urb;
 
-                    urb_data.resolve(offset, urb.buffer_length, true, false);
+                    urb_data.resolve(offset, urb.buffer_length);
                 }
             }
         } catch (IOError e) {
