@@ -1,3 +1,10 @@
+## [0.16.0] - UNRELEASED
+- Move ioctl emulation from preload library to main test process
+- Add test API for custom ioctl and device read/write handlers (#96, #128)
+- Support USB replay from usbmon pcap captures (#82, #117)
+- Support SPI ioctl/read/write record and replay (#121)
+- Many thanks to Benjamin Berg for all of the above!
+
 ## [0.15.5] - 2021-05-03
 - Fix build with vala 0.52
 - Fix build on 32 bit Alpine
