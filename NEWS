@@ -1,4 +1,4 @@
-## [0.16.1] - UNRELEASED
+## [0.16.1] - 2021-07-02
 - Fix wrong ioctl constants on ppc64el
 - Fix test-umockdev-record failure in some build environments
 
