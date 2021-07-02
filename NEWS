@@ -1,3 +1,7 @@
+## [0.16.1] - UNRELEASED
+- Fix wrong ioctl constants on ppc64el
+- Fix test-umockdev-record failure in some build environments
+
 ## [0.16.0] - 2021-07-01
 - Move ioctl emulation from preload library to main test process
 - Add test API for custom ioctl and device read/write handlers (#96, #128)
