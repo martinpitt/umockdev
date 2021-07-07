@@ -247,8 +247,8 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
 
                     if (urb_hdr.data_len > 0) {
-                        /* This means the endpoint must be "& 0x1" true */
-                        assert((urb.endpoint & 0x01) == 0x01);
+                        /* Data must have been captured. */
+                        assert(urb_hdr.data_flag == 0);
                         assert(urb_hdr.data_len == urb.buffer_length);
 
                         /* Compare the full buffer (as we are outgoing) */
@@ -309,10 +309,12 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     continue;
 
                 /* We can reap this urb!
-                 * Copy data back if we have it.
+                 * Copy data any data back if present.
                  */
-                if (urb_hdr.data_len > 0)
+                if (urb_hdr.data_len > 0) {
+                    assert(urb_hdr.data_flag == 0);
                     Posix.memcpy(urb.buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_hdr.data_len);
+                }
                 urb.status = (int) urb_hdr.status;
                 urb.actual_length = (int) urb_hdr.urb_len;
 
