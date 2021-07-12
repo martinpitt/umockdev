@@ -172,8 +172,16 @@ internal class IoctlUsbPcapHandler : IoctlBase {
     private unowned uint8[]? cur_buf = null;
 
     private UrbInfo? next_reapable_urb() {
-         bool debug = false;
-         uint64 now = GLib.get_monotonic_time();
+        bool debug = false;
+        uint64 now = GLib.get_monotonic_time();
+
+        /* Immediately exit if we have no urbs that could be reaped.
+         * This is important, as we might incorrectly skip control transfers
+         * otherwise.
+         */
+        if (urbs.length == 0)
+            return null;
+
         /* Fetch the first packet if we do not have one. */
         if (cur_buf == null) {
             cur_buf = rec.next(ref cur_hdr);
@@ -236,35 +244,52 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     if (urb_data.pcap_id != 0)
                         continue;
 
+                    uint8* urb_buffer = urb.buffer;
+                    int urb_buffer_length = urb.buffer_length;
+
+                    /* For control transfers, the start of the buffer is the
+                     * setup data, which is stored separately in the capture.
+                     */
+                    if (urb.type == URB_CONTROL) {
+                        assert(urb_buffer_length >= 8);
+                        urb_buffer = &urb.buffer[8];
+                        urb_buffer_length -= 8;
+                    }
+
                     if ((urb.type != urb_hdr.transfer_type) ||
                         (urb.endpoint != urb_hdr.endpoint_number) ||
-                        (urb.buffer_length != urb_hdr.urb_len)) {
+                        (urb_buffer_length != urb_hdr.urb_len)) {
 
                         if (debug)
                             stderr.printf("UMockdev: Queued URB %d has a metadata mismatch!\n", i);
                         continue;
                     }
 
+                    /* Compare the setup data (first 8 bytes of buffer) */
+                    if (urb.type == URB_CONTROL && urb_hdr.setup_flag == 0) {
+                        if (Posix.memcmp(urb.buffer, &urb_hdr.s, 8) != 0)
+                            continue;
+                    }
 
                     if (urb_hdr.data_len > 0) {
                         /* Data must have been captured. */
                         assert(urb_hdr.data_flag == 0);
-                        assert(urb_hdr.data_len == urb.buffer_length);
+                        assert(urb_hdr.data_len == urb_buffer_length);
 
                         /* Compare the full buffer (as we are outgoing) */
-                        if (Posix.memcmp(urb.buffer, &cur_buf[sizeof(usb_header_mmapped)], urb.buffer_length) != 0) {
+                        if (Posix.memcmp(urb_buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_buffer_length) != 0) {
                             if (debug) {
                                 stderr.printf("UMockdev: Queued URB %d has a buffer mismatch! Recording:", i);
-                                for (int j = 0; j < urb.buffer_length; j++) {
+                                for (int j = 0; j < urb_buffer_length; j++) {
                                     if (j > 0 && j % 8 == 0)
                                         stderr.printf("\n");
                                     stderr.printf(" %02x", cur_buf[sizeof(usb_header_mmapped) + j]);
                                 }
                                 stderr.printf("\nUMockdev: Submitted:");
-                                for (int j = 0; j < urb.buffer_length; j++) {
+                                for (int j = 0; j < urb_buffer_length; j++) {
                                     if (j > 0 && j % 8 == 0)
                                         stderr.printf("\n");
-                                    stderr.printf(" %02x", urb.buffer[j]);
+                                    stderr.printf(" %02x", urb_buffer[j]);
                                 }
                                 stderr.printf("\n");
                             }
@@ -309,11 +334,20 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     continue;
 
                 /* We can reap this urb!
-                 * Copy data any data back if present.
+                 * Copy any data back if present.
                  */
                 if (urb_hdr.data_len > 0) {
                     assert(urb_hdr.data_flag == 0);
-                    Posix.memcpy(urb.buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_hdr.data_len);
+
+                    uint8* urb_buffer = urb.buffer;
+
+                    /* For control transfers, the start of the buffer is the
+                     * setup data, which is stored separately in the capture.
+                     */
+                    if (urb.type == URB_CONTROL)
+                        urb_buffer = &urb.buffer[8];
+
+                    Posix.memcpy(urb_buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_hdr.data_len);
                 }
                 urb.status = (int) urb_hdr.status;
                 urb.actual_length = (int) urb_hdr.urb_len;
