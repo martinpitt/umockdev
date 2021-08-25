@@ -31,6 +31,8 @@
 #define TRUE 1
 #define FALSE 0
 
+#define UNUSED __attribute__ ((unused))
+
 static void *
 callocx (size_t nmemb, size_t size)
 {
@@ -816,7 +818,7 @@ usbdevfs_reapurb_insertion_parent(ioctl_tree * tree, ioctl_tree * node)
  ***********************************/
 
 static int
-ioctl_execute_success(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
+ioctl_execute_success(UNUSED const ioctl_tree * _node, UNUSED IOCTL_REQUEST_TYPE _id, UNUSED void *_arg, int *ret)
 {
     errno = 0;
     *ret = 0;
@@ -824,7 +826,7 @@ ioctl_execute_success(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg,
 }
 
 static int
-ioctl_execute_enodata(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
+ioctl_execute_enodata(UNUSED const ioctl_tree * _node, UNUSED IOCTL_REQUEST_TYPE _id, UNUSED void *_arg, int *ret)
 {
     errno = ENODATA;
     *ret = -1;
@@ -832,7 +834,7 @@ ioctl_execute_enodata(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg,
 }
 
 static int
-ioctl_execute_enotty(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, int *ret)
+ioctl_execute_enotty(UNUSED const ioctl_tree * _node, UNUSED IOCTL_REQUEST_TYPE _id, UNUSED void *_arg, int *ret)
 {
     errno = ENOTTY;
     *ret = -1;
@@ -840,7 +842,7 @@ ioctl_execute_enotty(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, void *arg, 
 }
 
 static ioctl_tree *
-ioctl_insertion_parent_stateless(ioctl_tree * tree, ioctl_tree * node)
+ioctl_insertion_parent_stateless(ioctl_tree * tree, UNUSED ioctl_tree *_node)
 {
     return tree;
 }
@@ -956,7 +958,7 @@ ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id)
     return NULL;
 }
 
-const int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id)
+int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id)
 {
     ioctl_type *cur;
     for (cur = ioctl_db; cur->name[0] != '\0'; ++cur)

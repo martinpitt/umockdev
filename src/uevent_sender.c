@@ -65,7 +65,7 @@ uevent_sender_close(uevent_sender * sender)
 }
 
 static void
-sendmsg_one(uevent_sender * sender, struct msghdr *msg, const char *path)
+sendmsg_one(struct msghdr *msg, const char *path)
 {
     struct sockaddr_un event_addr;
     int fd;
@@ -111,7 +111,7 @@ sendmsg_all(uevent_sender * sender, struct msghdr *msg)
     if (res == 0) {
 	size_t i;
 	for (i = 0; i < gl.gl_pathc; ++i)
-	    sendmsg_one(sender, msg, gl.gl_pathv[i]);
+	    sendmsg_one(msg, gl.gl_pathv[i]);
     } else {
 	/* ensure that we only fail due to that, not due to bad globs */
 	if (res != GLOB_NOMATCH) {

@@ -95,7 +95,7 @@ ioctl_tree_next_wrap(ioctl_tree * tree, ioctl_tree * node)
     return (t != NULL) ? t : tree;
 }
 
-const int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id);
+int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id);
 
 /* database of known ioctls; return NULL for unknown ones */
 const ioctl_type *ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id);

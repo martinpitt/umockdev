@@ -19,6 +19,7 @@ add_project_arguments(
   '-Werror=format=2',
   #'-Werror=missing-include-dirs',
   '-Werror=unused-variable',
+  '-Werror=unused-parameter',
   '-Werror=return-type',
   '-Werror=uninitialized',
   language: 'c')

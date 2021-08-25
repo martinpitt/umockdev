@@ -45,6 +45,9 @@
 #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
 #endif
 
+#define UNUSED __attribute__ ((unused))
+#define UNUSED_DATA UNUSED gconstpointer data
+
 static gboolean has_real_sysfs;
 
 static int slow_testbed_factor = 1;
@@ -56,7 +59,7 @@ typedef struct {
 } UMockdevTestbedFixture;
 
 static void
-t_testbed_fixture_setup(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_fixture_setup(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     fixture->testbed = umockdev_testbed_new();
     g_assert(fixture->testbed != NULL);
@@ -65,7 +68,7 @@ t_testbed_fixture_setup(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_fixture_teardown(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_fixture_teardown(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     g_object_unref(fixture->testbed);
 
@@ -124,7 +127,7 @@ num_udev_devices(void)
 
 /* Empty UMockdevTestbed without any devices */
 static void
-t_testbed_empty(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_empty(UNUSED UMockdevTestbedFixture *fixture, UNUSED_DATA)
 {
     g_assert_cmpuint(num_udev_devices(), ==, 0);
 }
@@ -166,7 +169,7 @@ _t_testbed_check_extkeyboard1(const gchar * syspath)
 
 /* UMockdevTestbed add_devicev() with adding one device */
 static void
-t_testbed_add_devicev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_devicev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     gchar *attributes[] = { "idVendor", "0815", "idProduct", "AFFE", NULL };
     gchar *properties[] = { "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL };
@@ -198,7 +201,7 @@ t_testbed_add_devicev(UMockdevTestbedFixture * fixture, gconstpointer data)
 
 /* UMockdevTestbed add_device() with adding one device */
 static void
-t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     struct udev *udev;
     struct udev_monitor *udev_mon;
@@ -234,7 +237,7 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 
 /* UMockdevTestbed add_device() with adding a child device */
 static void
-t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_child_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     gchar *dev, *iface, *input;
     GUdevDevice *device, *device2;
@@ -369,7 +372,7 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, gconstpointer data)
 
 /* UMockdevTestbed add_device() with adding a block device */
 static void
-t_testbed_add_block_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_block_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     g_autofree gchar *syspath = umockdev_testbed_add_device(
             fixture->testbed, "block", "scribble", NULL,
@@ -400,7 +403,7 @@ struct TestbedErrorCatcherData {
 };
 
 static gboolean
-t_testbed_error_catcher(const gchar * log_domain, GLogLevelFlags log_level, const gchar * message, gpointer user_data)
+t_testbed_error_catcher(UNUSED const gchar *log_domain, GLogLevelFlags log_level, const gchar * message, gpointer user_data)
 {
     struct TestbedErrorCatcherData *data = (struct TestbedErrorCatcherData *)user_data;
 
@@ -412,14 +415,14 @@ t_testbed_error_catcher(const gchar * log_domain, GLogLevelFlags log_level, cons
 }
 
 static void
-ignore_log_handler (const gchar *log_domain, GLogLevelFlags log_level,
-                    const gchar *message, gpointer user_data)
+ignore_log_handler (UNUSED const gchar *log_domain, UNUSED GLogLevelFlags log_level,
+                    UNUSED const gchar *message, UNUSED gpointer user_data)
 {
 }
 
 /* UMockdevTestbed add_device() error conditions */
 static void
-t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     gchar *syspath;
     struct TestbedErrorCatcherData errors = { 0, 0, NULL };
@@ -467,7 +470,7 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, gconstpointer data
 }
 
 static void
-t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_set_attribute(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GUdevDevice *device;
     g_autofree gchar *contents = NULL;
@@ -515,7 +518,7 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_set_property(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_set_property(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GUdevDevice *device;
     gchar *prop;
@@ -566,7 +569,7 @@ struct event_counter {
 };
 
 static void
-on_uevent(GUdevClient * client, const gchar * action, GUdevDevice * device, gpointer user_data)
+on_uevent(UNUSED GUdevClient *client, const gchar *action, GUdevDevice *device, gpointer user_data)
 {
     struct event_counter *counter = (struct event_counter *)user_data;
 
@@ -593,7 +596,7 @@ on_timeout(gpointer user_data)
 }
 
 static void
-t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     struct udev *udev;
     struct udev_monitor *udev_mon, *kernel_mon;
@@ -646,7 +649,7 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     struct udev *udev;
     struct udev_monitor *mon;
@@ -702,7 +705,7 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, gconstpointer 
 }
 
 static void
-t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GMainLoop *mainloop;
     struct event_counter counter = { 0, 0, 0 };
@@ -750,7 +753,7 @@ t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_uevent_no_listener(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_no_listener(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
@@ -760,7 +763,7 @@ t_testbed_uevent_no_listener(UMockdevTestbedFixture * fixture, gconstpointer dat
 }
 
 static void
-t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_error(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     struct udev *udev;
     struct udev_monitor *mon;
@@ -796,7 +799,7 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_uevent_null_action(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_null_action(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
@@ -810,7 +813,7 @@ t_testbed_uevent_null_action(UMockdevTestbedFixture * fixture, gconstpointer dat
 }
 
 static void
-t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
@@ -828,7 +831,7 @@ t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, gconstpointer
 }
 
 static void
-t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_from_string(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GUdevDevice *device;
     gchar *contents;
@@ -930,7 +933,7 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_add_from_string_errors(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_from_string_errors(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
 
@@ -968,7 +971,7 @@ t_testbed_add_from_string_errors(UMockdevTestbedFixture * fixture, gconstpointer
 }
 
 static void
-t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_from_file(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     gboolean success;
     GError *error = NULL;
@@ -1011,7 +1014,7 @@ t_testbed_add_from_file(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     gboolean success;
     GError *error = NULL;
@@ -1101,7 +1104,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     g_autofree gchar *out = NULL, *err = NULL;
     int exit_status;
@@ -1152,7 +1155,7 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GStatBuf st;
     gchar *devpath;
@@ -1258,7 +1261,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
     gchar *contents, *target;
@@ -1318,7 +1321,7 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, gconstpoint
 }
 
 static void
-t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
     gchar *contents;
@@ -1356,7 +1359,7 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, gconstpoin
 }
 
 static void
-t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
     GUdevDevice *device;
@@ -1396,7 +1399,7 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, gconstpointer data)
   errno = 0;
 
 static void
-t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1472,7 +1475,7 @@ t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, gc
 }
 
 static void
-t_testbed_script_replay_simple(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_script_replay_simple(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1581,7 +1584,7 @@ r 0 ^@^^^`^@a\n";
 }
 
 static void
-t_testbed_script_replay_default_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_script_replay_default_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1621,7 +1624,7 @@ r 0 OK\n";
 }
 
 static void
-t_testbed_script_replay_override_default_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_script_replay_override_default_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1661,7 +1664,7 @@ r 0 OK\n";
 }
 
 static void
-t_testbed_script_replay_socket_stream(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_script_replay_socket_stream(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1727,7 +1730,7 @@ r 10 ^@response\n";
 }
 
 static void
-t_testbed_script_replay_fuzz(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_script_replay_fuzz(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1790,7 +1793,7 @@ assert_delta_t(const struct timeval * first, const struct timeval * second, int 
 }
 
 static void
-t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1875,7 +1878,7 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, gconstpointer da
 }
 
 static void
-t_testbed_replay_evemu_events_default_device(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_replay_evemu_events_default_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
@@ -1920,7 +1923,7 @@ t_testbed_replay_evemu_events_default_device(UMockdevTestbedFixture * fixture, g
 }
 
 static void
-t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_clear(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
     gchar *dev_path, *sysdev_path;
@@ -1951,7 +1954,7 @@ t_testbed_clear(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_disable(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_disable(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     if (!has_real_sysfs) {
 	g_printf("SKIP: no real /sys on this system. ");
@@ -1993,7 +1996,7 @@ file_in_testbed(UMockdevTestbedFixture * fixture, const char *path)
 }
 
 static void
-t_testbed_remove(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_remove(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
 
@@ -2061,7 +2064,7 @@ t_testbed_remove(UMockdevTestbedFixture * fixture, gconstpointer data)
 }
 
 static void
-t_testbed_proc(UMockdevTestbedFixture * fixture, gconstpointer data)
+t_testbed_proc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     gchar *contents;
     gchar *procdir, *path;

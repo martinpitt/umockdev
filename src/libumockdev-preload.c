@@ -199,14 +199,14 @@ get_rdev(const char *nodename)
     static char buf[PATH_MAX];
     static char link[PATH_MAX];
     int name_offset;
-    int i, major, minor, orig_errno;
+    int major, minor, orig_errno;
 
     name_offset = snprintf(buf, sizeof(buf), "%s/dev/.node/", getenv("UMOCKDEV_DIR"));
     buf[sizeof(buf) - 1] = 0;
 
     /* append nodename and replace / with _ */
     strncpy(buf + name_offset, nodename, sizeof(buf) - name_offset - 1);
-    for (i = name_offset; i < sizeof(buf); ++i)
+    for (size_t i = name_offset; i < sizeof(buf); ++i)
 	if (buf[i] == '/')
 	    buf[i] = '_';
 
@@ -373,7 +373,7 @@ netlink_socket(int domain, int type, int protocol)
 }
 
 static int
-netlink_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+netlink_bind(int sockfd)
 {
     libc_func(bind, int, int, const struct sockaddr *, socklen_t);
 
@@ -397,7 +397,7 @@ netlink_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 }
 
 static void
-netlink_recvmsg(int sockfd, struct msghdr * msg, int flags, ssize_t ret)
+netlink_recvmsg(int sockfd, struct msghdr * msg, ssize_t ret)
 {
     struct cmsghdr *cmsg;
     struct sockaddr_nl *sender;
@@ -895,7 +895,7 @@ script_record_open(int fd)
 }
 
 static void
-script_record_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int res)
+script_record_connect(int sockfd, const struct sockaddr *addr, int res)
 {
     size_t i;
 
@@ -952,8 +952,6 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
     unsigned long delta;
     libc_func(fwrite, size_t, const void *, size_t, size_t, FILE *);
     static char header[100];
-    const unsigned char *cur;
-    int i, r;
 
     if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
 	return;
@@ -972,12 +970,13 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 		if (srinfo->op != 0)
 		    putc('\n', srinfo->log);
 		snprintf(header, sizeof(header), "%c %lu ", op, delta);
-		r = _fwrite(header, strlen(header), 1, srinfo->log);
+		size_t r = _fwrite(header, strlen(header), 1, srinfo->log);
 		assert(r == 1);
 	    }
 
 	    /* escape ASCII control chars */
-	    for (i = 0, cur = buf; i < size; ++i, ++cur) {
+	    const unsigned char *cur = buf;
+	    for (ssize_t i = 0; i < size; ++i, ++cur) {
 		if (*cur < 32) {
 		    putc('^', srinfo->log);
 		    putc(*cur + 64, srinfo->log);
@@ -1487,7 +1486,7 @@ fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
     size_t res;
 
     res = _fread(ptr, size, nmemb, stream);
-    script_record_op('r', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
+    script_record_op('r', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : (ssize_t) (res * size));
     return res;
 }
 
@@ -1498,7 +1497,7 @@ fwrite(const void *ptr, size_t size, size_t nmemb, FILE * stream)
     size_t res;
 
     res = _fwrite(ptr, size, nmemb, stream);
-    script_record_op('w', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : res * size);
+    script_record_op('w', fileno(stream), ptr, (res == 0 && ferror(stream)) ? -1 : (ssize_t) (res * size));
     return res;
 }
 
@@ -1545,7 +1544,7 @@ recvmsg(int sockfd, struct msghdr * msg, int flags)
     libc_func(recvmsg, int, int, struct msghdr *, int);
     ssize_t ret = _recvmsg(sockfd, msg, flags);
 
-    netlink_recvmsg(sockfd, msg, flags, ret);
+    netlink_recvmsg(sockfd, msg, ret);
 
     return ret;
 }
@@ -1569,7 +1568,7 @@ bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     libc_func(bind, int, int, const struct sockaddr *, socklen_t);
     int res;
 
-    res = netlink_bind(sockfd, addr, addrlen);
+    res = netlink_bind(sockfd);
     if (res != UNHANDLED)
 	return res;
 
@@ -1606,7 +1605,7 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     }
 
     res = _connect(sockfd, addr, addrlen);
-    script_record_connect(sockfd, addr, addrlen, res);
+    script_record_connect(sockfd, addr, res);
 
     return res;
 }
