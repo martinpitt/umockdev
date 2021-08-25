@@ -1,3 +1,8 @@
+## [0.16.2] - UNRELEASED
+- Implement pcap control transfer replaying
+- Fix Coverity errors
+- Fix most valac build warnings
+
 ## [0.16.1] - 2021-07-02
 - Fix wrong ioctl constants on ppc64el
 - Fix test-umockdev-record failure in some build environments
