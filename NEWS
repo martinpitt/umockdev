@@ -1,4 +1,4 @@
-## [0.16.2] - UNRELEASED
+## [0.16.2] - 2021-08-25
 - Implement pcap control transfer replaying
 - Fix Coverity errors
 - Fix most valac build warnings
