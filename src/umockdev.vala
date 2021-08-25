@@ -519,7 +519,7 @@ public class Testbed: GLib.Object {
                 string dest = Path.build_filename(sysdev_dir, attributes[i+1]);
                 if (!FileUtils.test(dest, FileTest.EXISTS)) {
                     if (FileUtils.symlink("../../" + dev_path.substring(5), dest) < 0)
-                        error("add_device %s: failed to symlink %s to %s: %s\n", name, dest,
+                        error("add_device %s: failed to symlink %s to %s: %s", name, dest,
                               dev_path.substring(5), strerror(errno));
                 }
             }

@@ -27,12 +27,31 @@ string tests_dir;
 
 int slow_testbed_factor = 1;
 
+/* exception-handling wrappers */
+static int
+checked_open_tmp (string tmpl, out string name_used) {
+    try {
+        return FileUtils.open_tmp (tmpl, out name_used);
+    } catch (Error e) {
+        error ("Failed to open temporary file: %s", e.message);
+    }
+}
+
+static void
+checked_file_set_contents (string filename, string contents)
+{
+    try {
+        FileUtils.set_contents (filename, contents);
+    } catch (FileError e) {
+        error ("Failed to set %s contents: %s", filename, e.message);
+    }
+}
+
 static void
 assert_in (string needle, string haystack)
 {
     if (!haystack.contains (needle)) {
-        stderr.printf ("'%s' not found in '%s'\n", needle, haystack);
-        Process.abort();
+        error ("'%s' not found in '%s'", needle, haystack);
     }
 }
 
@@ -45,8 +64,7 @@ have_program (string program)
     try {
         Process.spawn_command_line_sync ("which " + program, out sout, null, out exit);
     } catch (SpawnError e) {
-        stderr.printf ("cannot call which %s: %s\n", program, e.message);
-        Process.abort();
+        error ("cannot call which %s: %s", program, e.message);
     }
 
     return exit == 0;
@@ -67,8 +85,7 @@ get_program_out (string program, string command, out string sout,
     try {
         Process.spawn_command_line_sync (command, out sout, out serr, out exit);
     } catch (SpawnError e) {
-        stderr.printf ("cannot call %s: %s\n", command, e.message);
-        Process.abort();
+        error ("cannot call %s: %s", command, e.message);
     }
 
     return true;
@@ -170,19 +187,12 @@ t_run_invalid_device ()
     check_program_error ("true", "-d non.existing", "Cannot open non.existing:");
 
     // invalid device file
-    try {
-        string umockdev_file;
-        int fd = FileUtils.open_tmp ("ttyS0.XXXXXX.umockdev", out umockdev_file);
-        Posix.close (fd);
+    string umockdev_file;
+    Posix.close (checked_open_tmp ("ttyS0.XXXXXX.umockdev", out umockdev_file));
+    checked_file_set_contents (umockdev_file, "P: /devices/foo\n");
 
-        FileUtils.set_contents (umockdev_file, "P: /devices/foo\n");
-
-        check_program_error ("true", "-d " + umockdev_file, "Invalid record file " +
-                             umockdev_file + ": missing SUBSYSTEM");
-    } catch (FileError e) {
-        stderr.printf ("cannot create temporary file: %s\n", e.message);
-        Process.abort();
-    }
+    check_program_error ("true", "-d " + umockdev_file, "Invalid record file " +
+                            umockdev_file + ": missing SUBSYSTEM");
 }
 
 static void
@@ -259,27 +269,20 @@ t_run_script_chatter ()
     string umockdev_file, script_file;
 
     // create umockdev and script files
-    try {
-        int fd = FileUtils.open_tmp ("ttyS0.XXXXXX.umockdev", out umockdev_file);
-        Posix.close (fd);
-        fd = FileUtils.open_tmp ("chatter.XXXXXX.script", out script_file);
-        Posix.close (fd);
+    Posix.close (checked_open_tmp ("ttyS0.XXXXXX.umockdev", out umockdev_file));
+    Posix.close (checked_open_tmp ("chatter.XXXXXX.script", out script_file));
 
-        FileUtils.set_contents (umockdev_file, """P: /devices/platform/serial8250/tty/ttyS0
+    checked_file_set_contents (umockdev_file, """P: /devices/platform/serial8250/tty/ttyS0
 N: ttyS0
 E: DEVNAME=/dev/ttyS0
 E: SUBSYSTEM=tty
 A: dev=4:64""");
 
-        FileUtils.set_contents (script_file, """w 0 Hello world!^JWhat is your name?^J
+    checked_file_set_contents (script_file, """w 0 Hello world!^JWhat is your name?^J
 r 300 Joe Tester^J
 w 0 I ♥ Joe Tester^Ja^I tab and a^J   line break in one write^J
 r 200 somejunk^J
 w 0 bye!^J""");
-    } catch (FileError e) {
-        stderr.printf ("cannot create temporary file: %s\n", e.message);
-        Process.abort();
-    }
 
     check_program_out ("true", "-d " + umockdev_file + " -s /dev/ttyS0=" + script_file +
                        " -- " + tests_dir + "/chatter /dev/ttyS0",
@@ -295,19 +298,13 @@ t_run_script_chatter_socket_stream ()
     string script_file;
 
     // create umockdev and script files
-    try {
-        int fd = FileUtils.open_tmp ("chatter.XXXXXX.script", out script_file);
-        Posix.close (fd);
+    Posix.close (checked_open_tmp ("chatter.XXXXXX.script", out script_file));
 
-        FileUtils.set_contents (script_file, """w 0 What is your name?^J
+    checked_file_set_contents (script_file, """w 0 What is your name?^J
 r 307 Joe Tester^J
 w 0 hello Joe Tester^J
 w 20 send()
 r 30 somejunk""");
-    } catch (FileError e) {
-        stderr.printf ("cannot create temporary file: %s\n", e.message);
-        Process.abort();
-    }
 
     check_program_out ("true", " -u /dev/socket/chatter=" + script_file +
                        " -- " + tests_dir + "/chatter-socket-stream /dev/socket/chatter",
@@ -462,13 +459,7 @@ t_input_touchpad ()
 
     Pid xorg_pid;
     string logfile;
-    try {
-        int fd = FileUtils.open_tmp ("Xorg.log.XXXXXX", out logfile);
-        Posix.close (fd);
-    } catch (FileError e) {
-        stderr.printf ("cannot create temporary file: %s\n", e.message);
-        Process.abort();
-    }
+    Posix.close (checked_open_tmp ("Xorg.log.XXXXXX", out logfile));
     try {
         Process.spawn_async (null, {"umockdev-run",
             "-d", rootdir + "/devices/input/synaptics-touchpad.umockdev",
@@ -476,8 +467,7 @@ t_input_touchpad ()
             "--", "Xorg", "-config", rootdir + "/tests/xorg-dummy.conf", "-logfile", logfile, ":5"},
             null, SpawnFlags.SEARCH_PATH | SpawnFlags.STDERR_TO_DEV_NULL, null, out xorg_pid);
     } catch (SpawnError e) {
-        stderr.printf ("cannot call Xorg: %s\n", e.message);
-        Process.abort();
+        error ("cannot call Xorg: %s", e.message);
     }
 
     /* wait until X socket is available */
@@ -557,8 +547,7 @@ t_input_evtest ()
             null, SpawnFlags.SEARCH_PATH, null,
             out evtest_pid, null, out outfd, out errfd);
     } catch (SpawnError e) {
-        stderr.printf ("cannot call evtest: %s\n", e.message);
-        Process.abort();
+        error ("cannot call evtest: %s", e.message);
     }
 
     // our script covers 1.4 seconds, give it some slack
@@ -578,8 +567,7 @@ t_input_evtest ()
 
     if (serr_len > 0) {
         serr[serr_len] = 0;
-        stderr.printf ("evtest error: %s\n", (string) serr);
-        Process.abort();
+        error ("evtest error: %s", (string) serr);
     }
 
     assert_cmpint ((int) sout_len, CompareOperator.GT, 10);
@@ -619,10 +607,8 @@ t_input_evtest_evemu ()
 
     // create evemu events file
     string evemu_file;
-    try {
-        int fd = FileUtils.open_tmp ("evemu.XXXXXX.events", out evemu_file);
-        Posix.close (fd);
-        FileUtils.set_contents (evemu_file,
+    Posix.close (checked_open_tmp ("evemu.XXXXXX.events", out evemu_file));
+    checked_file_set_contents (evemu_file,
 """E: 0.000000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
 E: 0.200000 0004 0004 458756	# EV_MSC / MSC_SCAN             458756
 E: 0.200000 0001 001e 0001	# EV_KEY / KEY_A                1
@@ -630,10 +616,6 @@ E: 0.200000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
 E: 0.500000 0004 0004 458756	# EV_MSC / MSC_SCAN             458756
 E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
 """);
-    } catch (FileError e) {
-        stderr.printf ("cannot create temporary file: %s\n", e.message);
-        Process.abort();
-    }
 
     try {
         Process.spawn_async_with_pipes (null, {"umockdev-run",
@@ -644,8 +626,7 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
             null, SpawnFlags.SEARCH_PATH, null,
             out evtest_pid, null, out outfd, out errfd);
     } catch (SpawnError e) {
-        stderr.printf ("cannot call evtest: %s\n", e.message);
-        Process.abort();
+        error ("cannot call evtest: %s", e.message);
     }
 
     // our script covers 0.5 seconds, give it some slack
@@ -666,8 +647,7 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
 
     if (serr_len > 0) {
         serr[serr_len] = 0;
-        stderr.printf ("evtest error: %s\n", (string) serr);
-        Process.abort();
+        error ("evtest error: %s", (string) serr);
     }
 
     assert_cmpint ((int) sout_len, CompareOperator.GT, 10);

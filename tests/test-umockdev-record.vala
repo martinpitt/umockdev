@@ -27,6 +27,16 @@ string tests_dir;
 int slow_testbed_factor = 1;
 
 // wrappers to avoid "unhandled error" warnings
+
+static int
+checked_open_tmp (string tmpl, out string name_used) {
+    try {
+        return FileUtils.open_tmp (tmpl, out name_used);
+    } catch (Error e) {
+        error ("Failed to open temporary file: %s", e.message);
+    }
+}
+
 void
 spawn (string command, out string sout, out string serr, out int exit)
 {
@@ -41,8 +51,7 @@ static void
 assert_in (string needle, string haystack)
 {
     if (!haystack.contains (needle)) {
-        stderr.printf ("'%s' not found in '%s'\n", needle, haystack);
-        Process.abort();
+        error ("'%s' not found in '%s'", needle, haystack);
     }
 }
 
@@ -264,7 +273,9 @@ t_system_ioctl_log ()
     string workdir;
     try {
         workdir = DirUtils.make_tmp ("ioctl_log_test.XXXXXX");
-    } catch (Error e) { Process.abort (); }
+    } catch (Error e) {
+        error ("Failed to make temporary dir: %s", e.message);
+    }
     string log = Path.build_filename (workdir, "log");
 
     // should not log anything as that device is not touched
@@ -306,9 +317,7 @@ t_system_ioctl_log_append_dev_mismatch ()
     int exit;
     string log;
 
-    try {
-        FileUtils.close(FileUtils.open_tmp ("ioctl_log_test.XXXXXX", out log));
-    } catch (Error e) { Process.abort (); }
+    FileUtils.close(checked_open_tmp ("ioctl_log_test.XXXXXX", out log));
 
     // should log the header plus one read
     spawn ("umockdev-record" + " -i /dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
@@ -343,9 +352,7 @@ t_system_script_log_simple ()
     int exit;
     string log;
 
-    try {
-        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
-    } catch (Error e) { Process.abort (); }
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
 
     // should not log anything as that device is not touched
     spawn ("umockdev-record" + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero",
@@ -388,9 +395,7 @@ t_system_script_log_simple_fopen ()
     int exit;
     string log;
 
-    try {
-        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
-    } catch (Error e) { Process.abort (); }
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
 
     // should not log anything as that device is not touched
     spawn ("umockdev-record" + " --script=/dev/null=" + log + " -- " + readbyte_path + " /dev/zero fopen",
@@ -428,9 +433,7 @@ t_system_script_log_append_same_dev ()
     int exit;
     string log;
 
-    try {
-        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
-    } catch (Error e) { Process.abort (); }
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
 
     // should log the header plus one read
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
@@ -476,9 +479,7 @@ t_system_script_log_append_dev_mismatch ()
     int exit;
     string log;
 
-    try {
-        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
-    } catch (Error e) { Process.abort (); }
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
 
     // should log the header plus one read
     spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero",
@@ -549,9 +550,7 @@ t_system_script_log_chatter ()
 {
     string log;
 
-    try {
-        FileUtils.close(FileUtils.open_tmp ("test_script_log.XXXXXX", out log));
-    } catch (Error e) { Process.abort (); }
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
 
     char[] ptyname = new char[8192];
     int ptym, ptys;
@@ -748,7 +747,9 @@ t_system_evemu_log ()
     string workdir;
     try {
         workdir = DirUtils.make_tmp ("evemu_log_test.XXXXXX");
-    } catch (Error e) { Process.abort (); }
+    } catch (Error e) {
+        error ("Failed to make temporary dir: %s", e.message);
+    }
     string log = Path.build_filename (workdir, "log");
 
     spawn ("umockdev-record" + " --evemu-events=/dev/null=" + log + " -- " + readbyte_path + " /dev/null",

@@ -22,14 +22,33 @@ using Assertions;
 
 string rootdir;
 
+/* exception-handling wrappers */
+static int
+checked_open_tmp (string tmpl, out string name_used) {
+    try {
+        return FileUtils.open_tmp (tmpl, out name_used);
+    } catch (Error e) {
+        error ("Failed to open temporary file: %s", e.message);
+    }
+}
+
+static void
+checked_file_get_contents (string filename, out string contents)
+{
+    try {
+        FileUtils.get_contents (filename, out contents);
+    } catch (FileError e) {
+        error ("Failed to read %s contents: %s", filename, e.message);
+    }
+}
+
 static void
 tb_add_from_string (UMockdev.Testbed tb, string s)
 {
     try {
         assert (tb.add_from_string (s));
     } catch (Error e) {
-        stderr.printf ("Failed to call Testbed.add_from_string(): %s\n", e.message);
-        Process.abort ();
+        error ("Failed to call Testbed.add_from_string(): %s", e.message);
     }
 }
 void
@@ -112,11 +131,16 @@ E: DEVNAME=/dev/bus/usb/001/001
 void
 assert_listdir (string path, string[] entries)
 {
-  var dir = Dir.open(path);
   var files = new List<string>();
-  string? entry;
-  while ((entry = dir.read_name()) != null)
-      files.append(entry);
+
+  try {
+    var dir = Dir.open(path);
+    string? entry;
+    while ((entry = dir.read_name()) != null)
+        files.append(entry);
+  } catch (Error e) {
+      error ("Failed to list dir: %s", e.message);
+  }
   files.sort(strcmp);
   assert_cmpuint (files.length(), CompareOperator.EQ, entries.length);
   uint i = 0;
@@ -244,10 +268,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 """;
 
   string tmppath;
-  int fd;
-  try {
-      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
-  } catch (Error e) { Process.abort (); }
+  int fd = checked_open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), CompareOperator.GT, 20);
 
   // ioctl emulation does not get in the way of non-/dev fds
@@ -260,8 +281,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   try {
       tb.load_ioctl ("/dev/001", tmppath);
   } catch (Error e) {
-      stderr.printf ("Cannot load ioctls: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot load ioctls: %s", e.message);
   }
   FileUtils.unlink (tmppath);
 
@@ -351,10 +371,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
 """;
 
   string tmppath;
-  int fd;
-  try {
-      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
-  } catch (Error e) { Process.abort (); }
+  int fd = checked_open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), CompareOperator.GT, 20);
 
   Posix.close (fd);
@@ -362,8 +379,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   try {
       tb.load_ioctl (null, tmppath);
   } catch (Error e) {
-      stderr.printf ("Cannot load ioctls: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot load ioctls: %s", e.message);
   }
   FileUtils.unlink (tmppath);
 
@@ -401,10 +417,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
 """;
 
   string tmppath;
-  int fd;
-  try {
-      fd  = FileUtils.open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
-  } catch (Error e) { Process.abort (); }
+  int fd = checked_open_tmp ("test_ioctl_tree.XXXXXX", out tmppath);
   assert_cmpint ((int) Posix.write (fd, test_tree, test_tree.length), CompareOperator.GT, 20);
 
   Posix.close (fd);
@@ -412,8 +425,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   try {
       tb.load_ioctl ("/dev/002", tmppath);
   } catch (Error e) {
-      stderr.printf ("Cannot load ioctls: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot load ioctls: %s", e.message);
   }
   FileUtils.unlink (tmppath);
 
@@ -452,9 +464,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 """;
 
   string tmppath;
-  try {
-      Posix.close (FileUtils.open_tmp ("test_ioctl_tree.XXXXXX.xz", out tmppath));
-  } catch (Error e) { Process.abort (); }
+  Posix.close (checked_open_tmp ("test_ioctl_tree.XXXXXX.xz", out tmppath));
 
   int exit;
   try {
@@ -462,15 +472,13 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
             "sh -c 'echo \"" + test_tree + "\" | xz -9c > " + tmppath + "; sync'",
             null, null, out exit);
   } catch (SpawnError e) {
-      stderr.printf ("Cannot call xz: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot call xz: %s", e.message);
   }
   assert_cmpint (exit, CompareOperator.EQ, 0);
   try {
       tb.load_ioctl ("/dev/001", tmppath);
   } catch (Error e) {
-      stderr.printf ("Cannot load ioctls: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot load ioctls: %s", e.message);
   }
   FileUtils.unlink (tmppath);
 
@@ -496,14 +504,13 @@ t_usbfs_ioctl_pcap ()
 {
   var tb = new UMockdev.Testbed ();
   string device;
-  FileUtils.get_contents(Path.build_filename(rootdir + "/devices/input/usbkbd.pcap.umockdev"), out device);
+  checked_file_get_contents (Path.build_filename(rootdir + "/devices/input/usbkbd.pcap.umockdev"), out device);
   tb_add_from_string (tb, device);
 
   try {
       tb.load_pcap ("/sys/devices/pci0000:00/0000:00:14.0/usb1/1-3", Path.build_filename(rootdir + "/devices/input/usbkbd.pcap.pcapng"));
   } catch (Error e) {
-      stderr.printf ("Cannot load pcap file: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot load pcap file: %s", e.message);
   }
 
   int fd = Posix.open ("/dev/bus/usb/001/011", Posix.O_RDWR, 0);
@@ -569,14 +576,13 @@ t_spidev_ioctl ()
   var tb = new UMockdev.Testbed ();
 
   string device;
-  FileUtils.get_contents(Path.build_filename(rootdir + "/devices/spi/elanfingerprint.umockdev"), out device);
+  checked_file_get_contents (Path.build_filename(rootdir + "/devices/spi/elanfingerprint.umockdev"), out device);
   tb_add_from_string (tb, device);
 
   try {
       tb.load_ioctl ("/dev/spidev0.0", Path.build_filename(rootdir + "/devices/spi/elanfingerprint.ioctl"));
   } catch (Error e) {
-      stderr.printf ("Cannot load ioctl file: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot load ioctl file: %s", e.message);
   }
 
   int fd = Posix.open ("/dev/spidev0.0", Posix.O_RDWR, 0);
@@ -653,8 +659,7 @@ A: dev=188:1
   try {
       Process.spawn_command_line_sync ("stty -F /dev/ttyUSB1", out pout, out perr, out pexit);
   } catch (SpawnError e) {
-      stderr.printf ("Cannot call stty: %s\n", e.message);
-      Process.abort ();
+      error ("Cannot call stty: %s", e.message);
   }
   assert_cmpstr (perr, CompareOperator.EQ, "");
   assert_cmpint (pexit, CompareOperator.EQ, 0);
@@ -749,11 +754,7 @@ class AttributeCounterThread {
         string attr_path = Path.build_filename (this.syspath, this.name);
         for (; this.count > 0; --this.count) {
             string cur_value;
-            try {
-                FileUtils.get_contents (attr_path, out cur_value);
-            } catch (FileError e) {
-                error ("(count %u) failed to read %s: %s", this.count, attr_path, e.message);
-            }
+            checked_file_get_contents (attr_path, out cur_value);
             tb.set_attribute_int (this.syspath, name, int.parse(cur_value) + 1);
         }
 
@@ -787,16 +788,12 @@ t_mt_parallel_attr_distinct ()
   t3.join();
 
   string val;
-  try {
-      FileUtils.get_contents(Path.build_filename(syspath, "c1"), out val);
-      assert_cmpstr (val, CompareOperator.EQ, "100");
-      FileUtils.get_contents(Path.build_filename(syspath, "c2"), out val);
-      assert_cmpstr (val, CompareOperator.EQ, "100");
-      FileUtils.get_contents(Path.build_filename(syspath, "c3"), out val);
-      assert_cmpstr (val, CompareOperator.EQ, "100");
-  } catch (FileError e) {
-      error ("failed to read attribute: %s", e.message);
-  }
+  checked_file_get_contents(Path.build_filename(syspath, "c1"), out val);
+  assert_cmpstr (val, CompareOperator.EQ, "100");
+  checked_file_get_contents(Path.build_filename(syspath, "c2"), out val);
+  assert_cmpstr (val, CompareOperator.EQ, "100");
+  checked_file_get_contents(Path.build_filename(syspath, "c3"), out val);
+  assert_cmpstr (val, CompareOperator.EQ, "100");
 }
 
 
@@ -827,11 +824,7 @@ t_mt_uevent ()
       string contents;
 
       while (ml.is_running ()) {
-          try {
-              FileUtils.get_contents ("/sys/devices/dev1/a", out contents);
-          } catch (FileError e) {
-              error ("(#changes: %u) Error opening attribute file: %s", change_count, e.message);
-          }
+          checked_file_get_contents ("/sys/devices/dev1/a", out contents);
           assert_cmpstr (contents, CompareOperator.EQ, "1");
           tb.set_property (syspath, "ID_FOO", "1");
       }
@@ -862,12 +855,16 @@ ioctl_custom_handle_ioctl_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient cl
         client.complete(*(long*)client.arg.data, 0);
     } else if (client.request == 2) {
         client.complete(-1, Posix.ENOMEM);
-    } else if (client.request ==3 ) {
-        var data = client.arg.resolve(0, sizeof(int));
+    } else if (client.request == 3 ) {
+        try {
+            var data = client.arg.resolve(0, sizeof(int));
 
-        *(int*) data.data = (int) 0xc00fffee;
+            *(int*) data.data = (int) 0xc00fffee;
 
-        client.complete(0, 0);
+            client.complete(0, 0);
+        } catch (Error e) {
+            error ("cannot resolve client arg: %s", e.message);
+        }
     } else {
         client.complete(-5, 1);
     }
@@ -931,7 +928,11 @@ E: SUBSYSTEM=test
   handler.connect("signal::handle-read", ioctl_custom_handle_read_cb, null);
   handler.connect("signal::handle-write", ioctl_custom_handle_write_cb, null);
 
-  tb.attach_ioctl("/dev/test", handler);
+  try {
+      tb.attach_ioctl("/dev/test", handler);
+  } catch (Error e) {
+      error ("Failed to attach ioctl: %s", e.message);
+  }
 
   int fd = Posix.open ("/dev/test", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
@@ -961,7 +962,11 @@ E: SUBSYSTEM=test
 
   Posix.close(fd);
 
-  tb.detach_ioctl("/dev/test");
+  try {
+      tb.detach_ioctl("/dev/test");
+  } catch (Error e) {
+      error ("Failed to detach ioctl: %s", e.message);
+  }
 }
 
 int
