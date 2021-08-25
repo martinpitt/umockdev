@@ -31,6 +31,17 @@
 #define TRUE 1
 #define FALSE 0
 
+static void *
+callocx (size_t nmemb, size_t size)
+{
+  void *r = calloc (nmemb, size);
+  if (r == NULL) {
+      perror ("failed to allocate memory");
+      abort ();
+  }
+  return r;
+}
+
 /***********************************
  *
  * ioctl_tree
@@ -52,7 +63,7 @@ ioctl_tree_new_from_bin(IOCTL_REQUEST_TYPE id, const void *data, int ret)
     if (type->init_from_bin == NULL)
 	return NULL;
 
-    t = calloc(sizeof(ioctl_tree), 1);
+    t = callocx(sizeof(ioctl_tree), 1);
     t->type = type;
     t->ret = ret;
     t->id = id;
@@ -89,7 +100,7 @@ ioctl_tree_new_from_text(const char *line)
 	return NULL;
     }
 
-    t = calloc(sizeof(ioctl_tree), 1);
+    t = callocx(sizeof(ioctl_tree), 1);
     t->type = type;
     t->depth = strlen(lead_ws);
     t->ret = ret;
@@ -317,7 +328,7 @@ ioctl_node_list_new(void)
     l = malloc(sizeof(ioctl_node_list));
     l->n = 0;
     l->capacity = 10;
-    l->items = calloc(sizeof(ioctl_tree *), l->capacity);
+    l->items = callocx(sizeof(ioctl_tree *), l->capacity);
     return l;
 }
 
@@ -628,10 +639,10 @@ usbdevfs_reapurb_init_from_bin(ioctl_tree * node, const void *data)
     const struct usbdevfs_urb *urb = *((struct usbdevfs_urb **)data);
     struct usbdevfs_urb *copy;
 
-    copy = calloc(sizeof(struct usbdevfs_urb), 1);
+    copy = callocx(sizeof(struct usbdevfs_urb), 1);
     memcpy(copy, urb, sizeof(struct usbdevfs_urb));
     /* we need to make a copy of the buffer */
-    copy->buffer = calloc(urb->buffer_length, 1);
+    copy->buffer = callocx(urb->buffer_length, 1);
     memcpy(copy->buffer, urb->buffer, urb->buffer_length);
     node->data = copy;
 }
@@ -639,7 +650,7 @@ usbdevfs_reapurb_init_from_bin(ioctl_tree * node, const void *data)
 static int
 usbdevfs_reapurb_init_from_text(ioctl_tree * node, const char *data)
 {
-    struct usbdevfs_urb *info = calloc(sizeof(struct usbdevfs_urb), 1);
+    struct usbdevfs_urb *info = callocx(sizeof(struct usbdevfs_urb), 1);
     int offset, result;
     unsigned type, endpoint;
     result = sscanf(data, "%u %u %i %u %i %i %i %n", &type, &endpoint,
@@ -655,7 +666,7 @@ usbdevfs_reapurb_init_from_text(ioctl_tree * node, const char *data)
     info->endpoint = (unsigned char)endpoint;
 
     /* read buffer */
-    info->buffer = calloc(info->buffer_length, 1);
+    info->buffer = callocx(info->buffer_length, 1);
     if (!read_hex(data + offset, info->buffer, info->buffer_length)) {
 	DBG(DBG_IOCTL_TREE, "usbdevfs_reapurb_init_from_text: failed to parse buffer '%s'\n", data + offset);
 	free(info->buffer);

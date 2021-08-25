@@ -45,6 +45,10 @@ uevent_sender_open(const char *rootpath)
 
     assert(rootpath != NULL);
     s = calloc(1, sizeof(uevent_sender));
+    if (!s) {
+	perror("uevent_sender_open: cannot allocate struct");
+	abort();
+    }
     s->rootpath = strdup(rootpath);
     s->udev = udev_new();
     snprintf(s->socket_glob, sizeof(s->socket_glob), "%s/event[0-9]*", rootpath);
