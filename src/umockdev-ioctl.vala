@@ -131,7 +131,7 @@ public class IoctlData {
      * Returns: %TRUE on success, %FALSE
      * Since: 0.16
      */
-    public bool set_ptr(size_t offset, IoctlData child) throws GLib.Error {
+    public bool set_ptr(size_t offset, IoctlData child) {
 
         foreach (size_t o in children_offset) {
             assert(o != offset);
