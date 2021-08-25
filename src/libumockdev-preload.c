@@ -1589,6 +1589,12 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	TRAP_PATH_LOCK;
 	const char *p = trap_path(sock_path);
 
+	/* could happen with ENOMEM, propagate error */
+	if (!p) {
+	    TRAP_PATH_UNLOCK;
+	    return -1;
+	}
+
 	if (p != sock_path) {
 	    DBG(DBG_NETLINK, "testbed wrapped connect: redirecting Unix socket %s to %s\n", sock_path, p);
 	    trapped_addr.sun_family = AF_UNIX;
