@@ -56,6 +56,18 @@ assert_in (string needle, string haystack)
 }
 
 static bool
+skip_brittle_test (string reason)
+{
+    if (Environment.get_variable ("BRITTLE_TESTS") == null) {
+        stdout.printf ("[SKIP: brittle test: %s] ", reason);
+        stdout.flush ();
+        return true;
+    }
+
+    return false;
+}
+
+static bool
 have_program (string program)
 {
     string sout;
@@ -352,6 +364,9 @@ t_gphoto_folderlist ()
     if (!check_gphoto_version ())
         return;
 
+    if (skip_brittle_test ("URB structure apparently got more flexible; triggers assertion about submit_node != NULL"))
+        return;
+
     check_program_out ("gphoto2",
         "-d " + rootdir + "/devices/cameras/canon-powershot-sx200.umockdev -i /dev/bus/usb/001/011=" +
             rootdir + "/devices/cameras/canon-powershot-sx200.ioctl -- gphoto2 -l",
@@ -369,6 +384,9 @@ static void
 t_gphoto_filelist ()
 {
     if (!check_gphoto_version ())
+        return;
+
+    if (skip_brittle_test ("URB structure apparently got more flexible; triggers assertion about submit_node != NULL"))
         return;
 
     check_program_out ("gphoto2",
@@ -391,6 +409,9 @@ t_gphoto_thumbs ()
     int exit;
 
     if (!check_gphoto_version ())
+        return;
+
+    if (skip_brittle_test ("URB structure apparently got more flexible; triggers assertion about submit_node != NULL"))
         return;
 
     get_program_out ("gphoto2", umockdev_run_command + "-d " + rootdir +
@@ -419,6 +440,9 @@ t_gphoto_download ()
     int exit;
 
     if (!check_gphoto_version ())
+        return;
+
+    if (skip_brittle_test ("URB structure apparently got more flexible; triggers assertion about submit_node != NULL"))
         return;
 
     get_program_out ("gphoto2", umockdev_run_command + "-d " + rootdir +
@@ -702,11 +726,10 @@ main (string[] args)
 
   // tests with gphoto2 program for PowerShot
   Test.add_func ("/umockdev-run/integration/gphoto-detect", t_gphoto_detect);
-  // FIXME: URB structure apparently got more flexible; triggers assertion about submit_node != NULL
-  //Test.add_func ("/umockdev-run/integration/gphoto-folderlist", t_gphoto_folderlist);
-  //Test.add_func ("/umockdev-run/integration/gphoto-filelist", t_gphoto_filelist);
-  //Test.add_func ("/umockdev-run/integration/gphoto-thumbs", t_gphoto_thumbs);
-  //Test.add_func ("/umockdev-run/integration/gphoto-download", t_gphoto_download);
+  Test.add_func ("/umockdev-run/integration/gphoto-folderlist", t_gphoto_folderlist);
+  Test.add_func ("/umockdev-run/integration/gphoto-filelist", t_gphoto_filelist);
+  Test.add_func ("/umockdev-run/integration/gphoto-thumbs", t_gphoto_thumbs);
+  Test.add_func ("/umockdev-run/integration/gphoto-download", t_gphoto_download);
 
   // input devices
   Test.add_func ("/umockdev-run/integration/input-touchpad", t_input_touchpad);

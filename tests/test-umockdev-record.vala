@@ -203,13 +203,15 @@ t_system_all ()
     string serr;
     int exit;
 
-    if (!FileUtils.test("/sys/dev/char", FileTest.EXISTS)) {
-        stdout.printf ("[SKIP: no real /sys on this system] ");
+    // causes eternal hangs or crashes in some environments
+    if (Environment.get_variable ("BRITTLE_TESTS") == null) {
+        stdout.printf ("[SKIP: brittle test] ");
         stdout.flush ();
         return;
     }
-    if (Environment.get_variable ("INSTALLED_TEST") != null) {
-        stdout.printf ("[SKIP: brittle test] ");
+
+    if (!FileUtils.test("/sys/dev/char", FileTest.EXISTS)) {
+        stdout.printf ("[SKIP: no real /sys on this system] ");
         stdout.flush ();
         return;
     }
@@ -887,8 +889,7 @@ main (string[] args)
     Test.add_func ("/umockdev-record/testbed-multiple", t_testbed_multiple);
 
     Test.add_func ("/umockdev-record/system-single", t_system_single);
-    // causes eternal hangs or crashes in some environments
-    //Test.add_func ("/umockdev-record/system-all", t_system_all);
+    Test.add_func ("/umockdev-record/system-all", t_system_all);
     Test.add_func ("/umockdev-record/system-invalid", t_system_invalid);
     Test.add_func ("/umockdev-record/ioctl-log", t_system_ioctl_log);
     Test.add_func ("/umockdev-record/ioctl-log-append-dev-mismatch", t_system_ioctl_log_append_dev_mismatch);
