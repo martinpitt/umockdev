@@ -14,7 +14,6 @@ gnome.gtkdoc('umockdev',
   src_dir: [meson.build_root(), umockdev_c, umockdev_ioctl_c],
   content_files: [version_xml],
   ignore_headers: ['uevent_sender.h', 'ioctl_tree.h', 'debug.h'],
-  scan_args: ['--rebuild-types'],
   dependencies: [glib, gobject, declare_dependency(link_with : [umockdev_lib])],
   install: true,
 )
