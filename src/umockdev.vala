@@ -910,8 +910,8 @@ public class Testbed: GLib.Object {
         int busnum;
         int devnum;
 
-        busnum = get_attribute(sysfs, "busnum").to_int();
-        devnum = get_attribute(sysfs, "devnum").to_int();
+        busnum = int.parse(get_attribute(sysfs, "busnum"));
+        devnum = int.parse(get_attribute(sysfs, "devnum"));
 
         owned_dev = Path.build_filename("/dev", "bus", "usb",
                                         busnum.to_string("%03d"), devnum.to_string("%03d"));
@@ -1073,8 +1073,8 @@ public class Testbed: GLib.Object {
             }
             ev.input_event_sec = ev_sec;
             ev.input_event_usec = ev_usec;
-            ev.type = (uint16) match.fetch(3).to_ulong(null, 16);
-            ev.code = (uint16) match.fetch(4).to_ulong(null, 16);
+            ev.type = (uint16) ulong.parse (match.fetch(3), 16);
+            ev.code = (uint16) ulong.parse (match.fetch(4), 16);
             ev.value = int.parse(match.fetch(5));
 
             uint8[] ev_data = new uint8[sizeof(LinuxFixes.Input.Event)];
