@@ -62,9 +62,9 @@ have_program (string program)
     int exit;
 
     try {
-        Process.spawn_command_line_sync ("which " + program, out sout, null, out exit);
+        Process.spawn_command_line_sync ("sh -c 'type " + program + "'", out sout, null, out exit);
     } catch (SpawnError e) {
-        error ("cannot call which %s: %s", program, e.message);
+        error ("cannot call type %s: %s", program, e.message);
     }
 
     return exit == 0;
