@@ -1,0 +1,4 @@
+umockdev_ioctl_base_get_type
+umockdev_ioctl_client_get_type
+umockdev_ioctl_data_get_type
+umockdev_testbed_get_type
