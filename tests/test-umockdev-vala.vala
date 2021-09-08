@@ -504,6 +504,10 @@ t_usbfs_ioctl_pcap ()
 {
   var tb = new UMockdev.Testbed ();
   string device;
+  Ioctl.usbdevfs_urb* urb_reap = null;
+
+  /* NOTE: This test is a bit ugly. It wasn't the best idea to use a USB keyboard. */
+
   checked_file_get_contents (Path.build_filename(rootdir + "/devices/input/usbkbd.pcap.umockdev"), out device);
   tb_add_from_string (tb, device);
 
@@ -516,15 +520,58 @@ t_usbfs_ioctl_pcap ()
   int fd = Posix.open ("/dev/bus/usb/001/011", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
 
+  /* We can submit this early, even if it comes later in the recording! */
   var urb_buffer_ep1 = new uint8[8];
   Ioctl.usbdevfs_urb urb_ep1 = {1, 0x81, 0, 0, urb_buffer_ep1, 8, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep1), CompareOperator.EQ, 0);
   assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (urb_ep1.status, CompareOperator.EQ, 0);
 
+  /* Not all control transfers are skipped in this case, we need to speak USBHID */
+  /* SET_IDLE request */
+  uint8 urb_buffer_setup_set_idle[8] = { 0x21, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  Ioctl.usbdevfs_urb urb_set_idle = {2, 0x00, 0, 0, urb_buffer_setup_set_idle, 8, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_idle), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert (urb_reap == &urb_set_idle);
+
+  /* GET DESCIPTOR is skipped again. */
+
+  /* SET_REPORT request */
+  uint8 urb_buffer_setup_set_report[9] = { 0x21, 0x09, 0x00, 0x02, 0x00, 0x00, 0x01, 0x00, 0x00};
+  Ioctl.usbdevfs_urb urb_set_report = {2, 0x00, 0, 0, urb_buffer_setup_set_report, 9, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_report), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  /* Now we'll receive the SET_REPORT response as EP 1 has been submitted already */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert (urb_reap == &urb_set_report);
+
+  /* We cannot reap any urbs yet as we are waiting for SET_IDLE */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.EAGAIN);
+
+  /* Another SET_IDLE */
+  urb_buffer_setup_set_idle = { 0x21, 0x0a, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
+  urb_set_idle = {2, 0x00, 0, 0, urb_buffer_setup_set_idle, 8, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_idle), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert (urb_reap == &urb_set_idle);
+
+  /* Another SET_REPORT request */
+  urb_buffer_setup_set_report = { 0x21, 0x09, 0x00, 0x02, 0x00, 0x00, 0x01, 0x00, 0x01};
+  urb_set_report = {2, 0x00, 0, 0, urb_buffer_setup_set_report, 9, 0};
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_report), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   /* We cannot reap any urbs yet, because we didn't make a request on EP 2 */
-  Ioctl.usbdevfs_urb* urb_reap = null;
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, -1);
   assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.EAGAIN);
 
@@ -534,6 +581,11 @@ t_usbfs_ioctl_pcap ()
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep2), CompareOperator.EQ, 0);
   assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (urb_ep2.status, CompareOperator.EQ, 0);
+
+  /* Now we'll receive the SET_REPORT response as EP 1 has been submitted already */
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert (urb_reap == &urb_set_report);
 
   /* The first report is: 00000c0000000000 (EP1) */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
