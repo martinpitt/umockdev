@@ -272,8 +272,11 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                         urb_buffer_length -= 8;
                     }
 
+                    /* libusb always sets URB_CONTROL endpoint to 0x00, but the
+                     * kernel exposes it as 0x80/0x00 depending on the direction
+                     */
                     if ((urb.type != urb_hdr.transfer_type) ||
-                        (urb.endpoint != urb_hdr.endpoint_number) ||
+                        ((urb.type != URB_CONTROL) && (urb.endpoint != urb_hdr.endpoint_number)) ||
                         (urb_buffer_length != urb_hdr.urb_len)) {
 
                         if (debug)
