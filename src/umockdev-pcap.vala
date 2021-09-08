@@ -27,6 +27,20 @@ const int URB_INTERRUPT = 0x1;
 const int URB_CONTROL = 0x2;
 const int URB_BULK = 0x3;
 
+private string urb_type_to_string(int type)
+{
+    switch (type) {
+        case URB_INTERRUPT:
+            return "INTERRUPT";
+        case URB_CONTROL:
+            return "CONTROL";
+        case URB_BULK:
+            return "BULK";
+        default:
+            return "UNKNOWN (%d)".printf(type);
+    }
+}
+
 private struct UrbInfo {
     IoctlData urb_data;
     IoctlData buffer_data;
@@ -141,8 +155,8 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                      * we are timing out on URBs that will not replay.
                      */
                     if (urb_info.pcap_id == 0) {
-                        message("Replay may be stuck: Reaping discard URB of type %d, for endpoint 0x%02x with length %d without corresponding submit",
-                                urb.type, urb.endpoint, urb.buffer_length);
+                        message("Replay may be stuck: Reaping discard URB of type %s, for endpoint 0x%02x with length %d without corresponding submit",
+                                urb_type_to_string(urb.type), urb.endpoint, urb.buffer_length);
                     }
                 } else {
                     urb_info = next_reapable_urb();
@@ -167,6 +181,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
      * packet. As such, keep it in a global state.
      */
     private pcap.pkthdr cur_hdr;
+    private uint64 start_time_ms;
     private uint64 last_pkt_time_ms;
     private uint64 cur_waiting_since;
     private unowned uint8[]? cur_buf = null;
@@ -193,6 +208,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
             cur_waiting_since = now;
             last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+            start_time_ms = last_pkt_time_ms;
         }
 
         for (; cur_buf != null; cur_buf = rec.next(ref cur_hdr), cur_waiting_since = now) {
@@ -213,16 +229,16 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                 message("Stuck for %lu ms, recording needed %lu ms",
                         (ulong) (now - cur_waiting_since) / 1000,
                         (ulong) (cur_pkt_time_ms - last_pkt_time_ms));
-                message("Trying to reap at recording position %c packet of type %d, for endpoint 0x%02x with length %u, replay may be stuck",
-                        urb_hdr.event_type, urb_hdr.transfer_type, urb_hdr.endpoint_number, urb_hdr.urb_len);
+                message("Trying to reap at recording position %c %s packet, for endpoint 0x%02x with length %u, replay may be stuck (time: %.3f)",
+                        urb_hdr.event_type, urb_type_to_string(urb_hdr.transfer_type), urb_hdr.endpoint_number, urb_hdr.urb_len, (cur_pkt_time_ms - start_time_ms) / 1000.0);
                 message("The device has currently %u in-flight URBs:", urbs.length);
 
                 for (var i = 0; i < urbs.length; i++) {
                     unowned UrbInfo? urb_data = urbs.index(i);
                     Ioctl.usbdevfs_urb *urb = (Ioctl.usbdevfs_urb*) urb_data.urb_data.data;
 
-                    message("   URB of type %d, for endpoint 0x%02x with length %d; %ssubmitted",
-                            urb.type, urb.endpoint, urb.buffer_length,
+                    message("   %s URB, for endpoint 0x%02x with length %d; %ssubmitted",
+                            urb_type_to_string(urb.type), urb.endpoint, urb.buffer_length,
                             urb_data.pcap_id == 0 ? "NOT " : "");
                 }
                 cur_waiting_since = now;
