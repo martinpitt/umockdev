@@ -1,13 +1,13 @@
 project('umockdev', 'c', 'vala',
   version: run_command('sed', '-rn', '1 { s/^.*\[([0-9.]+)\].*/\\1/; p }', 'NEWS').stdout().strip(),
-  license: 'LGPLv2.1+')
+  license: 'LGPLv2.1+',
+  default_options: ['werror=true'])
 
 srcdir = meson.current_source_dir() / 'src'
 testsdir = meson.current_source_dir() / 'tests'
 lib_version = '0.3.0'
 
 add_project_arguments(
-  '-Werror',
   '-Werror=missing-prototypes',
   '-Werror=strict-prototypes',
   '-Werror=nested-externs',
