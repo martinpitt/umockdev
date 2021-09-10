@@ -25,7 +25,7 @@ add_project_arguments(
 
 # let's not clutter the code with too many #ifdefs
 if get_option('b_ndebug') == 'true'
-  add_project_arguments('-Wno-error=unused-but-set-variable', language: 'c')
+  add_project_arguments('-Wno-error=unused-but-set-variable', '-Wno-error=unused-variable', language: 'c')
 endif
 
 conf = configuration_data()
