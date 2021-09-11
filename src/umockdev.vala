@@ -87,6 +87,12 @@ public class Testbed: GLib.Object {
         this.sys_dir = Path.build_filename(this.root_dir, "sys");
         DirUtils.create(this.sys_dir, 0755);
 
+        /* Create "bus" and "class" directories to make libudev happy */
+        string bus_path = Path.build_filename(this.sys_dir, "bus");
+        DirUtils.create(bus_path, 0755);
+        string class_path = Path.build_filename(this.sys_dir, "class");
+        DirUtils.create(class_path, 0755);
+
         this.dev_fd = new HashTable<string, int> (str_hash, str_equal);
         this.dev_script_runner = new HashTable<string, ScriptRunner> (str_hash, str_equal);
         this.custom_handlers = new HashTable<string, IoctlBase> (str_hash, str_equal);

@@ -107,20 +107,30 @@ t_testbed_read_buf_delay(ulong delay, int fd, char* buf, ssize_t length)
 static guint
 num_udev_devices(void)
 {
-    GUdevEnumerator *enumerator;
-    GList *result;
-    guint num;
+    struct udev *udev;
+    struct udev_enumerate *enumerate;
+    struct udev_list_entry *entry;
+    int err;
+    guint num = 0;
 
-    g_autoptr (GUdevClient) client = g_udev_client_new(NULL);
-    g_assert(client);
+    udev = udev_new();
+    g_assert(udev);
 
-    enumerator = g_udev_enumerator_new(client);
-    g_assert(enumerator);
-    result = g_udev_enumerator_execute(enumerator);
-    num = g_list_length(result);
+    enumerate = udev_enumerate_new(udev);
+    g_assert(enumerate);
+    
+    // NB: using libudev here instead of GUdev so that we can check the return
+    // value of udev_enumerate_scan_devices().
+    // https://github.com/martinpitt/umockdev/issues/144
+    err = udev_enumerate_scan_devices(enumerate);
+    g_assert_cmpint(err, >=, 0);
 
-    g_list_free_full(result, g_object_unref);
-    g_object_unref(enumerator);
+    udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
+        num++;
+    }
+
+    udev_enumerate_unref(enumerate);
+    udev_unref(udev);
 
     return num;
 }

@@ -159,23 +159,20 @@ t_testbed_fs_ops ()
   assert_cmpstr (syspath, CompareOperator.EQ, "/sys/devices/dev1");
 
   // absolute paths
-  assert_listdir ("/sys", {"bus", "devices"});
+  assert_listdir ("/sys", {"bus", "class", "devices"});
   assert_listdir ("/sys/devices", {"dev1"});
   assert_listdir ("/sys/bus", {"pci"});
   assert_listdir ("/sys/devices/dev1", {"a", "subsystem", "uevent"});
 
   // change directory into trapped /sys
   assert_cmpint (Posix.chdir ("/sys"), CompareOperator.EQ, 0);
-  assert_listdir (".", {"bus", "devices"});
+  assert_listdir (".", {"bus", "class", "devices"});
   assert_listdir ("bus", {"pci"});
   assert_cmpstr (Environment.get_current_dir (), CompareOperator.EQ, "/sys");
 
   assert_cmpint (Posix.chdir ("/sys/devices/dev1"), CompareOperator.EQ, 0);
   assert_listdir (".", {"a", "subsystem", "uevent"});
   assert_cmpstr (Environment.get_current_dir (), CompareOperator.EQ, "/sys/devices/dev1");
-
-  assert_cmpint (Posix.chdir ("/sys/class"), CompareOperator.EQ, -1);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOENT);
 
   // relative paths into trapped /sys; this only works if the real /sys exists, as otherwise realpath() fails in trap_path()
   if (!have_real_sys) {
@@ -184,12 +181,12 @@ t_testbed_fs_ops ()
   }
 
   assert_cmpint (Posix.chdir ("/"), CompareOperator.EQ, 0);
-  assert_listdir ("sys", {"bus", "devices"});
+  assert_listdir ("sys", {"bus", "class", "devices"});
   assert_listdir ("sys/devices", {"dev1"});
   assert_listdir ("sys/bus", {"pci"});
 
   assert_cmpint (Posix.chdir ("/etc"), CompareOperator.EQ, 0);
-  assert_listdir ("../sys", {"bus", "devices"});
+  assert_listdir ("../sys", {"bus", "class", "devices"});
   assert_listdir ("../sys/devices", {"dev1"});
   assert_listdir ("../sys/bus", {"pci"});
 
