@@ -46,13 +46,13 @@ namespace Ioctl {
     [CCode (cheader_filename = "linux/usbdevice_fs.h")]
     public const int USBDEVFS_CAP_SUSPEND;
 
-    [CCode (cheader_filename = "sys/ioctl.h")]
+    [CCode (cheader_filename = "linux/ioctl.h")]
     public const int _IOC_SIZEBITS;
-    [CCode (cheader_filename = "sys/ioctl.h")]
+    [CCode (cheader_filename = "linux/ioctl.h")]
     public const int _IOC_SIZESHIFT;
-    [CCode (cheader_filename = "sys/ioctl.h")]
+    [CCode (cheader_filename = "linux/ioctl.h")]
     public const int _IOC_TYPEBITS;
-    [CCode (cheader_filename = "sys/ioctl.h")]
+    [CCode (cheader_filename = "linux/ioctl.h")]
     public const int _IOC_TYPESHIFT;
 
     [CCode (cname="struct usbdevfs_connectinfo", cheader_filename = "linux/usbdevice_fs.h")]
