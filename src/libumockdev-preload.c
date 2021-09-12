@@ -34,10 +34,11 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <limits.h>
-#include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <signal.h>
 #include <inttypes.h>
@@ -415,8 +416,9 @@ netlink_recvmsg(int sockfd, struct msghdr * msg, ssize_t ret)
 	/* fake sender credentials to be uid 0 */
 	cmsg = CMSG_FIRSTHDR(msg);
 	if (cmsg != NULL) {
-	    struct ucred *cred = (struct ucred *)CMSG_DATA(cmsg);
-	    cred->uid = 0;
+	    const uid_t uid0 = 0;
+	    /* don't cast into a struct ucred *, as that increases alignment requirement */
+	    memcpy(CMSG_DATA(cmsg) + offsetof(struct ucred, uid), &uid0, sizeof uid0);
 	}
     }
 }
