@@ -21,6 +21,7 @@ add_project_arguments(
   '-Werror=unused-variable',
   '-Werror=return-type',
   '-Werror=uninitialized',
+  '-Werror=cast-align',
   language: 'c')
 
 # let's not clutter the code with too many #ifdefs
