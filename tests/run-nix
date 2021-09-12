@@ -9,6 +9,9 @@ fi
 
 # sandboxing requires privileged container; https://github.com/NixOS/docker#limitations
 $RUNC run --interactive ${DEBUG:+--tty} --privileged --volume `pwd`:/source:ro ${1:-docker.io/nixos/nix} /bin/sh <<EOF
+# avoid meson exit code 125; https://github.com/containers/podman/issues/11540
+trap '[ \$? -eq 0 ] || exit 1' EXIT
+
 sed -i '/sandbox/ s/false/true/' /etc/nix/nix.conf
 
 cat <<EOG > /tmp/default.nix

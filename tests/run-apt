@@ -15,6 +15,9 @@ fi
 $RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} ${1:-docker.io/amd64/ubuntu:rolling} /bin/sh << EOF
 set -ex
 
+# avoid meson exit code 125; https://github.com/containers/podman/issues/11540
+trap '[ \$? -eq 0 ] || exit 1' EXIT
+
 # go-faster apt
 echo  'Acquire::Languages "none";' > /etc/apt/apt.conf.d/90nolanguages
 

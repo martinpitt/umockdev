@@ -12,6 +12,10 @@ fi
 
 $RUNC run --interactive ${RUNC_OPTIONS:-} ${OPTS:-} --volume `pwd`:/source:ro ${1:-registry.fedoraproject.org/fedora} /bin/sh << EOF
 set -eu
+
+# avoid meson exit code 125; https://github.com/containers/podman/issues/11540
+trap '[ \$? -eq 0 ] || exit 1' EXIT
+
 dnf -y update
 
 if grep -q ID=.*centos /etc/os-release; then

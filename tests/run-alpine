@@ -11,6 +11,8 @@ else
 fi
 
 $RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro ${1:-docker.io/alpine} /bin/sh <<EOF
+# avoid meson exit code 125; https://github.com/containers/podman/issues/11540
+trap '[ \$? -eq 0 ] || exit 1' EXIT
 
 # install build dependencies
 apk add --no-cache meson gcc musl-dev glib-dev eudev-dev libpcap-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
