@@ -741,7 +741,7 @@ public class IoctlBase: GLib.Object {
           listeners.remove(devnode);
     }
 
-    internal void register_path(GLib.MainContext? ctx, string devnode, string sockpath)
+    public void register_path(GLib.MainContext? ctx, string devnode, string sockpath)
     {
         assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
 
@@ -768,13 +768,13 @@ public class IoctlBase: GLib.Object {
         ctx.invoke(tmp.cb);
     }
 
-    internal void unregister_path(string devnode)
+    public void unregister_path(string devnode)
     {
         lock (listeners)
           listeners[devnode].cancel();
     }
 
-    internal void unregister_all()
+    public void unregister_all()
     {
         lock (listeners) {
             listeners.foreach((key, val) => {
@@ -895,7 +895,7 @@ internal class IoctlTreeHandler : IoctlBase {
     }
 }
 
-internal class IoctlTreeRecorder : IoctlBase {
+public class IoctlTreeRecorder : IoctlBase {
 
     bool write_log;
     string logfile;

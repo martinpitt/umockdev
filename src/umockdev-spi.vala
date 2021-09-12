@@ -69,7 +69,7 @@ private struct TransferChunk {
     bool cont;
 }
 
-internal abstract class IoctlSpiBase : IoctlBase {
+public abstract class IoctlSpiBase : IoctlBase {
 
     internal long iter_ioctl_vector(ulong count, IoctlData data, bool for_recording) {
         long transferred = 0;
@@ -325,7 +325,7 @@ internal class IoctlSpiHandler : IoctlSpiBase {
     }
 }
 
-internal class IoctlSpiRecorder : IoctlSpiBase {
+public class IoctlSpiRecorder : IoctlSpiBase {
 
     bool cs_is_high;
     Posix.FILE log;

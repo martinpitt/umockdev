@@ -163,15 +163,9 @@ umockdev_run_exe = executable('umockdev-run',
   install: true)
 
 umockdev_record_exe = executable('umockdev-record',
-  ['src/umockdev-record.vala',
-   'src/umockdev-ioctl.vala',
-   'src/umockdev-pcap.vala',
-   'src/umockdev-spi.vala',
-   'src/ioctl_tree.vapi',
-   'src/ioctl_tree.c',
-   'src/debug.c'],
+  ['src/umockdev-record.vala'],
   dependencies: [glib, gobject, gio_unix, vapi_posix, vapi_config, vapi_ioctl, libpcap],
-  link_with: [umockdev_utils_lib],
+  link_with: [umockdev_utils_lib, umockdev_lib],
   vala_args: [ '--vapidir=@0@/src'.format(meson.current_source_dir()) ],
   include_directories: include_directories('src'),
   install: true)
