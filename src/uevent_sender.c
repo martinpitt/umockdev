@@ -148,27 +148,27 @@ struct udev_monitor_netlink_header {
     unsigned int filter_tag_bloom_lo;
 };
 
-/* taken from systemd/src/libudev/libudev-util.c */
-static unsigned int
+/* taken from systemd/src/basic/MurmurHash2.c */
+static uint32_t
 string_hash32(const char *str)
 {
     /*
      *  'm' and 'r' are mixing constants generated offline.
      *  They're not really 'magic', they just happen to work well.
      */
-    const unsigned int m = 0x5bd1e995;
+    const uint32_t m = 0x5bd1e995;
     const int r = 24;
     int len = strlen(str);
 
     /* initialize the hash to a 'random' value */
-    unsigned int h = len;
+    uint32_t h = len;
 
     /* mix 4 bytes at a time into the hash */
     const unsigned char *data = (const unsigned char *)str;
 
     while (len >= 4) {
-	unsigned int k = *(unsigned int *)data;
-
+	uint32_t k = 0;
+        memcpy(&k, data, sizeof(uint32_t));
 	k *= m;
 	k ^= k >> r;
 	k *= m;
