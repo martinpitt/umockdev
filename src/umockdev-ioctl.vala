@@ -741,6 +741,7 @@ public class IoctlBase: GLib.Object {
           listeners.remove(devnode);
     }
 
+#if INTERNAL_REGISTER_API
     internal void register_path(GLib.MainContext? ctx, string devnode, string sockpath)
     {
         assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
@@ -768,12 +769,15 @@ public class IoctlBase: GLib.Object {
         ctx.invoke(tmp.cb);
     }
 
+#if INTERNAL_UNREGISTER_PATH_API
     internal void unregister_path(string devnode)
     {
         lock (listeners)
           listeners[devnode].cancel();
     }
+#endif
 
+#if INTERNAL_UNREGISTER_ALL_API
     internal void unregister_all()
     {
         lock (listeners) {
@@ -782,6 +786,9 @@ public class IoctlBase: GLib.Object {
             });
         }
     }
+#endif
+
+#endif // INTERNAL_REGISTER_API
 
     public virtual signal void client_connected(IoctlClient client) {
     }
