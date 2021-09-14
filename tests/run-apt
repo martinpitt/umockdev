@@ -12,7 +12,7 @@ fi
 
 [ -n "${PUBLISH_TAR:-}" ] || MOUNT_MODE=":ro"
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} ${1:-docker.io/amd64/ubuntu:rolling} /bin/sh << EOF
+$RUNC run --interactive ${RUNC_OPTIONS:-} ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} ${1:-docker.io/amd64/ubuntu:rolling} /bin/sh << EOF
 set -ex
 
 # avoid meson exit code 125; https://github.com/containers/podman/issues/11540
