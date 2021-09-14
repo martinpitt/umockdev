@@ -1,7 +1,6 @@
 project('umockdev', 'c', 'vala',
   version: run_command('sed', '-rn', '1 { s/^.*\[([0-9.]+)\].*/\\1/; p }', 'NEWS').stdout().strip(),
-  license: 'LGPLv2.1+',
-  default_options: ['werror=true'])
+  license: 'LGPLv2.1+')
 
 srcdir = meson.current_source_dir() / 'src'
 testsdir = meson.current_source_dir() / 'tests'

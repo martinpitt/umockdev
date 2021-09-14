@@ -38,7 +38,7 @@ useradd guest
 su -s /bin/sh - guest << EOG
 set -eux
 cd /source
-meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=\${gtk_doc} -Db_coverage=\$coverage
+meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=\${gtk_doc} -Db_coverage=\$coverage --werror
 cd /tmp/dbg
 DESTDIR=/tmp/inst meson install
 meson test -v --num-processes=1
@@ -50,7 +50,7 @@ fi
 
 # build with clang
 cd /source
-CC=clang meson setup /tmp/clang -Dgtk_doc=false
+CC=clang meson setup /tmp/clang -Dgtk_doc=false --werror
 meson test -C /tmp/clang -v --num-processes=1
 EOG
 

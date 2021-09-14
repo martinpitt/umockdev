@@ -35,7 +35,7 @@ useradd build
 su -s /bin/sh - build << EOG
 set -ex
 cd /source
-meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true
+meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true --werror
 cd /tmp/dbg
 if meson dist --help | grep -q no-tests; then
     meson dist --no-test
@@ -61,7 +61,7 @@ fi
 su - build <<EOG
 set -ex
 cd /source
-meson setup /tmp/rel --buildtype release -Db_ndebug=true --prefix /usr -Dgtk_doc=true
+meson setup /tmp/rel --buildtype release -Db_ndebug=true --prefix /usr -Dgtk_doc=true --werror
 meson test -C /tmp/rel -v --num-processes=1
 EOG
 

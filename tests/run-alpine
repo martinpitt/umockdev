@@ -21,7 +21,7 @@ apk add --no-cache meson gcc musl-dev glib-dev eudev-dev libpcap-dev make vala l
 su -s /bin/sh - guest << EOG
 set -ex
 cd /source
-meson setup /tmp/dbg --buildtype debug
+meson setup /tmp/dbg --buildtype debug --werror
 meson test -C /tmp/dbg -v --num-processes=1
 DESTDIR=/tmp/inst meson install -C /tmp/dbg
 echo "===== tests done; install tree: ===="
