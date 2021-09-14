@@ -39,6 +39,6 @@ jobs:
           script=${script%@*}
           image=${scenario#*-}
 
-          # run as root; current Ubuntu podman breaks user networking ("could not find slirp4netns")
+          # run as root in GitHub, faster due to not using fuse-overlayfs
           # glibc 2.34 has seccomp profile incompatibilities
           sudo ${{ matrix.env }} RUNC_OPTIONS=--security-opt=seccomp=unconfined tests/run-${script} $image
