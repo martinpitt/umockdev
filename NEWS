@@ -1,4 +1,4 @@
-## [0.16.3] - UNRELEASED
+## [0.16.3] - 2021-09-15
 - Several pcap replay fixes (thanks Benjamin Berg)
 - Immediately create "bus" and "class" directories in /sys to fix udev enumerator
   (thanks David Lechner) (#144)
