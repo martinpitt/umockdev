@@ -1,3 +1,11 @@
+## [0.16.3] - UNRELEASED
+- Several pcap replay fixes (thanks Benjamin Berg)
+- Immediately create "bus" and "class" directories in /sys to fix udev enumerator
+  (thanks David Lechner) (#144)
+- preload: Avoid some unaligned access to fix failure on sparc (#147)
+- Fix build on Alpine
+- Don't build with `-Werror` by default; use `meson setup --werror` to re-enable
+
 ## [0.16.2] - 2021-08-25
 - Implement pcap control transfer replaying
 - Fix Coverity errors
@@ -29,8 +37,6 @@
 
 ## [0.15.2] - 2020-11-25
 - Fix "installed-tests" setup to not produce stderr output with grep ≥ 3.5
-
-[0.15.2]: https://github.com/martinpitt/umockdev/compare/0.15.1...0.15.2
 
 ## [0.15.1] - 2020-11-17
 - Fix include file install location (#111)
