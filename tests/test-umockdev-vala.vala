@@ -685,6 +685,40 @@ t_spidev_ioctl ()
 }
 
 void
+t_hidraw_ioctl ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  string device;
+  checked_file_get_contents (Path.build_filename(rootdir + "/devices/hidraw/fido2.umockdev"), out device);
+  tb_add_from_string (tb, device);
+
+  try {
+      tb.load_ioctl ("/dev/hidraw5", Path.build_filename(rootdir + "/devices/hidraw/fido2.ioctl"));
+  } catch (Error e) {
+      error ("Cannot load ioctl file: %s", e.message);
+  }
+
+  int fd = Posix.open ("/dev/hidraw5", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+
+  int i = 0;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.HIDIOCGRDESCSIZE, ref i), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpint (i, CompareOperator.EQ, 34);
+  Ioctl.hidraw_report_descriptor desc = { 34, };
+  assert_cmpint (Posix.ioctl (fd, Ioctl.HIDIOCGRDESC, ref desc), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  uint8 desc_value[] = {
+	  0x06, 0xD0, 0xF1, 0x09, 0x01, 0xA1, 0x01, 0x09, 0x20, 0x15, 0x00, 0x26,
+	  0xFF, 0x00, 0x75, 0x08, 0x95, 0x40, 0x81, 0x02, 0x09, 0x21, 0x15, 0x00,
+	  0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x40, 0x91, 0x02, 0xC0
+  };
+  assert_cmpint (Posix.memcmp(desc.value, desc_value, 34), CompareOperator.EQ, 0);
+  Posix.close (fd);
+}
+
+void
 t_tty_stty ()
 {
   var tb = new UMockdev.Testbed ();
@@ -1048,6 +1082,8 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_pcap", t_usbfs_ioctl_pcap);
 
   Test.add_func ("/umockdev-testbed-vala/spidev_ioctl", t_spidev_ioctl);
+
+  Test.add_func ("/umockdev-testbed-vala/hidraw_ioctl", t_hidraw_ioctl);
 
   /* tests for mocking TTYs */
   Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);

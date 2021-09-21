@@ -24,6 +24,7 @@
 #include <linux/ioctl.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
+#include <linux/hidraw.h>
 
 #include "debug.h"
 #include "ioctl_tree.h"
@@ -942,6 +943,27 @@ ioctl_type ioctl_db[] = {
     /* this was introduced not too long ago */
 #ifdef EVIOCGMTSLOTS
     I_NAMED_SIMPLE_STRUCT_IN(EVIOCGMTSLOTS(32), "EVIOCGMTSLOTS", 0, ioctl_insertion_parent_stateless),
+#endif
+
+    /* hidraw */
+    I_SIMPLE_STRUCT_IN(HIDIOCGRDESCSIZE, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(HIDIOCGRDESC, 0, ioctl_insertion_parent_stateless),
+    I_SIMPLE_STRUCT_IN(HIDIOCGRAWINFO, 0, ioctl_insertion_parent_stateless),
+    /* we define these with len==32, but they apply to any len */
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGRAWNAME(32), "HIDIOCGRAWNAME", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGRAWPHYS(32), "HIDIOCGRAWPHYS", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCSFEATURE(32), "HIDIOCSFEATURE", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGFEATURE(32), "HIDIOCGFEATURE", 0, ioctl_insertion_parent_stateless),
+    /* this was introduced not too long ago */
+#ifdef HIDIOCGRAWUNIQ
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGRAWUNIQ(32), "HIDIOCGRAWUNIQ", 0, ioctl_insertion_parent_stateless),
+#endif
+    /* these were introduced not too long ago */
+#ifdef HIDIOCSINPUT
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCSINPUT(32), "HIDIOCSINPUT", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGINPUT(32), "HIDIOCGINPUT", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCSOUTPUT(32), "HIDIOCSOUTPUT", 0, ioctl_insertion_parent_stateless),
+    I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGOUTPUT(32), "HIDIOCGOUTPUT", 0, ioctl_insertion_parent_stateless),
 #endif
 
     /* terminator */

@@ -119,5 +119,17 @@ namespace Ioctl {
         uint8   word_delay_usecs;
         uint8   pad;
     }
+
+	[CCode (cheader_filename = "linux/hidraw.h")]
+	public const int HIDIOCGRDESCSIZE;
+	[CCode (cheader_filename = "linux/hidraw.h")]
+	public const int HIDIOCGRDESC;
+	[CCode (cheader_filename = "linux/hid.h")]
+	public const int HID_MAX_DESCRIPTOR_SIZE;
+	[CCode (cname = "struct hidraw_report_descriptor", cheader_filename = "linux/hidraw.h")]
+	public struct hidraw_report_descriptor {
+		uint32 size;
+		uint8 value[HID_MAX_DESCRIPTOR_SIZE];
+	}
 }
 
