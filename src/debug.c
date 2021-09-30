@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "debug.h"
+#include "utils.h"
 
 unsigned debug_categories = 0;
 
@@ -13,7 +14,7 @@ init_debug(void)
     char *d_copy, *token;
     if (d == NULL)
 	return;
-    d_copy = strdup(d);
+    d_copy = strdupx(d);
     for (token = strtok(d_copy, " ,"); token; token = strtok(NULL, " ,")) {
 	if (strcmp (token, "all") == 0)
 	    debug_categories = ~0;

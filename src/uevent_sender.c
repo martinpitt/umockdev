@@ -30,6 +30,7 @@
 
 #include <libudev.h>
 
+#include "utils.h"
 #include "uevent_sender.h"
 
 struct _uevent_sender {
@@ -49,7 +50,7 @@ uevent_sender_open(const char *rootpath)
 	perror("uevent_sender_open: cannot allocate struct");
 	abort();
     }
-    s->rootpath = strdup(rootpath);
+    s->rootpath = strdupx(rootpath);
     s->udev = udev_new();
     snprintf(s->socket_glob, sizeof(s->socket_glob), "%s/event[0-9]*", rootpath);
 

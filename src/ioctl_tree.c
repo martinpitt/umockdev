@@ -27,6 +27,7 @@
 #include <linux/hidraw.h>
 
 #include "debug.h"
+#include "utils.h"
 #include "ioctl_tree.h"
 
 #define TRUE 1
@@ -34,16 +35,6 @@
 
 #define UNUSED __attribute__ ((unused))
 
-static void *
-callocx (size_t nmemb, size_t size)
-{
-  void *r = calloc (nmemb, size);
-  if (r == NULL) {
-      perror ("failed to allocate memory");
-      abort ();
-  }
-  return r;
-}
 
 /***********************************
  *
@@ -328,7 +319,7 @@ ioctl_node_list *
 ioctl_node_list_new(void)
 {
     ioctl_node_list *l;
-    l = malloc(sizeof(ioctl_node_list));
+    l = mallocx(sizeof(ioctl_node_list));
     l->n = 0;
     l->capacity = 10;
     l->items = callocx(sizeof(ioctl_tree *), l->capacity);
@@ -496,7 +487,7 @@ static void
 ioctl_simplestruct_init_from_bin(ioctl_tree * node, const void *data)
 {
     DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_bin: %s(%X): size is %u bytes\n", node->type->name, (unsigned) node->id, (unsigned) NSIZE(node));
-    node->data = malloc(NSIZE(node));
+    node->data = mallocx(NSIZE(node));
     memcpy(node->data, data, NSIZE(node));
 }
 
@@ -507,7 +498,7 @@ ioctl_simplestruct_init_from_text(ioctl_tree * node, const char *data)
      * correct length for data; this happens for variable length ioctls such as
      * EVIOCGBIT */
     size_t data_len = strlen(data) / 2;
-    node->data = malloc(data_len);
+    node->data = mallocx(data_len);
 
     if (NSIZE(node) != data_len) {
 	DBG(DBG_IOCTL_TREE, "ioctl_simplestruct_init_from_text: adjusting ioctl ID %X (size %u) to actual data length %zu\n",
@@ -570,7 +561,7 @@ ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
 {
     size_t size = node->type->get_data_size(node->id, data);
     DBG(DBG_IOCTL_TREE, "ioctl_varlenstruct_init_from_bin: %s(%X): size is %zu bytes\n", node->type->name, (unsigned) node->id, size);
-    node->data = malloc(size);
+    node->data = mallocx(size);
     memcpy(node->data, data, size);
 }
 
@@ -579,7 +570,7 @@ ioctl_varlenstruct_init_from_text(ioctl_tree * node, const char *data)
 {
     size_t data_len = strlen(data) / 2;
 
-    node->data = malloc(data_len);
+    node->data = mallocx(data_len);
 
     if (!read_hex(data, node->data, data_len)) {
 	fprintf(stderr, "ioctl_varlenstruct_init_from_text: failed to parse '%s'\n", data);
@@ -999,7 +990,7 @@ ioctl_type_get_by_name(const char *name, IOCTL_REQUEST_TYPE *out_id)
     long offset = 0;
 
     /* chop off real name from offset */
-    real_name = strdup(name);
+    real_name = strdupx(name);
     parens = strchr(real_name, '(');
     if (parens != NULL) {
 	*parens = '\0';

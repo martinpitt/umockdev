@@ -57,6 +57,7 @@
 
 #include "config.h"
 #include "debug.h"
+#include "utils.h"
 #include "ioctl_tree.h"
 
 /* fix missing O_TMPFILE on some systems */
@@ -483,9 +484,9 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 	}
     }
 
-    fdinfo = malloc(sizeof(struct ioctl_fd_info));
+    fdinfo = mallocx(sizeof(struct ioctl_fd_info));
     fdinfo->ioctl_sock = sock;
-    fdinfo->dev_path = strdup(dev_path);
+    fdinfo->dev_path = strdupx(dev_path);
     fdinfo->is_default = is_default;
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
 
@@ -856,7 +857,7 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
 	}
     }
 
-    srinfo = malloc(sizeof(struct script_record_info));
+    srinfo = mallocx(sizeof(struct script_record_info));
     srinfo->log = log;
     if (clock_gettime(CLOCK_MONOTONIC, &srinfo->time) < 0) {
 	fprintf(stderr, "libumockdev-preload: failed to clock_gettime: %m\n");
