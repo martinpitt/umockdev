@@ -1,0 +1,13 @@
+# See the documentation for more information:
+# https://packit.dev/docs/configuration/
+specfile_path: packaging/umockdev.spec
+
+upstream_package_name: umockdev
+downstream_package_name: umockdev
+
+jobs:
+  - job: tests
+    trigger: pull_request
+    metadata:
+      targets:
+        - fedora-rawhide
