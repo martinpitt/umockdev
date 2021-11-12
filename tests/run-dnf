@@ -31,7 +31,7 @@ else
 fi
 
 # install build and test dependencies
-dnf -y \${repos:-} install meson git gcc clang glib2-devel gtk-doc libgudev1-devel libtool libudev-devel libpcap-devel make python3 python3-gobject-base usbutils vala xz systemd-udev evtest valgrind \$packages
+dnf -y \${repos:-} install meson git gcc clang glib2-devel gtk-doc libgudev1-devel libtool libudev-devel libpcap-devel make python3 python3-gobject-base usbutils vala xz systemd-udev evtest gphoto2 valgrind \$packages
 
 # run build as user
 useradd guest
