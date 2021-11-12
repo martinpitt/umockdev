@@ -27,8 +27,8 @@ apt-get update
 apt-get install -y eatmydata
 eatmydata apt-get -y --purge dist-upgrade
 
-# install build dependencies
-eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev libpcap-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils gphoto2 valgrind
+# install build and test dependencies
+eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev libpcap-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput usbutils evtest gphoto2 valgrind
 
 # run build as user
 useradd build

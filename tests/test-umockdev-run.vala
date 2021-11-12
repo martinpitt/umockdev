@@ -556,6 +556,12 @@ t_input_evtest ()
         return;
     }
 
+    unowned string? preload = Environment.get_variable ("LD_PRELOAD");
+    if (preload != null && preload.contains ("vgpreload")) {
+        stdout.printf ("[SKIP: this test does not work under valgrind] ");
+        return;
+    }
+
     Pid evtest_pid;
     int outfd, errfd;
 
@@ -627,6 +633,12 @@ t_input_evtest_evemu ()
 
     if (!have_program ("evtest")) {
         stdout.printf ("[SKIP: evtest not installed] ");
+        return;
+    }
+
+    unowned string? preload = Environment.get_variable ("LD_PRELOAD");
+    if (preload != null && preload.contains ("vgpreload")) {
+        stdout.printf ("[SKIP: this test does not work under valgrind] ");
         return;
     }
 
