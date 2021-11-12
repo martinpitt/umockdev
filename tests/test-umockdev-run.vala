@@ -517,11 +517,15 @@ t_input_touchpad ()
     get_program_out ("xinput", "env DISPLAY=:5 xinput --list-props 'SynPS/2 Synaptics TouchPad'",
             out props_out, out props_err, out props_exit);
 
-    /* shut down X */
+    /* shut down X; this requires extra force due to https://launchpad.net/bugs/1853266 */
 #if VALA_0_40
     Posix.kill (xorg_pid, Posix.Signal.TERM);
+    Posix.kill (xorg_pid, Posix.Signal.QUIT);
+    Posix.kill (xorg_pid, Posix.Signal.KILL);
 #else
     Posix.kill (xorg_pid, Posix.SIGTERM);
+    Posix.kill (xorg_pid, Posix.SIGQUIT);
+    Posix.kill (xorg_pid, Posix.SIGKILL);
 #endif
     int status;
     Posix.waitpid (xorg_pid, out status, 0);
