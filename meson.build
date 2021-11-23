@@ -130,7 +130,7 @@ umockdev_lib = shared_library('umockdev',
   include_directories: include_directories('src'),
   version: lib_version,
   install: true,
-  install_dir: [true, 'include/umockdev-1.0', true, true])
+  install_dir: [true, get_option('includedir') / 'umockdev-1.0', true, true])
 
 # no way to insert "Rename to:" into annotations, so hack it
 hacked_gir = custom_target('UMockdev-1.0 hacked gir',
