@@ -156,7 +156,6 @@ t_run_exit_code ()
     assert (Process.if_signaled (exit));
     assert_cmpint (Process.term_sig (exit), CompareOperator.EQ, ProcessSignal.SEGV);
     assert_cmpstr (sout, CompareOperator.EQ, "");
-    assert_cmpstr (serr, CompareOperator.EQ, "");
 }
 
 static void
