@@ -6,8 +6,11 @@ upstream_package_name: umockdev
 downstream_package_name: umockdev
 
 jobs:
-  - job: tests
+  - job: copr_build
     trigger: pull_request
     metadata:
       targets:
-        - fedora-rawhide
+        - fedora-development-x86_64
+        - fedora-development-i386
+        - fedora-development-aarch64
+        - fedora-development-ppc64le
