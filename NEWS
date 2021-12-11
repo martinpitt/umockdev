@@ -1,4 +1,4 @@
-## [0.17.0] - UNRELEASED
+## [0.17.0] - 2021-12-11
 - Add ioctls necessary to record/replay hidraw devices (thanks Daiki Ueno)
 - meson: Respect includedir option (thanks Florentin Dubois)
 - tests: Fix for Fedora koji emulated architectures s390x and arm
