@@ -793,6 +793,13 @@ t_detects_running_in_testbed ()
 void
 t_detects_not_running_in_testbed ()
 {
+
+    if (Environment.get_variable ("RPM_ARCH") == "s390x" || Environment.get_variable ("RPM_ARCH") == "arm") {
+        stdout.printf ("[SKIP: test known broken in emulated architectures on koji] ");
+        stdout.flush ();
+        return;
+    }
+
     int pipefds[2];
     assert_cmpint (Posix.pipe(pipefds), CompareOperator.EQ, 0);
 
