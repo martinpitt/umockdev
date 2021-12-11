@@ -1,9 +1,14 @@
 # See the documentation for more information:
 # https://packit.dev/docs/configuration/
 specfile_path: packaging/umockdev.spec
-
+upstream_project_url: https://github.com/martinpitt/umockdev
+copy_upstream_release_description: true
 upstream_package_name: umockdev
 downstream_package_name: umockdev
+
+synced_files:
+  - src: packaging/umockdev.spec
+    dest: umockdev.spec
 
 jobs:
   - job: copr_build
@@ -16,3 +21,9 @@ jobs:
         - fedora-development-ppc64le
         - fedora-development-s390x
         - fedora-development-armhfp
+
+  - job: propose_downstream
+    trigger: release
+    metadata:
+      dist_git_branches:
+        - fedora-development
