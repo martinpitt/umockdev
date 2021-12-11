@@ -1,3 +1,9 @@
+## [0.17.0] - UNRELEASED
+- Add ioctls necessary to record/replay hidraw devices (thanks Daiki Ueno)
+- meson: Respect includedir option (thanks Florentin Dubois)
+- tests: Fix for Fedora koji emulated architectures s390x and arm
+- Enable automatic Fedora package updates with packit
+
 ## [0.16.3] - 2021-09-15
 - Several pcap replay fixes (thanks Benjamin Berg)
 - Immediately create "bus" and "class" directories in /sys to fix udev enumerator
