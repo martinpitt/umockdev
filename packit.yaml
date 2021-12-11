@@ -14,3 +14,5 @@ jobs:
         - fedora-development-i386
         - fedora-development-aarch64
         - fedora-development-ppc64le
+        - fedora-development-s390x
+        - fedora-development-armhfp
