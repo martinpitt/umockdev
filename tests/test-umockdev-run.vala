@@ -182,6 +182,46 @@ t_run_pipes ()
 }
 
 static void
+t_run_udevadm_block ()
+{
+    string umockdev_file;
+
+    Posix.close (checked_open_tmp ("loop23.XXXXXX.umockdev", out umockdev_file));
+
+    checked_file_set_contents (umockdev_file, """P: /devices/virtual/block/loop23
+N: loop23
+E: DEVNAME=/dev/loop23
+E: DEVTYPE=disk
+E: MAJOR=7
+E: MINOR=23
+E: SUBSYSTEM=block
+A: dev=7:23\n
+A: size=1048576\n
+""");
+
+    string sout;
+    string serr;
+    int exit;
+
+    // unfortunately the udevadm output between distros is not entirely constant
+    assert (get_program_out (
+            "udevadm",
+            umockdev_run_command + "-d " + umockdev_file + " -- udevadm info --query=all --name=/dev/loop23",
+            out sout, out serr, out exit));
+
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert (sout.contains ("P: /devices/virtual/block/loop23\n"));
+    assert (sout.contains ("P: /devices/virtual/block/loop23\n"));
+    assert (sout.contains ("E: DEVPATH=/devices/virtual/block/loop23"));
+    assert (sout.contains ("E: DEVNAME=/dev/loop23"));
+    assert (sout.contains ("E: MAJOR=7"));
+    assert (sout.contains ("E: MINOR=23"));
+
+    FileUtils.remove (umockdev_file);
+}
+
+static void
 t_run_invalid_args ()
 {
     // missing program to run
@@ -727,6 +767,9 @@ main (string[] args)
   Test.add_func ("/umockdev-run/exit_code", t_run_exit_code);
   Test.add_func ("/umockdev-run/version", t_run_version);
   Test.add_func ("/umockdev-run/pipes", t_run_pipes);
+
+  // udevadm emulation
+  Test.add_func ("/umockdev-run/udevadm-block", t_run_udevadm_block);
 
   // error conditions
   Test.add_func ("/umockdev-run/invalid-args", t_run_invalid_args);

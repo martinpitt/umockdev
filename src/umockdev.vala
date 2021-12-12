@@ -511,18 +511,18 @@ public class Testbed: GLib.Object {
         for (int i = 0; i < attributes.length - 1; i += 2) {
             this.set_attribute(dev_path, attributes[i], attributes[i+1]);
             if (attributes[i] == "dev" && dev_node != null) {
+                var val = attributes[i+1].strip(); // strip off trailing \n
                 /* put the major/minor information into /dev for our preload */
                 string infodir = Path.build_filename(this.root_dir, "dev", ".node");
                 DirUtils.create_with_parents(infodir, 0755);
-                assert(FileUtils.symlink(attributes[i+1],
-                                         Path.build_filename(infodir, dev_node.replace("/", "_"))) == 0);
+                assert(FileUtils.symlink(val, Path.build_filename(infodir, dev_node.replace("/", "_"))) == 0);
 
                 /* create a /sys/dev link for it, like in real sysfs */
                 string sysdev_dir = Path.build_filename(this.sys_dir, "dev",
                     (dev_path.contains("/block/") ? "block" : "char"));
                 if (DirUtils.create_with_parents(sysdev_dir, 0755) != 0)
                     error("cannot create dir '%s': %s", sysdev_dir, strerror(errno));
-                string dest = Path.build_filename(sysdev_dir, attributes[i+1]);
+                string dest = Path.build_filename(sysdev_dir, val);
                 if (!FileUtils.test(dest, FileTest.EXISTS)) {
                     if (FileUtils.symlink("../../" + dev_path.substring(5), dest) < 0)
                         error("add_device %s: failed to symlink %s to %s: %s", name, dest,
