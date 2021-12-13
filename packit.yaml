@@ -27,3 +27,4 @@ jobs:
     metadata:
       dist_git_branches:
         - fedora-development
+        - fedora-stable
