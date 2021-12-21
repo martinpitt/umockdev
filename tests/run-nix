@@ -12,7 +12,10 @@ $RUNC run --interactive ${DEBUG:+--tty} --privileged --volume `pwd`:/source:ro $
 # avoid meson exit code 125; https://github.com/containers/podman/issues/11540
 trap '[ \$? -eq 0 ] || exit 1' EXIT
 
-sed -i '/sandbox/ s/false/true/' /etc/nix/nix.conf
+set -eu
+
+CONF="\$(cat /etc/nix/nix.conf)"
+echo "\${CONF/sandbox = false/sandbox = true}" > /etc/nix/nix.conf
 
 cat <<EOG > /tmp/default.nix
 let pkgs = (import (builtins.fetchTarball { url = "https://github.com/NixOS/nixpkgs/archive/master.tar.gz"; }) {});
