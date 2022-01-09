@@ -1212,6 +1212,26 @@ int prefix ## stat ## suffix (const char *path, struct stat ## suffix *st) \
     return ret;									\
 }
 
+/* wrapper template for fstatat family */
+#define WRAP_FSTATAT(prefix, suffix) \
+int prefix ## fstatat ## suffix (int dirfd, const char *path, struct stat ## suffix *st, int flags) \
+{ \
+    const char *p;								\
+    libc_func(prefix ## fstatat ## suffix, int, int, const char*, struct stat ## suffix *, int); \
+    int ret;									\
+    TRAP_PATH_LOCK;								\
+    p = trap_path(path);							\
+    if (p == NULL) {								\
+	TRAP_PATH_UNLOCK;							\
+	return -1;								\
+    }										\
+    DBG(DBG_PATH, "testbed wrapped " #prefix "fstatat" #suffix "(%s) -> %s\n", path, p); \
+    ret = _ ## prefix ## fstatat ## suffix(dirfd, p, st, flags);		\
+    TRAP_PATH_UNLOCK;								\
+    STAT_ADJUST_MODE;                                                           \
+    return ret;									\
+}
+
 /* wrapper template for __xstat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes)
@@ -1236,6 +1256,27 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
     STAT_ADJUST_MODE;                                                           \
     return ret;									\
 }
+
+/* wrapper template for __fxstatat family */
+#define WRAP_VERFSTATAT(prefix, suffix) \
+int prefix ## fxstatat ## suffix (int ver, int dirfd, const char *path, struct stat ## suffix *st, int flags) \
+{ \
+    const char *p;								\
+    libc_func(prefix ## fxstatat ## suffix, int, int, int, const char*, struct stat ## suffix *, int); \
+    int ret;									\
+    TRAP_PATH_LOCK;								\
+    p = trap_path(path);							\
+    if (p == NULL) {								\
+	TRAP_PATH_UNLOCK;							\
+	return -1;								\
+    }										\
+    DBG(DBG_PATH, "testbed wrapped " #prefix "fxstatat" #suffix "(%s) -> %s\n", path, p); \
+    ret = _ ## prefix ## fxstatat ## suffix(ver, dirfd, p, st, flags);		\
+    TRAP_PATH_UNLOCK;								\
+    STAT_ADJUST_MODE;                                                           \
+    return ret;									\
+}
+
 
 /* wrapper template for open family */
 #define WRAP_OPEN(prefix, suffix) \
@@ -1323,10 +1364,12 @@ WRAP_2ARGS(int, -1, chmod, mode_t);
 WRAP_2ARGS(int, -1, access, int);
 WRAP_STAT(,);
 WRAP_STAT(l,);
+WRAP_FSTATAT(,);
 
 #ifdef __GLIBC__
 WRAP_STAT(,64);
 WRAP_STAT(l,64);
+WRAP_FSTATAT(,64);
 WRAP_FOPEN(,64);
 #endif
 
@@ -1340,6 +1383,11 @@ WRAP_VERSTAT(__x,);
 WRAP_VERSTAT(__x, 64);
 WRAP_VERSTAT(__lx,);
 WRAP_VERSTAT(__lx, 64);
+
+#ifdef HAVE_FXSTATAT
+WRAP_VERFSTATAT(__,);
+WRAP_VERFSTATAT(__,64);
+#endif
 
 int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct statx * stx)
 {

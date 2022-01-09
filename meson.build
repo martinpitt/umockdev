@@ -37,6 +37,11 @@ g_ir_compiler = find_program('g-ir-compiler', required: false)
 conf.set('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('VERSION', meson.project_version())
 
+# glibc versions somewhere between 2.28 and 2.34
+if cc.has_function('__fxstatat', prefix: '#include <sys/stat.h>')
+  add_project_arguments('-DHAVE_FXSTATAT', language: 'c')
+endif
+
 #
 # dependencies
 #
