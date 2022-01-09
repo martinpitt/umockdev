@@ -118,7 +118,7 @@ num_udev_devices(void)
 
     enumerate = udev_enumerate_new(udev);
     g_assert(enumerate);
-    
+
     // NB: using libudev here instead of GUdev so that we can check the return
     // value of udev_enumerate_scan_devices().
     // https://github.com/martinpitt/umockdev/issues/144
@@ -1031,6 +1031,8 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     char *path;
     char pathbuf[PATH_MAX];
     int dirfd, fd;
+    struct stat st;
+    uid_t uid = getuid();
 
     /* start with adding one device */
     success = umockdev_testbed_add_from_string(fixture->testbed,
@@ -1111,6 +1113,22 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(openat(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(openat64(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
+
+    /* stat */
+    g_assert_cmpint(stat ("/sys/bus/pci/devices", &st), ==, 0);
+    g_assert_cmpint(st.st_nlink, ==, 2);
+    g_assert_cmpuint(st.st_uid, ==, uid);
+    g_assert(S_ISDIR(st.st_mode));
+
+    g_assert_cmpint(lstat ("/sys/bus/pci/devices/dev1", &st), ==, 0);
+    g_assert_cmpint(st.st_nlink, ==, 1);
+    g_assert_cmpuint(st.st_uid, ==, uid);
+    g_assert(S_ISLNK(st.st_mode));
+
+    g_assert_cmpint(stat ("/sys/bus/pci/devices/dev1", &st), ==, 0);
+    g_assert_cmpint(st.st_nlink, ==, 2);
+    g_assert_cmpuint(st.st_uid, ==, uid);
+    g_assert(S_ISDIR(st.st_mode));
 }
 
 static void
