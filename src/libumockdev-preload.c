@@ -1176,6 +1176,20 @@ rettype name(const char *path, arg2t arg2, arg3t arg3, arg4t arg4) \
     return r;							\
 }
 
+#define STAT_ADJUST_MODE \
+    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
+	&& is_emulated_device(p, st->st_mode)) {				\
+	st->st_mode &= ~S_IFREG;						\
+	if (st->st_mode & S_ISVTX) {						\
+            st->st_mode = S_IFBLK | (st->st_mode & ~S_IFMT);			\
+	    DBG(DBG_PATH, "  %s is an emulated block device\n", path);		\
+	} else {								\
+            st->st_mode = S_IFCHR | (st->st_mode & ~S_IFMT);			\
+	    DBG(DBG_PATH, "  %s is an emulated char device\n", path);		\
+	}									\
+	st->st_rdev = get_rdev(path + 5);					\
+    }										\
+
 /* wrapper template for stat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes) */
@@ -1194,18 +1208,7 @@ int prefix ## stat ## suffix (const char *path, struct stat ## suffix *st) \
     DBG(DBG_PATH, "testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
     ret = _ ## prefix ## stat ## suffix(p, st);					\
     TRAP_PATH_UNLOCK;								\
-    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
-	&& is_emulated_device(p, st->st_mode)) {				\
-	st->st_mode &= ~S_IFREG;						\
-	if (st->st_mode &  S_ISVTX) {						\
-	    st->st_mode &= ~S_ISVTX; st->st_mode |= S_IFBLK;			\
-	    DBG(DBG_PATH, "  %s is an emulated block device\n", path);		\
-	} else {								\
-	    st->st_mode |= S_IFCHR;						\
-	    DBG(DBG_PATH, "  %s is an emulated char device\n", path);		\
-	}									\
-	st->st_rdev = get_rdev(path + 5);					\
-    }										\
+    STAT_ADJUST_MODE;                                                           \
     return ret;									\
 }
 
@@ -1230,18 +1233,7 @@ int prefix ## stat ## suffix (int ver, const char *path, struct stat ## suffix *
     DBG(DBG_PATH, "testbed wrapped " #prefix "stat" #suffix "(%s) -> %s\n", path, p);	\
     ret = _ ## prefix ## stat ## suffix(ver, p, st);				\
     TRAP_PATH_UNLOCK;								\
-    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
-	&& is_emulated_device(p, st->st_mode)) {				\
-	st->st_mode &= ~S_IFREG;						\
-	if (st->st_mode &  S_ISVTX) {						\
-	    st->st_mode &= ~S_ISVTX; st->st_mode |= S_IFBLK;			\
-	    DBG(DBG_PATH, "  %s is an emulated block device\n", path);		\
-	} else {								\
-	    st->st_mode |= S_IFCHR;						\
-	    DBG(DBG_PATH, "  %s is an emulated char device\n", path);		\
-	}									\
-	st->st_rdev = get_rdev(path + 5);					\
-    }										\
+    STAT_ADJUST_MODE;                                                           \
     return ret;									\
 }
 
