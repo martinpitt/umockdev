@@ -35,6 +35,7 @@
 #include <dlfcn.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -195,13 +196,13 @@ trap_path(const char *path)
     return buf;
 }
 
-static dev_t
-get_rdev(const char *nodename)
+static bool
+get_rdev_maj_min(const char *nodename, uint32_t *major, uint32_t *minor)
 {
     static char buf[PATH_MAX];
     static char link[PATH_MAX];
     int name_offset;
-    int major, minor, orig_errno;
+    int orig_errno;
 
     name_offset = snprintf(buf, sizeof(buf), "%s/dev/.node/", getenv("UMOCKDEV_DIR"));
     buf[sizeof(buf) - 1] = 0;
@@ -217,15 +218,26 @@ get_rdev(const char *nodename)
     if (readlink(buf, link, sizeof(link)) < 0) {
 	DBG(DBG_PATH, "get_rdev %s: cannot read link %s: %m\n", nodename, buf);
 	errno = orig_errno;
-	return (dev_t) 0;
+	return false;
     }
     errno = orig_errno;
-    if (sscanf(link, "%i:%i", &major, &minor) != 2) {
+    if (sscanf(link, "%u:%u", major, minor) != 2) {
 	DBG(DBG_PATH, "get_rdev %s: cannot decode major/minor from '%s'\n", nodename, link);
-	return (dev_t) 0;
+	return false;
     }
-    DBG(DBG_PATH, "get_rdev %s: got major/minor %i:%i\n", nodename, major, minor);
-    return makedev(major, minor);
+    DBG(DBG_PATH, "get_rdev %s: got major/minor %u:%u\n", nodename, *major, *minor);
+    return true;
+}
+
+static dev_t
+get_rdev(const char *nodename)
+{
+    unsigned major, minor;
+
+    if (get_rdev_maj_min(nodename, &major, &minor))
+	return makedev(major, minor);
+    else
+	return (dev_t) 0;
 }
 
 static dev_t
@@ -1361,10 +1373,14 @@ int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct stat
             stx->stx_mode = S_IFCHR | (stx->stx_mode & ~S_IFMT);
             DBG(DBG_PATH, "  %s is an emulated char device (statx)\n", pathname);
         }
-        /* FIXME: the fields are both 32 bit; change get_rdev to return major/minor separately */
-        dev_t d = get_rdev(pathname + 5);
-        stx->stx_rdev_major = major(d);
-        stx->stx_rdev_minor = minor(d);
+	unsigned maj, min;
+	if (get_rdev_maj_min(pathname + 5, &maj, &min)) {
+	    stx->stx_rdev_major = maj;
+	    stx->stx_rdev_minor = min;
+	} else {
+	    stx->stx_rdev_major = stx->stx_rdev_minor = 0;
+	}
+
     }
     return r;
 }
