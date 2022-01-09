@@ -1129,6 +1129,25 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(st.st_nlink, ==, 2);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISDIR(st.st_mode));
+
+#ifdef __GLIBC__
+    /* statx */
+    struct statx stx;
+    g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices", 0, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
+    g_assert_cmpint(stx.stx_nlink, ==, 2);
+    g_assert_cmpuint(stx.stx_uid, ==, uid);
+    g_assert(S_ISDIR(stx.stx_mode));
+
+    g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices/dev1", AT_SYMLINK_NOFOLLOW, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
+    g_assert_cmpint(stx.stx_nlink, ==, 1);
+    g_assert_cmpuint(stx.stx_uid, ==, uid);
+    g_assert(S_ISLNK(stx.stx_mode));
+
+    g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices/dev1", 0, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
+    g_assert_cmpint(stx.stx_nlink, ==, 2);
+    g_assert_cmpuint(stx.stx_uid, ==, uid);
+    g_assert(S_ISDIR(stx.stx_mode));
+#endif
 }
 
 static void
@@ -1218,6 +1237,14 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(g_stat("/dev/zero", &st), ==, 0);
     g_assert(S_ISCHR(st.st_mode));
     g_assert_cmpint(st.st_rdev, ==, 0);	/* we did not set anything */
+
+#ifdef __GLIBC__
+    struct statx stx;
+    g_assert_cmpint(statx (AT_FDCWD, "/dev/zero", 0, STATX_TYPE|STATX_UID, &stx), ==, 0);
+    g_assert_cmpuint(stx.stx_uid, ==, getuid());
+    g_assert(S_ISCHR(stx.stx_mode));
+#endif
+
     fd = g_open("/dev/zero", O_RDONLY, 0);
     g_assert_cmpint(fd, >, 0);
     g_assert(!isatty(fd));
@@ -1370,6 +1397,13 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
     g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
     g_assert(S_ISBLK(st.st_mode));
 
+#ifdef __GLIBC__
+    struct statx stx;
+    g_assert_cmpint(statx (AT_FDCWD, "/dev/empty", 0, STATX_TYPE|STATX_UID, &stx), ==, 0);
+    g_assert_cmpuint(stx.stx_uid, ==, getuid());
+    g_assert(S_ISBLK(stx.stx_mode));
+#endif
+
     /* N: with value should set that contents */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
 					      "P: /devices/block/filled\n"
@@ -1384,6 +1418,12 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
     g_free(contents);
     g_assert_cmpint(g_stat("/dev/sdf", &st), ==, 0);
     g_assert(S_ISBLK(st.st_mode));
+
+#ifdef __GLIBC__
+    g_assert_cmpint(statx (AT_FDCWD, "/dev/sdf", 0, STATX_TYPE|STATX_UID, &stx), ==, 0);
+    g_assert_cmpuint(stx.stx_uid, ==, getuid());
+    g_assert(S_ISBLK(stx.stx_mode));
+#endif
 }
 
 static void
