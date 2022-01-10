@@ -1,4 +1,4 @@
-## [0.17.2] - UNRELEASED
+## [0.17.2] - 2022-01-10
 - preload: Wrap statx() and fstatat(), to fix `ls` and other tools on
   recent glibc versions. (#160)
 
