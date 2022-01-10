@@ -1,3 +1,7 @@
+## [0.17.2] - UNRELEASED
+- preload: Wrap statx() and fstatat(), to fix `ls` and other tools on
+  recent glibc versions. (#160)
+
 ## [0.17.1] - 2021-12-14
 - Fix /sys/dev/* symlinks; regression from 0.15.3 (#155)
 
@@ -510,7 +514,7 @@ version 0.1.
 - Fix building with automake 1.11.3 and Vala 0.16.
 - Generalize ioctl recording and emulation for ioctls with simple structs, i.
   e. no pointer fields. This makes it much easier to add more ioctls in the
-  future. 
+  future.
 - Store return values of ioctls in records, as they are not always 0
   (like EVIOCGBIT)
 - Add support for ioctl ranges (like EVIOCGABS) and ioctls with variable length
