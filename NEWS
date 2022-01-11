@@ -1,3 +1,6 @@
+## [0.17.3] - UNRELEASED
+- tests: Work around broken HIDIOCGRDESCSIZE ioctl on big-endian architectures
+
 ## [0.17.2] - 2022-01-10
 - preload: Wrap statx() and fstatat(), to fix `ls` and other tools on
   recent glibc versions. (#160)
