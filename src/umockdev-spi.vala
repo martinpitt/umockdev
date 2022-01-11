@@ -74,11 +74,7 @@ internal abstract class IoctlSpiBase : IoctlBase {
     internal long iter_ioctl_vector(ulong count, IoctlData data, bool for_recording) {
         long transferred = 0;
 
-#if G_BYTE_ORDER != G_LITTLE_ENDIAN
-        // This only works on little endian or 64bit.
-        assert(sizeof(void*) == sizeof(uint64));
-#endif
-
+        // This only works on 64bit machines
         for (long i = 0; i < count; i++) {
             unowned IoctlData tx = null, rx = null;
             Ioctl.spi_ioc_transfer *transfer = &((Ioctl.spi_ioc_transfer[]) data.data)[i];
