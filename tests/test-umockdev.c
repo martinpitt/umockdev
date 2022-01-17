@@ -577,40 +577,6 @@ t_testbed_set_property(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_object_unref(device);
 }
 
-struct event_counter {
-    unsigned add;
-    unsigned remove;
-    unsigned change;
-    gchar last_device[1024];
-};
-
-static void
-on_uevent(UNUSED GUdevClient *client, const gchar *action, GUdevDevice *device, gpointer user_data)
-{
-    struct event_counter *counter = (struct event_counter *)user_data;
-
-    g_debug("on_uevent action %s device %s", action, g_udev_device_get_sysfs_path(device));
-
-    if (strcmp(action, "add") == 0)
-	counter->add++;
-    else if (strcmp(action, "remove") == 0)
-	counter->remove++;
-    else if (strcmp(action, "change") == 0)
-	counter->change++;
-    else
-	g_assert_not_reached();
-
-    strncpy(counter->last_device, g_udev_device_get_sysfs_path(device), sizeof(counter->last_device) - 1);
-}
-
-static gboolean
-on_timeout(gpointer user_data)
-{
-    GMainLoop *mainloop = (GMainLoop *) user_data;
-    g_main_loop_quit(mainloop);
-    return FALSE;
-}
-
 static void
 t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
@@ -719,6 +685,41 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     udev_monitor_unref(mon);
     udev_unref(udev);
 }
+
+struct event_counter {
+    unsigned add;
+    unsigned remove;
+    unsigned change;
+    gchar last_device[1024];
+};
+
+static void
+on_uevent(UNUSED GUdevClient *client, const gchar *action, GUdevDevice *device, gpointer user_data)
+{
+    struct event_counter *counter = (struct event_counter *)user_data;
+
+    g_debug("on_uevent action %s device %s", action, g_udev_device_get_sysfs_path(device));
+
+    if (strcmp(action, "add") == 0)
+	counter->add++;
+    else if (strcmp(action, "remove") == 0)
+	counter->remove++;
+    else if (strcmp(action, "change") == 0)
+	counter->change++;
+    else
+	g_assert_not_reached();
+
+    strncpy(counter->last_device, g_udev_device_get_sysfs_path(device), sizeof(counter->last_device) - 1);
+}
+
+static gboolean
+on_timeout(gpointer user_data)
+{
+    GMainLoop *mainloop = (GMainLoop *) user_data;
+    g_main_loop_quit(mainloop);
+    return FALSE;
+}
+
 
 static void
 t_testbed_uevent_gudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
