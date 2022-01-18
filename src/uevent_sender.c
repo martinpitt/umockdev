@@ -205,6 +205,10 @@ append_property(char *array, size_t size, ssize_t offset, const char *name, cons
     int r;
     assert(offset < size);
     r = snprintf(array + offset, size - offset, "%s%s", name, value);
+    if (r < 0) {
+        fprintf(stderr, "ERROR: snprintf failed");
+        abort();
+    }
     // include the NUL terminator in the string length, as we need to keep it as a separator between keys
     ++r;
     if (r + offset >= size) {
