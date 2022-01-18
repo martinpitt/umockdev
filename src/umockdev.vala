@@ -754,7 +754,15 @@ public class Testbed: GLib.Object {
             assert(this.ev_sender != null);
         }
         debug("umockdev_testbed_uevent: sending uevent %s for device %s", action, devpath);
-        this.ev_sender.send(devpath, action);
+
+        var uevent_path = Path.build_filename(this.root_dir, devpath, "uevent");
+        var properties = "";
+        try {
+            FileUtils.get_contents(uevent_path, out properties);
+        } catch (FileError e) {
+            debug("uevent: devpath %s has no uevent file: %s",  devpath, e.message);
+        }
+        this.ev_sender.send(devpath, action, properties);
     }
 
     /**

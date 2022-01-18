@@ -6,6 +6,6 @@ namespace UeventSender {
   public class sender {
       [CCode (cname="uevent_sender_open")]
       public sender (string rootpath);
-      public void send (string devpath, string action);
+      public void send (string devpath, string action, string properties);
   }
 }
