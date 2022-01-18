@@ -1127,32 +1127,28 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* stat */
     g_assert_cmpint(stat ("/sys/bus/pci/devices", &st), ==, 0);
-    g_assert_cmpint(st.st_nlink, ==, 2);
+    g_assert_cmpint(st.st_nlink, >=, 1);
+    g_assert_cmpint(st.st_nlink, <=, 2);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISDIR(st.st_mode));
 
     g_assert_cmpint(lstat ("/sys/bus/pci/devices/dev1", &st), ==, 0);
-    g_assert_cmpint(st.st_nlink, ==, 1);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISLNK(st.st_mode));
 
     g_assert_cmpint(stat ("/sys/bus/pci/devices/dev1", &st), ==, 0);
-    g_assert_cmpint(st.st_nlink, ==, 2);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISDIR(st.st_mode));
 
     g_assert_cmpint(fstatat (AT_FDCWD, "/sys/bus/pci/devices", &st, 0), ==, 0);
-    g_assert_cmpint(st.st_nlink, ==, 2);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISDIR(st.st_mode));
 
     g_assert_cmpint(fstatat (AT_FDCWD, "/sys/bus/pci/devices/dev1", &st, AT_SYMLINK_NOFOLLOW), ==, 0);
-    g_assert_cmpint(st.st_nlink, ==, 1);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISLNK(st.st_mode));
 
     g_assert_cmpint(fstatat (AT_FDCWD, "/sys/bus/pci/devices/dev1", &st, 0), ==, 0);
-    g_assert_cmpint(st.st_nlink, ==, 2);
     g_assert_cmpuint(st.st_uid, ==, uid);
     g_assert(S_ISDIR(st.st_mode));
 
@@ -1160,17 +1156,16 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     /* statx */
     struct statx stx;
     g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices", 0, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
-    g_assert_cmpint(stx.stx_nlink, ==, 2);
+    g_assert_cmpint(stx.stx_nlink, >=, 1);
+    g_assert_cmpint(stx.stx_nlink, <=, 2);
     g_assert_cmpuint(stx.stx_uid, ==, uid);
     g_assert(S_ISDIR(stx.stx_mode));
 
     g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices/dev1", AT_SYMLINK_NOFOLLOW, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
-    g_assert_cmpint(stx.stx_nlink, ==, 1);
     g_assert_cmpuint(stx.stx_uid, ==, uid);
     g_assert(S_ISLNK(stx.stx_mode));
 
     g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices/dev1", 0, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
-    g_assert_cmpint(stx.stx_nlink, ==, 2);
     g_assert_cmpuint(stx.stx_uid, ==, uid);
     g_assert(S_ISDIR(stx.stx_mode));
 #endif
