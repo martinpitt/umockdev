@@ -341,8 +341,14 @@ ioctl_node_list_append(ioctl_node_list * list, ioctl_tree * element)
     if (list->n == list->capacity) {
 	assert(list->capacity < SIZE_MAX / 2);
 	list->capacity *= 2;
+    /* HACK: -fanalyzer incorrectly treats this as memory leak */
+#pragma GCC diagnostic push
+#if !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+#endif
 	list->items = reallocarray(list->items, list->capacity, sizeof(ioctl_tree *));
 	assert(list->items != NULL);
+#pragma GCC diagnostic pop
     }
 
     list->items[list->n++] = element;

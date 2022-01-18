@@ -22,6 +22,8 @@ add_project_arguments(
   '-Werror=uninitialized',
   # experimental: first check this on all Debian architectures
   '-Wcast-align',
+  # older gcc versions don't know about all the -Wanalyzer errors which we want to quiesce
+  '-Wno-error=pragmas',
   language: 'c')
 
 # let's not clutter the code with too many #ifdefs
