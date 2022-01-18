@@ -1111,7 +1111,7 @@ public class Testbed: GLib.Object {
         return ret;
     }
 
-    private static static HashTable<string, string> bus_lookup_table;
+    private static HashTable<string, string> bus_lookup_table;
 
     private static HashTable<string, string> create_bus_lookup() {
         var lookup = new HashTable<string, string?>(str_hash, str_equal);
