@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <assert.h>
 #include <errno.h>
 #include <linux/ioctl.h>
@@ -338,8 +339,9 @@ void
 ioctl_node_list_append(ioctl_node_list * list, ioctl_tree * element)
 {
     if (list->n == list->capacity) {
+	assert(list->capacity < SIZE_MAX / 2);
 	list->capacity *= 2;
-	list->items = realloc(list->items, list->capacity * sizeof(ioctl_tree *));
+	list->items = reallocarray(list->items, list->capacity, sizeof(ioctl_tree *));
 	assert(list->items != NULL);
     }
 

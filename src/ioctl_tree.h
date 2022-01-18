@@ -46,7 +46,7 @@ typedef struct {
 
 typedef struct {
     ssize_t n;
-    ssize_t capacity;
+    size_t capacity;
     ioctl_tree **items;
 } ioctl_node_list;
 
