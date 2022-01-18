@@ -1,3 +1,6 @@
+## [0.17.5] - UNRELEASED
+- Relax overzealous stat nlink unit test
+
 ## [0.17.4] - 2022-01-18
 - Include udev properties in emulated netlink messages, to work with recent
   libudev (#165)
