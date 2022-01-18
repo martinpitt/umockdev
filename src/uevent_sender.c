@@ -209,14 +209,16 @@ append_property(char *array, size_t size, size_t offset, const char *name, const
         fprintf(stderr, "ERROR: snprintf failed");
         abort();
     }
-    // include the NUL terminator in the string length, as we need to keep it as a separator between keys
-    ++r;
     if (r + offset >= size) {
         fprintf(stderr, "ERROR: uevent_sender_send: Property buffer overflow\n");
         abort();
-     }
+    }
 
-    return r;
+    /* this is already true as snprintf always writes the NUL, but -fanalyzer complains about use-of-uninitialized-value */
+    array[offset + r] = '\0';
+
+    /* include the NUL terminator in the string length, as we need to keep it as a separator between keys */
+    return r + 1;
 }
 
 /* this mirrors the code from systemd/src/libsystemd/sd-device/device-monitor.c,
