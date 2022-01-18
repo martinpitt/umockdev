@@ -224,7 +224,7 @@ append_property(char *array, size_t size, size_t offset, const char *name, const
 /* this mirrors the code from systemd/src/libsystemd/sd-device/device-monitor.c,
  * device_monitor_send_device() */
 void
-uevent_sender_send(uevent_sender * sender, const char *devpath, const char *action)
+uevent_sender_send(uevent_sender * sender, const char *devpath, const char *action, const char *properties)
 {
     char buffer[1024];
     size_t buffer_len = 0;
@@ -260,6 +260,20 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
         buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVNAME=", devname);
     if (devtype)
         buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVTYPE=", devtype);
+
+    /* append udevd (userland) properties, replace \n with \0 */
+    /* FIXME: more sensible API */
+    size_t properties_len = properties ? strlen(properties) : 0;
+    if (properties_len > 0) {
+        size_t prop_ofs = buffer_len;
+        buffer_len += append_property(buffer, sizeof buffer, buffer_len, properties, "");
+        for (size_t i = prop_ofs; i < buffer_len - 1; ++i)
+            if (buffer[i] == '\n')
+                buffer[i] = '\0';
+        /* avoid empty property at the end from final line break */
+        if (properties[strlen(properties) - 1] == '\n')
+            --buffer_len;
+    }
 
     /* add versioned header */
     memset(&nlh, 0x00, sizeof(struct udev_monitor_netlink_header));

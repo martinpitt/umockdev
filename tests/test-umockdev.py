@@ -129,7 +129,7 @@ class Testbed(unittest.TestCase):
     def test_uevent(self):
         '''testbed uevent()'''
 
-        counter = [0, 0, 0, None]  # add, remove, change, last device
+        counter = [0, 0, 0, None, None, None]  # add, remove, change, last device, idVendor, ID_INPUT
 
         def on_uevent(client, action, device, counters):
             if action == 'add':
@@ -138,9 +138,13 @@ class Testbed(unittest.TestCase):
                 counters[1] += 1
             else:
                 assert action == 'change'
+                self.assertEqual(device.get_sysfs_attr('idVendor'), '0815')
+                self.assertEqual(device.get_property('ID_INPUT'), '1')
                 counters[2] += 1
 
             counters[3] = device.get_sysfs_path()
+            counters[4] = device.get_sysfs_attr('idVendor')
+            counters[5] = device.get_property('ID_INPUT')
 
         syspath = self.testbed.add_device('pci', 'mydev', None, ['idVendor', '0815'], ['ID_INPUT', '1'])
         self.assertNotEqual(syspath, None)
@@ -155,14 +159,17 @@ class Testbed(unittest.TestCase):
         self.testbed.uevent(syspath, 'add')
         GLib.timeout_add(500, mainloop.quit)
         mainloop.run()
-        self.assertEqual(counter, [1, 0, 0, syspath])
+        self.assertEqual(counter, [1, 0, 0, syspath, '0815', '1'])
 
         counter[0] = 0
         counter[3] = None
+        counter[4] = None
+        counter[5] = None
+
         self.testbed.uevent(syspath, 'change')
         GLib.timeout_add(500, mainloop.quit)
         mainloop.run()
-        self.assertEqual(counter, [0, 0, 1, syspath])
+        self.assertEqual(counter, [0, 0, 1, syspath, '0815', '1'])
 
     def test_add_from_string(self):
         self.assertTrue(self.testbed.add_from_string ('''P: /devices/dev1

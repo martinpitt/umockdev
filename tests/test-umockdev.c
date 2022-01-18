@@ -614,12 +614,16 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
     g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    g_assert_cmpstr(udev_device_get_sysattr_value(device, "idVendor"), ==, "0815");
+    g_assert_cmpstr(udev_device_get_property_value(device, "ID_INPUT"), ==, "1");
     udev_device_unref(device);
 
     device = udev_monitor_receive_device(kernel_mon);
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
     g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    g_assert_cmpstr(udev_device_get_sysattr_value(device, "idVendor"), ==, "0815");
+    g_assert_cmpstr(udev_device_get_property_value(device, "ID_INPUT"), ==, "1");
     udev_device_unref(device);
 
     udev_monitor_unref(udev_mon);
