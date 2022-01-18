@@ -1,3 +1,7 @@
+## [0.17.4] - UNRELEASED
+- Include udev properties in emulated netlink messages, to work with recent
+  libudev (#165)
+
 ## [0.17.3] - 2022-01-11
 - tests: Work around broken HIDIOCGRDESCSIZE ioctl on big-endian architectures
 
