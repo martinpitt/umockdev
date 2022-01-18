@@ -199,8 +199,8 @@ string_hash32(const char *str)
     return h;
 }
 
-static ssize_t
-append_property(char *array, size_t size, ssize_t offset, const char *name, const char *value)
+static size_t
+append_property(char *array, size_t size, size_t offset, const char *name, const char *value)
 {
     int r;
     assert(offset < size);
@@ -219,13 +219,13 @@ append_property(char *array, size_t size, ssize_t offset, const char *name, cons
     return r;
 }
 
-/* this mirrors the code from systemd/src/libudev/libudev-monitor.c,
- * udev_monitor_send_device() */
+/* this mirrors the code from systemd/src/libsystemd/sd-device/device-monitor.c,
+ * device_monitor_send_device() */
 void
 uevent_sender_send(uevent_sender * sender, const char *devpath, const char *action)
 {
-    char props[1024];
-    ssize_t count;
+    char buffer[1024];
+    size_t buffer_len = 0;
     struct msghdr smsg;
     struct iovec iov[2];
     const char *subsystem;
@@ -249,16 +249,15 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     devtype = udev_device_get_devtype(device);
 
     /* build NUL-terminated property array */
-    count = 0;
-    count += append_property(props, sizeof (props), count, "ACTION=", action);
-    count += append_property(props, sizeof (props), count, "DEVPATH=", udev_device_get_devpath(device));
-    count += append_property(props, sizeof (props), count, "SUBSYSTEM=", subsystem);
+    buffer_len += append_property(buffer, sizeof buffer, buffer_len, "ACTION=", action);
+    buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVPATH=", udev_device_get_devpath(device));
+    buffer_len += append_property(buffer, sizeof buffer, buffer_len, "SUBSYSTEM=", subsystem);
     snprintf(seqnumstr, sizeof(seqnumstr), "%llu", seqnum++);
-    count += append_property(props, sizeof (props), count, "SEQNUM=", seqnumstr);
+    buffer_len += append_property(buffer, sizeof buffer, buffer_len, "SEQNUM=", seqnumstr);
     if (devname)
-        count += append_property(props, sizeof (props), count, "DEVNAME=", devname);
+        buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVNAME=", devname);
     if (devtype)
-        count += append_property(props, sizeof (props), count, "DEVTYPE=", devtype);
+        buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVTYPE=", devtype);
 
     /* add versioned header */
     memset(&nlh, 0x00, sizeof(struct udev_monitor_netlink_header));
@@ -279,9 +278,9 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
 
     /* add properties list */
     nlh.properties_off = iov[0].iov_len;
-    nlh.properties_len = count;
-    iov[1].iov_base = props;
-    iov[1].iov_len = count;
+    nlh.properties_len = buffer_len;
+    iov[1].iov_base = buffer;
+    iov[1].iov_len = buffer_len;
 
     /* send message */
     memset(&smsg, 0x00, sizeof(struct msghdr));
