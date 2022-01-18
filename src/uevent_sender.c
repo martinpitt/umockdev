@@ -231,7 +231,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     struct msghdr smsg;
     struct iovec iov[2];
     const char *subsystem;
-    const char *devname;
     const char *devtype;
     char seqnumstr[20];
     struct udev_device *device;
@@ -247,7 +246,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     subsystem = udev_device_get_subsystem(device);
     assert(subsystem != NULL);
 
-    devname = udev_device_get_devnode(device);
     devtype = udev_device_get_devtype(device);
 
     /* build NUL-terminated property array */
@@ -256,10 +254,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     buffer_len += append_property(buffer, sizeof buffer, buffer_len, "SUBSYSTEM=", subsystem);
     snprintf(seqnumstr, sizeof(seqnumstr), "%llu", seqnum++);
     buffer_len += append_property(buffer, sizeof buffer, buffer_len, "SEQNUM=", seqnumstr);
-    if (devname)
-        buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVNAME=", devname);
-    if (devtype)
-        buffer_len += append_property(buffer, sizeof buffer, buffer_len, "DEVTYPE=", devtype);
 
     /* append udevd (userland) properties, replace \n with \0 */
     /* FIXME: more sensible API */
