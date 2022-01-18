@@ -236,6 +236,7 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
             /* attributes */
             "idVendor", "0815", "idProduct", "AFFE", NULL,
             /* properties */
+            "DEVTYPE", "usb_device", "DEVNAME", "/dev/mydev",
             "ID_INPUT", "1", "ID_INPUT_KEYBOARD", "1", NULL);
     g_assert(syspath);
     g_assert(g_str_has_suffix(syspath, "/sys/devices/extkeyboard1"));
@@ -246,6 +247,8 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
     g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    g_assert_cmpstr(udev_device_get_devnode(device), ==, "/dev/mydev");
+    g_assert_cmpstr(udev_device_get_devtype(device), ==, "usb_device");
     udev_device_unref(device);
     udev_monitor_unref(udev_mon);
     udev_unref(udev);
@@ -614,6 +617,7 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
     g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    g_assert_cmpstr(udev_device_get_subsystem(device), ==, "pci");
     g_assert_cmpstr(udev_device_get_sysattr_value(device, "idVendor"), ==, "0815");
     g_assert_cmpstr(udev_device_get_property_value(device, "ID_INPUT"), ==, "1");
     udev_device_unref(device);
@@ -622,6 +626,7 @@ t_testbed_uevent_libudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
     g_assert_cmpstr(udev_device_get_action(device), ==, "add");
+    g_assert_cmpstr(udev_device_get_subsystem(device), ==, "pci");
     g_assert_cmpstr(udev_device_get_sysattr_value(device, "idVendor"), ==, "0815");
     g_assert_cmpstr(udev_device_get_property_value(device, "ID_INPUT"), ==, "1");
     udev_device_unref(device);
