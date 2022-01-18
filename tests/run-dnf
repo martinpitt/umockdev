@@ -38,7 +38,8 @@ useradd guest
 su -s /bin/sh - guest << EOG
 set -eux
 cd /source
-CFLAGS="-fanalyzer" meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=\${gtk_doc} -Db_coverage=\$coverage --werror
+
+CFLAGS="\$(grep -q rawhide /etc/os-release && echo -fanalyzer)" meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=\${gtk_doc} -Db_coverage=\$coverage --werror
 cd /tmp/dbg
 DESTDIR=/tmp/inst meson install
 meson test -v --num-processes=1
