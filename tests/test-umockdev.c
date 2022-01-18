@@ -48,6 +48,12 @@
 #define UNUSED __attribute__ ((unused))
 #define UNUSED_DATA UNUSED gconstpointer data
 
+/* avoid leak reports inside assertions; leaking stuff on assertion failures does not matter in tests */
+#if !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+#pragma GCC diagnostic ignored "-Wanalyzer-file-leak"
+#endif
+
 static gboolean has_real_sysfs;
 
 static int slow_testbed_factor = 1;
