@@ -857,6 +857,25 @@ t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 }
 
 static void
+t_testbed_uevent_property_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    /* overly long property */
+    if (g_test_subprocess()) {
+        char long_name[800];
+        memset(long_name, 'a', sizeof long_name);
+        long_name[sizeof long_name - 1] = '\0';
+
+        /* this sends an "add" uevent */
+        umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL,
+                                    NULL, /* attributes */
+                                    long_name, long_name, NULL);
+    }
+    g_test_trap_subprocess(NULL, 0, 0);
+    g_test_trap_assert_failed();
+    g_test_trap_assert_stderr ("*uevent_sender_send*Property buffer overflow*");
+}
+
+static void
 t_testbed_add_from_string(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GUdevDevice *device;
@@ -2305,6 +2324,8 @@ main(int argc, char **argv)
 	       t_testbed_uevent_null_action, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/action_overflow", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_uevent_action_overflow, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/uevent/property_overflow", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_uevent_property_overflow, t_testbed_fixture_teardown);
 
     /* tests for mocking USB devices */
     g_test_add("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
