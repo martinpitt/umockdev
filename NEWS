@@ -1,3 +1,8 @@
+## [0.17.6] - UNRELEASED
+- Increase uevent buffer size (#167)
+- Skip /umockdev-testbed-vala/detects_running_outside_testbed during normal
+  builds for the time being, as it is brittle on several architectures (#169)
+
 ## [0.17.5] - 2022-01-18
 - Relax overzealous stat nlink unit test
 
