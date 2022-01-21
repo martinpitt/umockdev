@@ -846,7 +846,7 @@ t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* overly long action */
     if (g_test_subprocess()) {
-        char long_action[4096];
+        char long_action[16384];
         memset(long_action, 'a', sizeof(long_action));
         long_action[sizeof(long_action)-1] = '\0';
         umockdev_testbed_uevent(fixture->testbed, syspath, long_action);
@@ -861,7 +861,7 @@ t_testbed_uevent_property_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA
 {
     /* overly long property */
     if (g_test_subprocess()) {
-        char long_name[800];
+        char long_name[10000];
         memset(long_name, 'a', sizeof long_name);
         long_name[sizeof long_name - 1] = '\0';
 
