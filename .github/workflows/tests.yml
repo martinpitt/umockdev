@@ -41,4 +41,4 @@ jobs:
 
           # run as root in GitHub, faster due to not using fuse-overlayfs
           # glibc 2.34 has seccomp profile incompatibilities
-          sudo ${{ matrix.env }} RUNC_OPTIONS=--security-opt=seccomp=unconfined tests/run-${script} $image
+          sudo ${{ matrix.env }} BRITTLE_TESTS=1 RUNC_OPTIONS=--security-opt=seccomp=unconfined tests/run-${script} $image
