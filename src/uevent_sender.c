@@ -33,6 +33,8 @@
 #include "utils.h"
 #include "uevent_sender.h"
 
+#define UEVENT_BUFSIZE 16384
+
 struct _uevent_sender {
     char *rootpath;
     char socket_glob[PATH_MAX];
@@ -226,7 +228,7 @@ append_property(char *array, size_t size, size_t offset, const char *name, const
 void
 uevent_sender_send(uevent_sender * sender, const char *devpath, const char *action, const char *properties)
 {
-    char buffer[1024];
+    char buffer[UEVENT_BUFSIZE];
     size_t buffer_len = 0;
     struct msghdr smsg;
     struct iovec iov[2];
