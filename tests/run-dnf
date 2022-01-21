@@ -37,6 +37,7 @@ dnf -y \${repos:-} install meson git gcc clang glib2-devel gtk-doc libgudev1-dev
 useradd guest
 su -s /bin/sh - guest << EOG
 set -eux
+export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
 
 CFLAGS="\$(grep -q rawhide /etc/os-release && echo -fanalyzer)" meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=\${gtk_doc} -Db_coverage=\$coverage --werror

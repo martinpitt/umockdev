@@ -34,6 +34,7 @@ eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac 
 useradd build
 su -s /bin/sh - build << EOG
 set -ex
+export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
 meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true --werror
 cd /tmp/dbg

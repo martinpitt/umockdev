@@ -20,6 +20,7 @@ apk add --no-cache meson gcc musl-dev glib-dev eudev-dev libpcap-dev make vala l
 # run build as user
 su -s /bin/sh - guest << EOG
 set -ex
+export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
 meson setup /tmp/dbg --buildtype debug --werror
 meson test -C /tmp/dbg -v --num-processes=1
