@@ -793,9 +793,8 @@ t_detects_running_in_testbed ()
 void
 t_detects_not_running_in_testbed ()
 {
-
-    if (Environment.get_variable ("RPM_ARCH") == "s390x" || Environment.get_variable ("RPM_ARCH") == "arm") {
-        stdout.printf ("[SKIP: test known broken in emulated architectures on koji] ");
+    if (Environment.get_variable ("BRITTLE_TESTS") == null) {
+        stdout.printf ("[SKIP: brittle test: does not work on emulated architectures] ");
         stdout.flush ();
         return;
     }
