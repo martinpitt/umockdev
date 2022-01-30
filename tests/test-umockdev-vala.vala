@@ -793,12 +793,6 @@ t_detects_running_in_testbed ()
 void
 t_detects_not_running_in_testbed ()
 {
-    if (Environment.get_variable ("BRITTLE_TESTS") == null) {
-        stdout.printf ("[SKIP: brittle test: does not work on emulated architectures] ");
-        stdout.flush ();
-        return;
-    }
-
     int pipefds[2];
     assert_cmpint (Posix.pipe(pipefds), CompareOperator.EQ, 0);
 
@@ -808,8 +802,10 @@ t_detects_not_running_in_testbed ()
     if (pid == 0) {
         Posix.close(pipefds[0]);
         GLib.Environment.unset_variable("LD_PRELOAD");
-        string[] argv = { "--test-outside-testbed", pipefds[1].to_string() };
-        Posix.execv("/proc/self/exe", argv);
+        string myexe = Posix.realpath("/proc/self/exe");
+        string[] argv = { myexe, "--test-outside-testbed", pipefds[1].to_string() };
+        Posix.execv(myexe, argv);
+        error ("execv /proc/self/exe = %s failed: %m", myexe);
     }
     Posix.close(pipefds[1]);
 
