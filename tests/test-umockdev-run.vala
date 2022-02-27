@@ -547,11 +547,18 @@ t_input_touchpad ()
     Posix.kill (xorg_pid, Posix.SIGQUIT);
     Posix.kill (xorg_pid, Posix.SIGKILL);
 #endif
+    try {
+        Process.spawn_sync (null, {"pkill", "-9", "-f", "Xorg.*/tests/xorg-dummy.conf"}, null, SpawnFlags.SEARCH_PATH, null, null, null, null);
+    } catch (Error e) {}
+
     int status;
     Posix.waitpid (xorg_pid, out status, 0);
     Process.close_pid (xorg_pid);
     FileUtils.remove (logfile);
     FileUtils.remove (logfile + ".old");
+    // clean up lockfile after killed X server
+    FileUtils.remove ("/tmp/.X5-lock");
+    FileUtils.remove ("/tmp/.X11-unix/X5");
 
     assert_cmpstr (xinput_err, CompareOperator.EQ, "");
     assert_cmpint (xinput_exit, CompareOperator.EQ, 0);
