@@ -394,41 +394,9 @@ public class Testbed: GLib.Object {
         this.set_property(devpath, name, "%x".printf(value));
     }
 
-    /**
-     * umockdev_testbed_add_devicev:
-     * @self: A #UMockdevTestbed.
-     * @subsystem: The subsystem name, e. g. "usb"
-     * @name: The device name; arbitrary, but needs to be unique within the testbed
-     * @parent: (allow-none): device path of the parent device. Use %NULL for a
-     *          top-level device.
-     * @attributes: (array zero-terminated=1):
-     *              A list of device sysfs attributes, alternating names and
-     *              values, terminated with %NULL:
-     *              { "key1", "value1", "key2", "value2", ..., NULL }
-     * @properties: (array zero-terminated=1):
-     *              A list of device udev properties; same format as @attributes
-     *
-     * This method is mostly meant for language bindings (where it is named
-     * umockdev_testbed_add_device()). For C programs it is usually more convenient to
-     * use umockdev_testbed_add_device().
-     *
-     * Add a new device to the testbed. A Linux kernel device always has a
-     * subsystem (such as "usb" or "pci"), and a device name. The test bed only
-     * builds a very simple sysfs structure without nested namespaces, so it
-     * requires device names to be unique. Some gudev client programs might make
-     * assumptions about the name (e. g. a SCSI disk block device should be called
-     * sdaN). A device also has an arbitrary number of sysfs attributes and udev
-     * properties; usually you should specify them upon creation, but it is also
-     * possible to change them later on with umockdev_testbed_set_attribute() and
-     * umockdev_testbed_set_property().
-     *
-     * Returns: The sysfs path for the newly created device. Free with g_free().
-     *
-     * Rename to: umockdev_testbed_add_device
-     */
-    public string? add_devicev(string subsystem, string name, string? parent,
-                               [CCode(array_null_terminated=true, array_length=false)] string[] attributes,
-                               [CCode(array_null_terminated=true, array_length=false)] string[] properties)
+    private string? add_devicev_no_uevent(string subsystem, string name, string? parent,
+                                         [CCode(array_null_terminated=true, array_length=false)] string[] attributes,
+                                         [CCode(array_null_terminated=true, array_length=false)] string[] properties)
     {
         string dev_path;
         string? dev_node = null;
@@ -533,7 +501,50 @@ public class Testbed: GLib.Object {
         if (attributes.length % 2 != 0)
             warning("add_devicev: Ignoring attribute key '%s' without value", attributes[attributes.length-1]);
 
-        if (in_mock_environment ())
+        return dev_path;
+    }
+
+    /**
+     * umockdev_testbed_add_devicev:
+     * @self: A #UMockdevTestbed.
+     * @subsystem: The subsystem name, e. g. "usb"
+     * @name: The device name; arbitrary, but needs to be unique within the testbed
+     * @parent: (allow-none): device path of the parent device. Use %NULL for a
+     *          top-level device.
+     * @attributes: (array zero-terminated=1):
+     *              A list of device sysfs attributes, alternating names and
+     *              values, terminated with %NULL:
+     *              { "key1", "value1", "key2", "value2", ..., NULL }
+     * @properties: (array zero-terminated=1):
+     *              A list of device udev properties; same format as @attributes
+     *
+     * This method is mostly meant for language bindings (where it is named
+     * umockdev_testbed_add_device()). For C programs it is usually more convenient to
+     * use umockdev_testbed_add_device().
+     *
+     * Add a new device to the testbed. A Linux kernel device always has a
+     * subsystem (such as "usb" or "pci"), and a device name. The test bed only
+     * builds a very simple sysfs structure without nested namespaces, so it
+     * requires device names to be unique. Some gudev client programs might make
+     * assumptions about the name (e. g. a SCSI disk block device should be called
+     * sdaN). A device also has an arbitrary number of sysfs attributes and udev
+     * properties; usually you should specify them upon creation, but it is also
+     * possible to change them later on with umockdev_testbed_set_attribute() and
+     * umockdev_testbed_set_property().
+     *
+     * This will synthesize an "add" uevent.
+     *
+     * Returns: The sysfs path for the newly created device. Free with g_free().
+     *
+     * Rename to: umockdev_testbed_add_device
+     */
+    public string? add_devicev(string subsystem, string name, string? parent,
+                               [CCode(array_null_terminated=true, array_length=false)] string[] attributes,
+                               [CCode(array_null_terminated=true, array_length=false)] string[] properties)
+    {
+        string? dev_path = this.add_devicev_no_uevent(subsystem, name, parent, attributes, properties);
+
+        if (dev_path != null && in_mock_environment ())
             uevent(dev_path, "add");
 
         return dev_path;
@@ -559,6 +570,8 @@ public class Testbed: GLib.Object {
      * properties; usually you should specify them upon creation, but it is also
      * possible to change them later on with umockdev_testbed_set_attribute() and
      * umockdev_testbed_set_property().
+     *
+     * This will synthesize an "add" uevent.
      *
      * Example:
      *   |[
@@ -1348,9 +1361,9 @@ public class Testbed: GLib.Object {
             throw new UMockdev.Error.VALUE("missing SUBSYSTEM property in description of device %s",
                                        devpath);
         debug("creating device %s (subsystem %s)", devpath, subsystem);
-        string syspath = this.add_devicev(subsystem,
-                                          devpath.substring(9), // chop off "/devices/"
-                                          null, attrs, props);
+        string syspath = this.add_devicev_no_uevent(subsystem,
+                                                    devpath.substring(9), // chop off "/devices/"
+                                                    null, attrs, props);
 
         /* add binary attributes */
         for (int i = 0; i < binattrs.length; i += 2)
@@ -1376,6 +1389,9 @@ public class Testbed: GLib.Object {
         /* skip over multiple blank lines */
         while (cur_data[0] != '\0' && cur_data[0] == '\n')
             cur_data = cur_data.next_char();
+
+        if (in_mock_environment ())
+            uevent(syspath, "add");
 
         return cur_data;
     }
