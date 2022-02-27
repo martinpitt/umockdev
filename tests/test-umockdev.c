@@ -646,7 +646,6 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     struct udev_monitor *mon;
     struct udev_device *device;
     const int num_events = 10;
-    int i;
 
     /* set up monitor */
     udev = udev_new();
@@ -658,20 +657,22 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(udev_monitor_filter_update(mon), ==, 0);
     g_assert_cmpint(udev_monitor_enable_receiving(mon), ==, 0);
 
-    g_autofree gchar *syspath = umockdev_testbed_add_device(
-            fixture->testbed, "pci", "mydev", NULL,
-            /* attributes */
-            "idVendor", "0815", NULL,
-            /* properties */
-            "ID_INPUT", "1", "DEVTYPE", "fancy", NULL);
-    g_assert(syspath);
+    gboolean success = umockdev_testbed_add_from_string(
+            fixture->testbed,
+            "P: /devices/mydev\n"
+            "E: SUBSYSTEM=pci\n"
+            "A: idVendor=0815\n"
+            "E: ID_INPUT=1\n"
+            "E: DEVTYPE=fancy\n", NULL);
+    g_assert (success);
+    const gchar *syspath = "/sys/devices/mydev";
 
     /* queue a bunch of events */
-    for (i = 0; i < num_events; ++i)
+    for (int i = 0; i < num_events; ++i)
         umockdev_testbed_uevent(fixture->testbed, syspath, "change");
 
     /* check that they are on the monitors */
-    /* first, the add event from add_device() */
+    /* first, the add event from add_from_string() */
     device = udev_monitor_receive_device(mon);
     g_assert(device != NULL);
     g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
@@ -680,7 +681,7 @@ t_testbed_uevent_libudev_filter(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpstr(udev_device_get_devtype(device), ==, "fancy");
     udev_device_unref(device);
     /* now the change events */
-    for (i = 0; i < num_events; ++i) {
+    for (int i = 0; i < num_events; ++i) {
         device = udev_monitor_receive_device(mon);
         g_assert(device != NULL);
         g_assert_cmpstr(udev_device_get_syspath(device), ==, syspath);
