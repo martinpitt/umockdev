@@ -1,3 +1,6 @@
+## [0.17.7] - UNRELEASED
+- Fix uevent race condition in umockdev_testbed_add_from_string()
+
 ## [0.17.6] - 2022-01-21
 - Increase uevent buffer size (#167)
 - Skip /umockdev-testbed-vala/detects_running_outside_testbed during normal
