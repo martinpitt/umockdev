@@ -68,7 +68,7 @@ uevent_sender_close(uevent_sender * sender)
 }
 
 static void
-sendmsg_one(struct msghdr *msg, const char *path)
+sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
 {
     struct sockaddr_un event_addr;
     int fd;
@@ -97,14 +97,14 @@ sendmsg_one(struct msghdr *msg, const char *path)
 	abort();
     }
 
-    msg->msg_name = &event_addr;
-    /* count = */ sendmsg(fd, msg, 0);
+    const struct msghdr msg = { .msg_name = &event_addr, .msg_iov = iov, .msg_iovlen = iov_len };
+    /* count = */ sendmsg(fd, &msg, 0);
     /* printf("passed %zi bytes to event socket %s\n", count, path); */
     close(fd);
 }
 
 static void
-sendmsg_all(uevent_sender * sender, struct msghdr *msg)
+sendmsg_all(uevent_sender * sender, struct iovec *iov, size_t iov_len)
 {
     glob_t gl;
     int res;
@@ -114,7 +114,7 @@ sendmsg_all(uevent_sender * sender, struct msghdr *msg)
     if (res == 0) {
 	size_t i;
 	for (i = 0; i < gl.gl_pathc; ++i)
-	    sendmsg_one(msg, gl.gl_pathv[i]);
+	    sendmsg_one(iov, iov_len, gl.gl_pathv[i]);
     } else {
 	/* ensure that we only fail due to that, not due to bad globs */
 	if (res != GLOB_NOMATCH) {
@@ -230,7 +230,6 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
 {
     char buffer[UEVENT_BUFSIZE];
     size_t buffer_len = 0;
-    struct msghdr smsg;
     struct iovec iov[2];
     const char *subsystem;
     const char *devtype;
@@ -295,9 +294,5 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
     iov[1].iov_len = buffer_len;
 
     /* send message */
-    memset(&smsg, 0x00, sizeof(struct msghdr));
-    smsg.msg_iov = iov;
-    smsg.msg_iovlen = 2;
-
-    sendmsg_all(sender, &smsg);
+    sendmsg_all(sender, iov, 2);
 }
