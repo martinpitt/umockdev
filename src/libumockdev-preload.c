@@ -215,12 +215,15 @@ get_rdev_maj_min(const char *nodename, uint32_t *major, uint32_t *minor)
 
     /* read major:minor */
     orig_errno = errno;
-    if (readlink(buf, link, sizeof(link)) < 0) {
+    ssize_t link_len = readlink(buf, link, sizeof(link));
+    if (link_len < 0) {
 	DBG(DBG_PATH, "get_rdev %s: cannot read link %s: %m\n", nodename, buf);
 	errno = orig_errno;
 	return false;
     }
+    link[link_len] = '\0';
     errno = orig_errno;
+
     if (sscanf(link, "%u:%u", major, minor) != 2) {
 	DBG(DBG_PATH, "get_rdev %s: cannot decode major/minor from '%s'\n", nodename, link);
 	return false;
