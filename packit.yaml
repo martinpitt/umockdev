@@ -29,3 +29,15 @@ jobs:
       dist_git_branches:
         - fedora-development
         - fedora-stable
+
+  - job: koji_build
+    trigger: commit
+    metadata:
+      dist_git_branches:
+        - fedora-all
+
+  - job: bodhi_update
+    trigger: commit
+    metadata:
+      dist_git_branches:
+        - fedora-all
