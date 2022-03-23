@@ -1,3 +1,7 @@
+## [0.17.8] - UNRELEASED
+- Fix some potential crashes spotted by Coverity
+- Enable Fedora builds and bodhi updates via packit
+
 ## [0.17.7] - 2022-03-01
 - Fix uevent race condition in umockdev_testbed_add_from_string()
 
