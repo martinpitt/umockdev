@@ -1,4 +1,4 @@
-## [0.17.8] - UNRELEASED
+## [0.17.8] - 2022-03-23
 - Fix some potential crashes spotted by Coverity
 - Enable Fedora builds and bodhi updates via packit
 
