@@ -6,7 +6,8 @@ copy_upstream_release_description: true
 upstream_package_name: umockdev
 downstream_package_name: umockdev
 
-synced_files:
+files_to_sync:
+  - packit.yaml
   - src: packaging/umockdev.spec
     dest: umockdev.spec
 
