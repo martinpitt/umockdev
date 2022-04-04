@@ -2,6 +2,7 @@
 # https://packit.dev/docs/configuration/
 specfile_path: packaging/umockdev.spec
 upstream_project_url: https://github.com/martinpitt/umockdev
+issue_repository: https://github.com/martinpitt/umockdev
 copy_upstream_release_description: true
 upstream_package_name: umockdev
 downstream_package_name: umockdev
