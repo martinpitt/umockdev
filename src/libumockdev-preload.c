@@ -1516,6 +1516,13 @@ ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
     return r;
 }
 
+/* A readlinkat fortify wrapper that is used when -D_FORTIFY_SOURCE is used. */
+ssize_t __readlinkat_chk(int dirfd, const char *pathname, char *buf, size_t bufsiz, size_t buflen);
+ssize_t __readlinkat_chk(int dirfd, const char *pathname, char *buf, size_t bufsiz, size_t buflen)
+{
+    return readlinkat(dirfd, pathname, buf, bufsiz);
+}
+
 WRAP_2ARGS_PATHRET(char *, NULL, realpath, char *);
 
 char *__realpath_chk(const char *path, char *resolved, size_t size);
