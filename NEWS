@@ -1,4 +1,4 @@
-## [0.17.9] - UNRELEASED
+## [0.17.9] - 2022-04-10
 - preload: Wrap fortified version of readlinkat (thanks Martin Liska)
 
 ## [0.17.8] - 2022-03-23
