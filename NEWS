@@ -1,3 +1,6 @@
+## [0.17.9] - UNRELEASED
+- preload: Wrap fortified version of readlinkat (thanks Martin Liska)
+
 ## [0.17.8] - 2022-03-23
 - Fix some potential crashes spotted by Coverity
 - Enable Fedora builds and bodhi updates via packit
