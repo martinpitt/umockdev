@@ -40,6 +40,9 @@ set -eux
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
 
+# thanks gcc for making your major version so easy to parse
+GCC_VERSION=\\\$(gcc --version | grep -oE '[0-9]+\.[0-9]+' | head -n1 | cut -f1 -d.)
+
 CFLAGS="\$(grep -q rawhide /etc/os-release && echo -fanalyzer)" meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=\${gtk_doc} -Db_coverage=\$coverage --werror
 cd /tmp/dbg
 DESTDIR=/tmp/inst meson install
@@ -54,6 +57,15 @@ fi
 cd /source
 CC=clang meson setup /tmp/clang -Dgtk_doc=false --werror
 meson test -C /tmp/clang -v --num-processes=1
+
+# build with optimization and fortify
+if [ \\\$GCC_VERSION -ge 12 ]; then
+    fortify_level=3
+else
+    fortify_level=2
+fi
+CFLAGS="-O2 -D_FORTIFY_SOURCE=\\\$fortify_level" meson setup /tmp/fortify -Dgtk_doc=false --werror
+meson test -C /tmp/fortify/ -v --num-processes=1
 EOG
 
 EOF
