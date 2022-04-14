@@ -203,6 +203,7 @@ get_rdev_maj_min(const char *nodename, uint32_t *major, uint32_t *minor)
     static char link[PATH_MAX];
     int name_offset;
     int orig_errno;
+    libc_func(readlink, ssize_t, const char*, char*, size_t);
 
     name_offset = snprintf(buf, sizeof(buf), "%s/dev/.node/", getenv("UMOCKDEV_DIR"));
     buf[sizeof(buf) - 1] = 0;
@@ -215,7 +216,7 @@ get_rdev_maj_min(const char *nodename, uint32_t *major, uint32_t *minor)
 
     /* read major:minor */
     orig_errno = errno;
-    ssize_t link_len = readlink(buf, link, sizeof(link));
+    ssize_t link_len = _readlink(buf, link, sizeof(link));
     if (link_len < 0) {
 	DBG(DBG_PATH, "get_rdev %s: cannot read link %s: %m\n", nodename, buf);
 	errno = orig_errno;
