@@ -40,7 +40,12 @@ cd /source
 meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true --werror
 cd /tmp/dbg
 if meson dist --help | grep -q no-tests; then
-    meson dist --no-test
+    if meson --version | grep -q "^0.62"; then
+        # HACK: --allow-dirty workaround for https://github.com/mesonbuild/meson/issues/10329
+        meson dist --no-test --allow-dirty
+    else
+        meson dist --no-test
+    fi
 else
     # HACK: force gtk-doc build for older meson releases
     DESTDIR=/tmp/inst meson install
