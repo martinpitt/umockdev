@@ -31,9 +31,10 @@ eatmydata apt-get -y --purge dist-upgrade
 eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev libpcap-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput procps usbutils evtest gphoto2 valgrind
 
 # run build as user
-useradd build
+useradd --create-home build
 su -s /bin/sh - build << EOG
 set -ex
+git config --global safe.directory /source
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
 meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true --werror
