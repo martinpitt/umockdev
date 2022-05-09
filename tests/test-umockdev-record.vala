@@ -106,6 +106,8 @@ t_testbed_one ()
     spawn ("umockdev-record" + " --all", out sout, out serr, out exit);
     assert_cmpstr (serr, CompareOperator.EQ, "");
     assert_cmpint (exit, CompareOperator.EQ, 0);
+    // udevadm 251-rc2 adds this extra synthetic property
+    sout = sout.replace("E: DRIVER=foo\n", "");
     assert_cmpstr (sout, CompareOperator.EQ, """P: /devices/dev1
 E: SIMPLE_PROP=1
 E: SUBSYSTEM=pci
