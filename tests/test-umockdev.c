@@ -1496,12 +1496,14 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
 					      "P: /devices/stream\nN: stream\n"
 					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/stream\n"
+					      "E: MAJOR=4\nE: MINOR=1\n"
 					      "A: dev=4:1\n", &error));
     g_assert_no_error(error);
 
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
 					      "P: /devices/block/disk\nN: disk\n"
 					      "E: SUBSYSTEM=block\nE: DEVNAME=/dev/disk\n"
+					      "E: MAJOR=8\nE: MINOR=1\n"
 					      "A: dev=8:1\n", &error));
     g_assert_no_error(error);
 
