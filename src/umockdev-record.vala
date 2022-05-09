@@ -248,6 +248,10 @@ record_device(string dev)
             line.has_prefix("L: "))
             continue;
 
+        // only pass through field types that we can recognize; keep this in sync with add_dev_from_string()
+        if (!line.has_prefix("P:") && !line.has_prefix("A:") && !line.has_prefix("E:") && !line.has_prefix("N:") && !line.has_prefix("S:"))
+            continue;
+
         if (line.has_prefix("N: ")) {
             line = line + dev_contents("/dev/" + line.substring(3).chomp());
         }
