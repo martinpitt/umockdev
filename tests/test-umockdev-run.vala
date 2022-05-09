@@ -130,7 +130,7 @@ t_run_exit_code ()
     int exit;
 
     // normal exit, zero
-    check_program_out ("true", umockdev_run_command + "true", "");
+    check_program_out ("true", "true", "");
 
     // normal exit, nonzero
     get_program_out ("ls", umockdev_run_command + "ls /nonexisting", out sout, out serr, out exit);
