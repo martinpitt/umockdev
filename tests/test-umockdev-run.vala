@@ -21,6 +21,7 @@
 using Assertions;
 
 const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
+const string umockdev_record_command = "env LC_ALL=C umockdev-record ";
 
 string rootdir;
 string tests_dir;
@@ -300,6 +301,32 @@ t_run_invalid_program ()
 {
     check_program_error ("true", "no.such.prog",
         "Cannot run no.such.prog: Failed to execute");
+}
+
+static void
+t_run_record_null ()
+{
+    string umockdev_file;
+    string sout;
+    string serr;
+    int exit;
+
+    if (!FileUtils.test("/sys/dev/char/1:3", FileTest.EXISTS)) {
+        stdout.printf ("[SKIP: no real /sys on this system] ");
+        stdout.flush ();
+        return;
+    }
+
+    Posix.close (checked_open_tmp ("null.XXXXXX.umockdev", out umockdev_file));
+    assert (get_program_out ("true", umockdev_record_command + "/dev/null", out sout, out serr, out exit));
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    checked_file_set_contents (umockdev_file, sout);
+
+    check_program_out("true", "-d " + umockdev_file + " -- stat -c '%n %F %t %T' /dev/null",
+                      "/dev/null character special file 1 3\n");
+
+    FileUtils.remove (umockdev_file);
 }
 
 static void
@@ -765,6 +792,9 @@ main (string[] args)
   Test.add_func ("/umockdev-run/invalid-ioctl", t_run_invalid_ioctl);
   Test.add_func ("/umockdev-run/invalid-script", t_run_invalid_script);
   Test.add_func ("/umockdev-run/invalid-program", t_run_invalid_program);
+
+  // udevadm-record interaction
+  Test.add_func ("/umockdev-run/umockdev-record-null-roundtrip", t_run_record_null);
 
   // script replay
   Test.add_func ("/umockdev-run/script-chatter", t_run_script_chatter);
