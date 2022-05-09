@@ -241,6 +241,7 @@ record_device(string dev)
         exit_error("Cannot call udevadm: %s", e.message);
     }
 
+    var properties = new List<string>();
     foreach (string line in u_out.split("\n")) {
         // filter out redundant/uninteresting properties and link priority
         if (line.length == 0 || line.has_prefix("E: DEVPATH=") ||
@@ -248,14 +249,26 @@ record_device(string dev)
             line.has_prefix("L: "))
             continue;
 
+        if (line.has_prefix("E: ")) {
+            properties.append(line);
+            continue;
+        }
+
         // only pass through field types that we can recognize; keep this in sync with add_dev_from_string()
-        if (!line.has_prefix("P:") && !line.has_prefix("A:") && !line.has_prefix("E:") && !line.has_prefix("N:") && !line.has_prefix("S:"))
+        if (!line.has_prefix("P:") && !line.has_prefix("A:") && !line.has_prefix("N:") && !line.has_prefix("S:"))
             continue;
 
         if (line.has_prefix("N: ")) {
             line = line + dev_contents("/dev/" + line.substring(3).chomp());
         }
         stdout.puts(line);
+        stdout.putc('\n');
+    }
+
+    // print sorted properties
+    properties.sort(strcmp);
+    foreach (var prop in properties) {
+        stdout.puts(prop);
         stdout.putc('\n');
     }
 
