@@ -106,6 +106,9 @@ public class Testbed: GLib.Object {
         string sockpath = Path.build_filename(this.root_dir, "ioctl", "_default");
         handler.register_path(this.worker_ctx, "_default", sockpath);
 
+        // disable sd-device's "is this really sysfs" check
+        Environment.set_variable("SYSTEMD_DEVICE_VERIFY_SYSFS", "0", false);
+
         Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
         debug("Created udev test bed %s", this.root_dir);
     }
