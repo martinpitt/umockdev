@@ -1,0 +1,10 @@
+summary: smoke test
+duration: 10m
+require:
+  - umockdev
+test: |
+  set -eux
+  umockdev-record /dev/null > /tmp/null.umockdev
+  sed -i 's/MINOR=3/MINOR=4/; s/dev=1:3/dev=1:4/' /tmp/null.umockdev
+  OUT=$(umockdev-run --device /tmp/null.umockdev -- stat -c '%n %F %t %T' /dev/null)
+  echo "$OUT" | grep '^/dev/null character special file 1 4$'
