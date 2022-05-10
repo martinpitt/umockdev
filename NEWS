@@ -1,3 +1,6 @@
+## [0.17.10] - UNRELEASED
+- Adjust to systemd 251-rc2: Set $SYSTEMD_DEVICE_VERIFY_SYSFS, parse new udevadm format, update tests
+
 ## [0.17.9] - 2022-04-10
 - preload: Wrap fortified version of readlinkat (thanks Martin Liska)
 
