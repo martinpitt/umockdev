@@ -6,6 +6,7 @@ issue_repository: https://github.com/martinpitt/umockdev
 copy_upstream_release_description: true
 upstream_package_name: umockdev
 downstream_package_name: umockdev
+srpm_build_deps: []
 
 files_to_sync:
   - packit.yaml
