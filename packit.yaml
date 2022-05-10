@@ -25,6 +25,12 @@ jobs:
         - fedora-development-s390x
         - fedora-development-armhfp
 
+  - job: tests
+    trigger: pull_request
+    metadata:
+      targets:
+        - fedora-latest
+
   - job: propose_downstream
     trigger: release
     metadata:
