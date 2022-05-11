@@ -102,8 +102,8 @@ check_program_out (string program, string run_command, string expected_out)
     if (!get_program_out (program, umockdev_run_command + run_command, out sout, out serr, out exit))
         return;
 
-    assert_cmpstr (sout, CompareOperator.EQ, expected_out);
     assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpstr (sout, CompareOperator.EQ, expected_out);
     assert_cmpint (exit, CompareOperator.EQ, 0);
 }
 
