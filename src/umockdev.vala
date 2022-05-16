@@ -2049,7 +2049,7 @@ private class SocketServer {
  * @title: global functions
  * @short_description: Global functions
  *
- * These work independently from #Testbed objects.
+ * These work independently from #UMockdevTestbed objects.
  */
 
 /**
