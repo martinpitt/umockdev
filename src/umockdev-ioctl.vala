@@ -80,7 +80,7 @@ public class IoctlData {
      * You may call this multiple times on the same pointer in order to fetch
      * the existing information.
      *
-     * Returns: #IoctlData, or #NULL on error
+     * Returns: #UMockdevIoctlData, or #NULL on error
      * Since: 0.16
      */
     public IoctlData? resolve(size_t offset, size_t len) throws IOError {
@@ -149,7 +149,7 @@ public class IoctlData {
 
     /**
      * umockdev_ioctl_data_reload:
-     * @self: A #UmockdevIoctlData
+     * @self: A #UMockdevIoctlData
      * @error: return location for a GError, or %NULL
      *
      * This function allows reloading the data from the client side in case
@@ -158,8 +158,8 @@ public class IoctlData {
      * It is very unlikely that such an explicit reload is needed.
      *
      * Doing this unresolves any resolved pointers. Take care to re-resolve
-     * them and use the newly resolved #IoctlData in case you need to access
-     * the data.
+     * them and use the newly resolved #UMockdevIoctlData in case you need to
+     * access the data.
      *
      * Returns: #TRUE on success, #FALSE otherwise
      * Since: 0.16
@@ -615,7 +615,7 @@ public class IoctlClient : GLib.Object {
  *
  * Called when an ioctl is requested by the client.
  *
- * Access the #UMockdevIoctlClient::arg property of @client to retrieve the
+ * Access the #UMockdevIoctlClient:arg property of @client to retrieve the
  * argument of the ioctl. This is a pointer sized buffer initially with the
  * original argument passed to the ioctl. If this is pointing to a struct, use
  * umockdev_ioctl_data_resolve() to retrieve the underlying memory and update
@@ -645,7 +645,7 @@ public class IoctlClient : GLib.Object {
  *
  * Called when a read is requested by the client.
  *
- * The result buffer is represented by #UMockdevIoctlClient::arg of @client.
+ * The result buffer is represented by #UMockdevIoctlClient:arg of @client.
  * Retrieve its length to find out the requested read length. The content of
  * the buffer has already been retrieved, and you can freely use and update it.
  *
@@ -661,7 +661,7 @@ public class IoctlClient : GLib.Object {
  *
  * Called when a write is requested by the client.
  *
- * The written buffer is represented by #UMockdevIoctlClient::arg of @client.
+ * The written buffer is represented by #UMockdevIoctlClient:arg of @client.
  * Retrieve its length to find out the requested write length. The content of
  * the buffer has already been retrieved, and you can freely use it.
  *
