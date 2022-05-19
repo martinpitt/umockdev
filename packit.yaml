@@ -44,4 +44,5 @@ jobs:
     trigger: commit
     metadata:
       dist_git_branches:
-        - fedora-all
+        # rawhide updates are created automatically
+        - fedora-branched
