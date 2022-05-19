@@ -1,3 +1,6 @@
+## [0.17.11] - UNRELEASED
+- Fix documentation build (thanks Benjamin Berg)
+
 ## [0.17.10] - 2022-05-10
 - Adjust to systemd 251-rc2: Set $SYSTEMD_DEVICE_VERIFY_SYSFS, parse new udevadm format, update tests
 
