@@ -5,6 +5,8 @@ issue_repository: https://github.com/martinpitt/umockdev
 copy_upstream_release_description: true
 upstream_package_name: umockdev
 downstream_package_name: umockdev
+# HACK: should be implied, but fails propose_downstream: https://github.com/packit/packit-service/issues/1511
+specfile_path: packaging/umockdev.spec
 srpm_build_deps: []
 
 jobs:
