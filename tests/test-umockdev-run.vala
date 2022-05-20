@@ -317,6 +317,13 @@ t_run_record_null ()
         return;
     }
 
+    // stat or other programs segfault under Gentoo's sandbox in umockdev
+    if (Environ.get_variable(Environ.get(), "SANDBOX_ON") == "1") {
+        stdout.printf ("[SKIP: crashes in Gentoo's sandbox] ");
+        stdout.flush ();
+        return;
+    }
+
     Posix.close (checked_open_tmp ("null.XXXXXX.umockdev", out umockdev_file));
     assert (get_program_out ("true", umockdev_record_command + "/dev/null", out sout, out serr, out exit));
     assert_cmpstr (serr, CompareOperator.EQ, "");
