@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+# keep container around if $DEBUG is set
+[ -n "${DEBUG:-}" ] || OPTS="--rm"
+
+if type podman >/dev/null 2>&1; then
+    RUNC=podman
+else
+    RUNC="sudo docker"
+fi
+
+# prepare portage volume
+$RUNC run  --rm -v gentooportage:/var/db/repos/gentoo docker.io/gentoo/portage /bin/true
+
+$RUNC run --interactive ${OPTS:-} \
+  --volume `pwd`:/source:ro --volume gentooportage:/var/db/repos/gentoo \
+  --cap-add=CAP_SYS_ADMIN --cap-add=CAP_NET_ADMIN --cap-add=CAP_SYS_PTRACE \
+  docker.io/gentoo/stage3 /bin/sh -eux <<EOF
+# install build dependencies
+ACCEPT_KEYWORDS="~*" emerge dev-util/umockdev --with-test-deps --onlydeps
+
+cd /source
+export VALAC=\$(ls /usr/bin/valac-* |sort | tail -n1)
+meson setup /tmp/dbg --buildtype debug --werror
+
+export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
+meson test -C /tmp/dbg -v --num-processes=1
+
+# and test once more in the sandbox
+sandbox meson test -C /tmp/dbg -v --num-processes=1
+EOF
+
+[ -n "${DEBUG:-}" ] || $RUNC volume rm gentooportage
