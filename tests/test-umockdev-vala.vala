@@ -159,14 +159,14 @@ t_testbed_fs_ops ()
   assert_cmpstr (syspath, CompareOperator.EQ, "/sys/devices/dev1");
 
   // absolute paths
-  assert_listdir ("/sys", {"bus", "class", "devices"});
+  assert_listdir ("/sys", {"bus", "class", "devices", "fs"});
   assert_listdir ("/sys/devices", {"dev1"});
   assert_listdir ("/sys/bus", {"pci"});
   assert_listdir ("/sys/devices/dev1", {"a", "subsystem", "uevent"});
 
   // change directory into trapped /sys
   assert_cmpint (Posix.chdir ("/sys"), CompareOperator.EQ, 0);
-  assert_listdir (".", {"bus", "class", "devices"});
+  assert_listdir (".", {"bus", "class", "devices", "fs"});
   assert_listdir ("bus", {"pci"});
   assert_cmpstr (Environment.get_current_dir (), CompareOperator.EQ, "/sys");
 
@@ -181,12 +181,12 @@ t_testbed_fs_ops ()
   }
 
   assert_cmpint (Posix.chdir ("/"), CompareOperator.EQ, 0);
-  assert_listdir ("sys", {"bus", "class", "devices"});
+  assert_listdir ("sys", {"bus", "class", "devices", "fs"});
   assert_listdir ("sys/devices", {"dev1"});
   assert_listdir ("sys/bus", {"pci"});
 
   assert_cmpint (Posix.chdir ("/etc"), CompareOperator.EQ, 0);
-  assert_listdir ("../sys", {"bus", "class", "devices"});
+  assert_listdir ("../sys", {"bus", "class", "devices", "fs"});
   assert_listdir ("../sys/devices", {"dev1"});
   assert_listdir ("../sys/bus", {"pci"});
 

@@ -87,6 +87,10 @@ public class Testbed: GLib.Object {
         this.sys_dir = Path.build_filename(this.root_dir, "sys");
         DirUtils.create(this.sys_dir, 0755);
 
+        if (FileUtils.symlink("/sys/fs", Path.build_filename(this.sys_dir, "fs")) < 0) {
+            error("Cannot create symlink to host /sys/fs: %s", strerror(errno));
+        }
+
         /* Create "bus" and "class" directories to make libudev happy */
         string bus_path = Path.build_filename(this.sys_dir, "bus");
         DirUtils.create(bus_path, 0755);
