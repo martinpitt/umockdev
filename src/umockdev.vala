@@ -149,7 +149,23 @@ public class Testbed: GLib.Object {
     }
 
     /**
-     * umockdev_testbed_get_root_dir:
+     * umockdev_testbed_get_environ:
+     * @self: A #UMockdevTestbed.
+     *
+     * Return the environment as it should be set for child processes.
+     *
+     * Returns: List of environment variables and their values.
+     */
+   [CCode (array_length = false, array_null_terminated = true)]
+    public string[] get_environ()
+    {
+        return {
+            "UMOCKDEV_DIR=%s".printf(this.root_dir),
+        };
+    }
+
+    /**
+     * umockdev_testbed_get_environment:
      * @self: A #UMockdevTestbed.
      *
      * Get the root directory for the testbed. This is mostly useful for
