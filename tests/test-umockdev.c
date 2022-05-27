@@ -145,7 +145,14 @@ num_udev_devices(void)
 static void
 t_testbed_empty(UNUSED UMockdevTestbedFixture *fixture, UNUSED_DATA)
 {
+    g_auto(GStrv) environ = NULL;
+    g_autofree char *env_umockdevdir = g_strdup_printf ("UMOCKDEV_DIR=%s", fixture->root_dir);
+
     g_assert_cmpuint(num_udev_devices(), ==, 0);
+
+    environ = umockdev_testbed_get_environ (fixture->testbed);
+    g_assert_cmpstr (environ[0], ==, env_umockdevdir);
+    g_assert_cmpstr (environ[1], ==, NULL);
 }
 
 /* common checks for umockdev_testbed_add_device{,v}() */
