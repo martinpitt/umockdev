@@ -1431,35 +1431,48 @@ int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct stat
     return r;
 }
 
+static bool is_dir_or_contained(const char *path, const char *dir, const char *subdir)
+{
+    if (!path || !dir)
+	return false;
+
+    const ssize_t subdir_len = strlen(subdir);
+    const size_t dir_len = strlen(dir);
+
+    return (dir_len + subdir_len <= strlen(path) &&
+	    strncmp(path, dir, dir_len) == 0 &&
+	    strncmp(path + dir_len, subdir, subdir_len) == 0 &&
+	    (path[dir_len + subdir_len] == '\0' || path[dir_len + subdir_len] == '/'));
+}
+
+static bool is_fd_in_mock(int fd, const char *subdir)
+{
+    static char fdpath[PATH_MAX];
+    static char linkpath[PATH_MAX];
+    libc_func(readlink, ssize_t, const char*, char *, size_t);
+
+    snprintf(fdpath, sizeof fdpath, "/proc/self/fd/%i", fd);
+    int orig_errno = errno;
+    ssize_t linklen = _readlink(fdpath, linkpath, sizeof linkpath);
+    errno = orig_errno;
+    if (linklen < 0) {
+	perror("umockdev: failed to map fd to a path");
+	return false;
+    }
+
+    return is_dir_or_contained(linkpath, getenv("UMOCKDEV_DIR"), subdir);
+}
+
 #define WRAP_FSTATFS(suffix) \
 int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
 { \
     libc_func(fstatfs ## suffix, int, int, struct statfs ## suffix *buf); \
     int r = _fstatfs ## suffix(fd, buf);			\
-    if (r != 0)							\
-	return r;						\
-								\
-    static char fdpath[PATH_MAX];				\
-    static char linkpath[PATH_MAX];				\
-    snprintf(fdpath, sizeof fdpath, "/proc/self/fd/%i", fd);	\
-    ssize_t linklen = readlink(fdpath, linkpath, sizeof linkpath); \
-    if (linklen < 0) {						\
-	perror("umockdev: failed to map fd to a path");		\
-	return 0;						\
+    if (r == 0 && is_fd_in_mock (fd, "/sys")) {			\
+	DBG(DBG_PATH, "testbed wrapped fstatfs64 (%i) points into mocked /sys; adjusting f_type\n", fd); \
+	buf->f_type = SYSFS_MAGIC;				\
     }								\
-\
-    const char *prefix = getenv("UMOCKDEV_DIR");		\
-    if (prefix) {						\
-	size_t prefix_len = strlen(prefix);			\
-	if (prefix_len + 5 <= strlen(linkpath) &&		\
-		strncmp(prefix, linkpath, prefix_len) == 0 &&	\
-		(strcmp(linkpath + prefix_len, "/sys") == 0 ||	\
-		 strncmp(linkpath + prefix_len, "/sys/", 5) == 0)) { \
-	    DBG(DBG_PATH, "testbed wrapped fstatfs64 (%i) points into mocked /sys; adjusting f_type\n", fd);	\
-	    buf->f_type = SYSFS_MAGIC;				\
-	}							\
-    }								\
-    return 0;							\
+    return r;							\
 }
 
 WRAP_FSTATFS();
