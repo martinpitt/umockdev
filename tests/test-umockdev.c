@@ -1217,6 +1217,18 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(buf.f_type, !=, SYSFS_MAGIC);
     close (dirfd);
     memset(&buf, 0, sizeof buf);
+
+    g_assert_cmpint(statfs("/sys", &buf), ==, 0);
+    g_assert_cmpint(buf.f_type, ==, SYSFS_MAGIC);
+    memset(&buf, 0, sizeof buf);
+
+    g_assert_cmpint(statfs("/sys/bus/pci/devices/dev1", &buf), ==, 0);
+    g_assert_cmpint(buf.f_type, ==, SYSFS_MAGIC);
+    memset(&buf, 0, sizeof buf);
+
+    g_assert_cmpint(statfs("/dev", &buf), ==, 0);
+    g_assert_cmpint(buf.f_type, !=, SYSFS_MAGIC);
+    memset(&buf, 0, sizeof buf);
 #endif
 }
 
