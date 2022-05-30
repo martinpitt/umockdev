@@ -1453,7 +1453,8 @@ int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
 	size_t prefix_len = strlen(prefix);			\
 	if (prefix_len + 5 <= strlen(linkpath) &&		\
 		strncmp(prefix, linkpath, prefix_len) == 0 &&	\
-		strncmp(linkpath + prefix_len, "/sys/", 5) == 0) { \
+		(strcmp(linkpath + prefix_len, "/sys") == 0 ||	\
+		 strncmp(linkpath + prefix_len, "/sys/", 5) == 0)) { \
 	    DBG(DBG_PATH, "testbed wrapped fstatfs64 (%i) points into mocked /sys; adjusting f_type\n", fd);	\
 	    buf->f_type = SYSFS_MAGIC;				\
 	}							\
