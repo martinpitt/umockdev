@@ -32,8 +32,10 @@
 #include <sys/socket.h>
 #include <sys/sysmacros.h>
 #include <sys/un.h>
+#include <sys/vfs.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
+#include <linux/magic.h>
 
 #include <libudev.h>
 #include <gudev/gudev.h>
@@ -1193,6 +1195,28 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(statx (AT_FDCWD, "/sys/bus/pci/devices/dev1", 0, STATX_TYPE|STATX_NLINK|STATX_UID, &stx), ==, 0);
     g_assert_cmpuint(stx.stx_uid, ==, uid);
     g_assert(S_ISDIR(stx.stx_mode));
+
+    struct statfs buf;
+    dirfd = open("/sys", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd, >=, 0);
+    g_assert_cmpint(fstatfs(dirfd, &buf), ==, 0);
+    g_assert_cmpint(buf.f_type, ==, SYSFS_MAGIC);
+    close (dirfd);
+    memset(&buf, 0, sizeof buf);
+
+    dirfd = open("/sys/bus/pci/devices/dev1", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd, >=, 0);
+    g_assert_cmpint(fstatfs(dirfd, &buf), ==, 0);
+    g_assert_cmpint(buf.f_type, ==, SYSFS_MAGIC);
+    close (dirfd);
+    memset(&buf, 0, sizeof buf);
+
+    dirfd = open("/dev", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd, >=, 0);
+    g_assert_cmpint(fstatfs(dirfd, &buf), ==, 0);
+    g_assert_cmpint(buf.f_type, !=, SYSFS_MAGIC);
+    close (dirfd);
+    memset(&buf, 0, sizeof buf);
 #endif
 }
 
