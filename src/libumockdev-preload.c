@@ -1478,6 +1478,28 @@ int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
 WRAP_FSTATFS();
 WRAP_FSTATFS(64);
 
+#define WRAP_STATFS(suffix) \
+int statfs ## suffix(const char *path, struct statfs ## suffix *buf) {	\
+    libc_func(statfs ## suffix, int, const char*, struct statfs ## suffix *buf); \
+    int r;								\
+    TRAP_PATH_LOCK;							\
+    const char *p = trap_path(path);					\
+    if (p == NULL || p == path) {					\
+	r = _statfs ## suffix(path, buf);				\
+	TRAP_PATH_UNLOCK;						\
+	return r;							\
+    } \
+    DBG(DBG_PATH, "testbed wrapped statfs" #suffix "(%s) -> %s\n", path, p); \
+    r = _statfs ## suffix(p, buf);					\
+    TRAP_PATH_UNLOCK;							\
+    if (r == 0 && is_dir_or_contained(path, "/sys", ""))		\
+	buf->f_type = SYSFS_MAGIC;					\
+    return r;								\
+}
+
+WRAP_STATFS();
+WRAP_STATFS(64);
+
 #endif
 
 int __open_2(const char *path, int flags);
