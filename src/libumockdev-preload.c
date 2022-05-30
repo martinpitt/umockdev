@@ -48,11 +48,13 @@
 #include <sys/sysmacros.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/vfs.h>
 #include <sys/xattr.h>
 #include <linux/ioctl.h>
 #include <linux/un.h>
 #include <linux/netlink.h>
 #include <linux/input.h>
+#include <linux/magic.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -1428,6 +1430,39 @@ int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct stat
     }
     return r;
 }
+
+#define WRAP_FSTATFS(suffix) \
+int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
+{ \
+    libc_func(fstatfs ## suffix, int, int, struct statfs ## suffix *buf); \
+    int r = _fstatfs ## suffix(fd, buf);			\
+    if (r != 0)							\
+	return r;						\
+								\
+    static char fdpath[PATH_MAX];				\
+    static char linkpath[PATH_MAX];				\
+    snprintf(fdpath, sizeof fdpath, "/proc/self/fd/%i", fd);	\
+    ssize_t linklen = readlink(fdpath, linkpath, sizeof linkpath); \
+    if (linklen < 0) {						\
+	perror("umockdev: failed to map fd to a path");		\
+	return 0;						\
+    }								\
+\
+    const char *prefix = getenv("UMOCKDEV_DIR");		\
+    if (prefix) {						\
+	size_t prefix_len = strlen(prefix);			\
+	if (prefix_len + 5 <= strlen(linkpath) &&		\
+		strncmp(prefix, linkpath, prefix_len) == 0 &&	\
+		strncmp(linkpath + prefix_len, "/sys/", 5) == 0) { \
+	    DBG(DBG_PATH, "testbed wrapped fstatfs64 (%i) points into mocked /sys; adjusting f_type\n", fd);	\
+	    buf->f_type = SYSFS_MAGIC;				\
+	}							\
+    }								\
+    return 0;							\
+}
+
+WRAP_FSTATFS();
+WRAP_FSTATFS(64);
 
 #endif
 
