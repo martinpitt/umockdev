@@ -16,9 +16,6 @@ jobs:
         run: sudo PUBLISH_TAR=1 tests/run-apt
 
       - name: Create GitHub release
-        uses: docker://antonyurchenko/git-release:latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CHANGELOG_FILE: "NEWS"
+        uses: cockpit-project/action-release@62db9d9850a1adec300500d84035c4f523fd5290
         with:
-          args: umockdev-*.tar.xz
+          filename: "umockdev-${{ github.ref_name }}.tar.xz"
