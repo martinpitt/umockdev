@@ -10,6 +10,9 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v2
+        with:
+          # need this to also fetch tags
+          fetch-depth: 0
 
       - name: Workaround for https://github.com/actions/checkout/pull/697
         run: git fetch --force origin $(git describe --tags):refs/tags/$(git describe --tags)
@@ -19,9 +22,6 @@ jobs:
         run: sudo PUBLISH_TAR=1 tests/run-apt
 
       - name: Create GitHub release
-        uses: docker://antonyurchenko/git-release:latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CHANGELOG_FILE: "NEWS"
+        uses: eloquent/github-release-action@v2
         with:
-          args: umockdev-*.tar.xz
+          prerelease: "false"
