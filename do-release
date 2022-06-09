@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+# This script does all the steps necessary for doing a new upstream release. It
+# should solely be used by upstream developers, distributors do not need to
+# worry about it.
+
+# check for anything uncommitted
+if LC_MESSAGES=C git status | grep -Eiq 'modified|untracked'; then
+    echo "untracked/modified files, see git status" >&2
+    exit 1
+fi
+
+git clean -fdx
+
+# update NEWS
+version=$(sed -rn '1 { s/^.*\[([0-9.]+)\].*/\1/; p }' NEWS)
+[ -n "$version" ] || {
+    echo "failed to parse version" >&2
+    exit 1
+}
+sed -i "s/- UNRELEASED/- $(date '+%Y-%m-%d')/" NEWS
+
+# commit the release and tag
+git commit -a -m "release $version"
+changes=$(sed -n '/^$/ q; /^- / p' NEWS)
+printf "$version\n\n$changes\n" | git tag -s -F- $version
+git push
+git push --tags

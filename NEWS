@@ -1,5 +1,3 @@
-OBSOLETE: Release news of newer versions are contained in the tag descriptions.
-
 ## [0.17.13] - 2022-05-30
 - preload: Wrap fstatfs(), to work with systemd 251 also with Python tests
 - Fix tests in Gentoo sandbox build
