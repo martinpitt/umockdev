@@ -15,7 +15,7 @@ $RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro ${1:-docker.io/alpin
 trap '[ \$? -eq 0 ] || exit 1' EXIT
 
 # install build dependencies
-apk add --no-cache meson gcc musl-dev glib-dev eudev-dev libpcap-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
+apk add --no-cache meson git gcc musl-dev glib-dev eudev-dev libpcap-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
 
 # run build as user
 adduser -D build

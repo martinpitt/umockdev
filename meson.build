@@ -1,5 +1,5 @@
 project('umockdev', 'c', 'vala',
-  version: run_command('sed', '-rn', '1 { s/^.*\[([0-9.]+)\].*/\\1/; p }', 'NEWS', check: true).stdout().strip(),
+  version: run_command(meson.current_source_dir() / 'src' / 'getversion.sh', check: true).stdout().strip(),
   license: 'LGPLv2.1+')
 
 srcdir = meson.current_source_dir() / 'src'
@@ -43,6 +43,8 @@ conf.set_quoted('VERSION', meson.project_version())
 if cc.has_function('__fxstatat', prefix: '#include <sys/stat.h>')
   add_project_arguments('-DHAVE_FXSTATAT', language: 'c')
 endif
+
+meson.add_dist_script(srcdir / 'getversion.sh')
 
 #
 # dependencies
