@@ -19,6 +19,10 @@ $RUNC run --interactive ${OPTS:-} \
   docker.io/gentoo/stage3 /bin/sh -eux <<EOF
 # install build dependencies
 ACCEPT_KEYWORDS="~*" emerge dev-util/umockdev --with-test-deps --onlydeps
+# install git, "meson dist" dependency
+emerge dev-vcs/git
+
+git config --global safe.directory /source
 
 cd /source
 export VALAC=\$(ls /usr/bin/valac-* |sort | tail -n1)

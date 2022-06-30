@@ -31,6 +31,9 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v2
+        with:
+          # need this to also fetch tags
+          fetch-depth: 0
 
       - name: Run unit tests
         run: |

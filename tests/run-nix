@@ -26,8 +26,9 @@ in pkgs.umockdev.overrideAttrs (attrs: {
   preCheck = "";
   doCheck = true;
   nativeBuildInputs = attrs.nativeBuildInputs ++ [ ${DEBUG:+pkgs.breakpointHook} ];
+  # git is a "meson dist" time dependency
   # libpcap is a new dependency, it can be removed again later
-  buildInputs = attrs.buildInputs ++ [ pkgs.libpcap ];
+  buildInputs = attrs.buildInputs ++ [ pkgs.git pkgs.libpcap ];
 })
 EOG
 
