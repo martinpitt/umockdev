@@ -18,8 +18,10 @@ trap '[ \$? -eq 0 ] || exit 1' EXIT
 apk add --no-cache meson gcc musl-dev glib-dev eudev-dev libpcap-dev make vala linux-headers xz usbutils ${EXTRA_PACKAGES:-}
 
 # run build as user
-su -s /bin/sh - guest << EOG
+adduser -D build
+su -s /bin/sh - build << EOG
 set -ex
+git config --global safe.directory /source
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
 meson setup /tmp/dbg --buildtype debug --werror
