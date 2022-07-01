@@ -9,6 +9,21 @@ downstream_package_name: umockdev
 specfile_path: packaging/umockdev.spec
 srpm_build_deps: []
 
+actions:
+  create-archive:
+    - meson tmp/dist
+    # ignore local spec changes from packit
+    - meson dist -C tmp/dist --no-tests --allow-dirty
+    - sh -ec 'mv tmp/dist/meson-dist/umockdev-*.tar.xz packaging/; ls packaging/umockdev-*.tar.xz'
+
+srpm_build_deps:
+  - meson
+  - gcc
+  - vala
+  - libpcap-devel
+  - glib2-devel
+  - systemd-devel
+
 jobs:
   - job: copr_build
     trigger: pull_request
