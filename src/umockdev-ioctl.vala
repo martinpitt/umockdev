@@ -43,7 +43,7 @@ internal bool signal_accumulator_true_handled(GLib.SignalInvocationHint ihint,
  *
  * Since: 0.16
  */
-public class IoctlData {
+public class IoctlData : GLib.Object {
     /* Local cache to check if data is dirty before flushing. This is both an
      * optimization as it avoids flushes, but is also necessary to avoid
      * writing into read-only memory.
@@ -63,6 +63,30 @@ public class IoctlData {
     internal IoctlData(IOStream stream)
     {
         this.stream = stream;
+    }
+
+    /**
+     * umockdev_ioctl_data_ref:
+     * @self: A #UMockdevIoctlData
+     *
+     * Deprecated, same as g_object_ref().
+     */
+    [CCode(cname="umockdev_ioctl_data_ref")]
+    public new IoctlData? compat_ref()
+    {
+        return (IoctlData?) this;
+    }
+
+    /**
+     * umockdev_ioctl_data_unref:
+     * @self: A #UMockdevIoctlData
+     *
+     * Deprecated, same as g_object_unref().
+     */
+    [CCode(cname="umockdev_ioctl_data_unref")]
+    public new void compat_unref()
+    {
+        this.unref();
     }
 
     /**
@@ -171,6 +195,42 @@ public class IoctlData {
         children_offset.resize(0);
 
         return true;
+    }
+
+    /**
+     * umockdev_ioctl_update:
+     * @self: A #UMockdevIoctlData
+     * @offset: Offset into data
+     * @new_data: (array length=length): Data to set
+     * @new_data_length1: Lenght of binary data, must be smaller or equal to actual length
+     *
+     * Set data to a specific value. This is essentially a memcpy call, it is
+     * only useful for e.g. python where the bindings cannot make the data
+     * writable otherwise.
+     *
+     * Since: 0.18
+     */
+    public void update(size_t offset, uint8[] new_data) {
+        assert(offset + new_data.length <= data.length);
+
+        Posix.memcpy(&data[offset], new_data, new_data.length);
+    }
+
+    /**
+     * umockdev_ioctl_retrieve:
+     * @self: A #UMockdevIoctlData
+     * @read_data: (array length=length) (out): Data to set
+     * @read_data_length1: (out): Lenght of binary data, must be smaller or equal to actual length
+     *
+     * Simply returns the data struct member. This function purely exists for
+     * GIR based bindings, as the vala generated bindings do not correctly
+     * tag the array length, and direct access to the struct member is not
+     * possible.
+     *
+     * Since: 0.18
+     */
+    public void retrieve(out uint8[] read_data) {
+        read_data = data;
     }
 
     internal void load_data() throws IOError {
@@ -790,12 +850,6 @@ public class IoctlBase: GLib.Object {
 
 #endif // INTERNAL_REGISTER_API
 
-    public virtual signal void client_connected(IoctlClient client) {
-    }
-
-    public virtual signal void client_vanished(IoctlClient client) {
-    }
-
     /* Not a normal signal because we need the accumulator. */
     public virtual bool handle_ioctl(IoctlClient client) {
         return false;
@@ -807,6 +861,12 @@ public class IoctlBase: GLib.Object {
 
     public virtual bool handle_write(IoctlClient client) {
         return false;
+    }
+
+    public virtual signal void client_connected(IoctlClient client) {
+    }
+
+    public virtual signal void client_vanished(IoctlClient client) {
     }
 }
 

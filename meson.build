@@ -26,6 +26,8 @@ add_project_arguments(
   '-Wno-error=pragmas',
   language: 'c')
 
+add_project_arguments('--abi-stability', language: 'vala')
+
 # let's not clutter the code with too many #ifdefs
 if get_option('b_ndebug') == 'true'
   add_project_arguments('-Wno-error=unused-but-set-variable', '-Wno-error=unused-variable', language: 'c')
