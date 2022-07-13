@@ -131,12 +131,23 @@ path_exists(const char *path)
 
 /* multi-thread locking for trap_path users */
 pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
+static sigset_t trap_path_sig_restore;
 
 /* multi-thread locking for ioctls */
 pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
 
-#define TRAP_PATH_LOCK pthread_mutex_lock (&trap_path_lock)
-#define TRAP_PATH_UNLOCK pthread_mutex_unlock (&trap_path_lock)
+#define TRAP_PATH_LOCK \
+    do { \
+        sigset_t sig_set; \
+        sigfillset(&sig_set); \
+        pthread_sigmask(SIG_SETMASK, &sig_set, &trap_path_sig_restore); \
+        pthread_mutex_lock (&trap_path_lock); \
+    } while (0)
+#define TRAP_PATH_UNLOCK \
+    do { \
+        pthread_mutex_unlock (&trap_path_lock); \
+        pthread_sigmask(SIG_SETMASK, &trap_path_sig_restore, NULL); \
+    } while (0)
 
 #define IOCTL_LOCK pthread_mutex_lock (&ioctl_lock)
 #define IOCTL_UNLOCK pthread_mutex_unlock (&ioctl_lock)
