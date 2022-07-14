@@ -40,7 +40,7 @@ cd /source
 meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true --werror
 cd /tmp/dbg
 if meson dist --help | grep -q no-tests; then
-    if meson --version | grep -q "^0.62"; then
+    if { meson --version; echo 0.62.0; } | sort -V | head -n1 | grep -q "^0.62.0"; then
         # HACK: --allow-dirty workaround for https://github.com/mesonbuild/meson/issues/10329
         meson dist --no-test --allow-dirty
     else
