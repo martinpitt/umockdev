@@ -243,4 +243,8 @@ A: simple_attr=1
         arg = struct.unpack('l', arg)[0]
         self.assertEqual(arg, 1)
 
+        # Check that an detach/attach works
+        self.testbed.detach_ioctl('/dev/test')
+        self.testbed.attach_ioctl('/dev/test', handler)
+
 unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))
