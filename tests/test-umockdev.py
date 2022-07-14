@@ -21,6 +21,8 @@
 import sys
 import os.path
 import unittest
+import fcntl
+import struct
 
 try:
     import gi
@@ -211,5 +213,34 @@ A: simple_attr=1
         # no value
         with assertRaisesRegex(GLib.GError, 'malformed attribute') as cm:
             self.testbed.add_from_string ('P: /devices/dev1\nE: SIMPLE_PROP\n')
+
+    def test_custom_ioctl(self):
+        handler = UMockdev.IoctlBase()
+
+        def handle_ioctl(handler, client):
+            if client.get_request() != 1:
+                return False
+
+            in_data = struct.pack('l', -1)
+            out_data = struct.pack('l', 1)
+            arg = client.get_arg()
+            data = arg.resolve(0, len(out_data))
+            if data.retrieve() != in_data:
+                return False
+            data.update(0, out_data)
+
+            client.complete(99, 0)
+            return True
+
+        handler.connect("handle-ioctl", handle_ioctl)
+
+        self.testbed.add_from_string ('P: /devices/test\nN: test\nE: SUBSYSTEM=test')
+        self.testbed.attach_ioctl('/dev/test', handler)
+
+        fd = os.open('/dev/test', os.O_RDONLY)
+        arg = bytearray(struct.pack('l', -1))
+        self.assertEqual(fcntl.ioctl(fd, 1, arg, True), 99)
+        arg = struct.unpack('l', arg)[0]
+        self.assertEqual(arg, 1)
 
 unittest.main(testRunner=unittest.TextTestRunner(stream=sys.stdout, verbosity=2))
