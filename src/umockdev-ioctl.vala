@@ -797,8 +797,7 @@ public class IoctlBase: GLib.Object {
                 error("Could not accept new connection: %s", e.message);
         }
 
-        lock (listeners)
-          listeners.remove(devnode);
+        listener.close();
     }
 
 #if INTERNAL_REGISTER_API
@@ -807,6 +806,8 @@ public class IoctlBase: GLib.Object {
         assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
 
         Cancellable cancellable = new Cancellable();
+
+        cancellable.set_data("sockpath", sockpath);
 
         /* We create new listener for each file; purely because we may not
          * have the correct main context in construct yet. */
@@ -832,8 +833,11 @@ public class IoctlBase: GLib.Object {
 #if INTERNAL_UNREGISTER_PATH_API
     internal void unregister_path(string devnode)
     {
-        lock (listeners)
-          listeners[devnode].cancel();
+        lock (listeners) {
+            listeners[devnode].cancel();
+            Posix.unlink(listeners[devnode].get_data("sockpath"));
+            listeners.remove(devnode);
+        }
     }
 #endif
 
@@ -841,8 +845,10 @@ public class IoctlBase: GLib.Object {
     internal void unregister_all()
     {
         lock (listeners) {
-            listeners.foreach((key, val) => {
+            listeners.foreach_remove((key, val) => {
                 val.cancel();
+                Posix.unlink(val.get_data("sockpath"));
+                return true;
             });
         }
     }
