@@ -26,37 +26,32 @@ srpm_build_deps:
 jobs:
   - job: copr_build
     trigger: pull_request
-    metadata:
-      targets:
-        - fedora-development-x86_64
-        - fedora-development-i386
-        - fedora-development-aarch64
-        - fedora-development-ppc64le
-        - fedora-development-s390x
-        - fedora-development-armhfp
+    targets:
+      - fedora-development-x86_64
+      - fedora-development-i386
+      - fedora-development-aarch64
+      - fedora-development-ppc64le
+      - fedora-development-s390x
+      - fedora-development-armhfp
 
   - job: tests
     trigger: pull_request
-    metadata:
-      targets:
-        - fedora-latest
+    targets:
+      - fedora-latest
 
   - job: propose_downstream
     trigger: release
-    metadata:
-      dist_git_branches:
-        - fedora-development
-        - fedora-stable
+    dist_git_branches:
+      - fedora-development
+      - fedora-stable
 
   - job: koji_build
     trigger: commit
-    metadata:
-      dist_git_branches:
-        - fedora-all
+    dist_git_branches:
+      - fedora-all
 
   - job: bodhi_update
     trigger: commit
-    metadata:
-      dist_git_branches:
-        # rawhide updates are created automatically
-        - fedora-branched
+    dist_git_branches:
+      # rawhide updates are created automatically
+      - fedora-branched
