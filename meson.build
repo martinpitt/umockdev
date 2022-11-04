@@ -7,11 +7,15 @@ testsdir = meson.current_source_dir() / 'tests'
 lib_version = '0.3.0'
 
 add_project_arguments(
+  '-std=gnu11',
   '-Werror=missing-prototypes',
   '-Werror=strict-prototypes',
   '-Werror=nested-externs',
   '-Werror=pointer-arith',
   '-Werror=implicit-function-declaration',
+  '-Werror=implicit-int',
+  '-Werror=int-conversion',
+  '-Werror=old-style-definition',
   '-Werror=pointer-arith',
   '-Werror=init-self',
   '-Werror=format-security',
