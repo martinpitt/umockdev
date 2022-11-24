@@ -73,7 +73,6 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
     struct sockaddr_un event_addr;
     int fd;
     int ret;
-    /* ssize_t count; */
 
     /* create uevent socket address */
     strncpy(event_addr.sun_path, path, sizeof(event_addr.sun_path) - 1);
@@ -98,7 +97,11 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
     }
 
     const struct msghdr msg = { .msg_name = &event_addr, .msg_iov = iov, .msg_iovlen = iov_len };
-    /* count = */ sendmsg(fd, &msg, 0);
+    ssize_t count = sendmsg(fd, &msg, 0);
+    if (count < 0) {
+        perror("uevent_sender sendmsg_one: sendmsg failed");
+        abort();
+    }
     /* printf("passed %zi bytes to event socket %s\n", count, path); */
     close(fd);
 }
