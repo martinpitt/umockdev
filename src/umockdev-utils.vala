@@ -1,6 +1,21 @@
 
 namespace UMockdevUtils {
 
+public void
+exit_error(string message, ...)
+{
+    stderr.vprintf(message, va_list());
+    stderr.puts("\n");
+    Process.exit(1);
+}
+
+public void
+checked_setenv(string variable, string value)
+{
+    if (!Environment.set_variable(variable, value, true))
+        exit_error("Failed to set env variable %s", variable);
+}
+
 // Recursively remove a directory and all its contents.
 public void
 remove_dir (string path, bool remove_toplevel=true)

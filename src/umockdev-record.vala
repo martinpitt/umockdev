@@ -23,14 +23,6 @@
 using UMockdevUtils;
 
 static void
-exit_error(string message, ...)
-{
-    stderr.vprintf(message, va_list());
-    stderr.puts("\n");
-    Process.exit(1);
-}
-
-static void
 devices_from_dir (string dir, ref GenericArray<string> devs)
 {
     Dir d;
@@ -362,10 +354,10 @@ record_script(string arg, string format)
     split_devfile_arg(arg, out dev, out devnum, out is_block, out outfile);
     string c = record_script_counter.to_string();
 
-    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile, true);
-    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEV_" + c, devnum, true);
-    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_" + c, dev, true);
-    Environment.set_variable("UMOCKDEV_SCRIPT_RECORD_FORMAT_" + c, format, true);
+    checked_setenv("UMOCKDEV_SCRIPT_RECORD_FILE_" + c, outfile);
+    checked_setenv("UMOCKDEV_SCRIPT_RECORD_DEV_" + c, devnum);
+    checked_setenv("UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_" + c, dev);
+    checked_setenv("UMOCKDEV_SCRIPT_RECORD_FORMAT_" + c, format);
 
     record_script_counter++;
 }
@@ -452,11 +444,11 @@ main (string[] args)
         preload = "";
     else
         preload = preload + ":";
-    Environment.set_variable("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
+    checked_setenv("LD_PRELOAD", preload + "libumockdev-preload.so.0");
 
     try {
         root_dir = DirUtils.make_tmp("umockdev.XXXXXX");
-        Environment.set_variable("UMOCKDEV_DIR", root_dir, true);
+        checked_setenv("UMOCKDEV_DIR", root_dir);
     } catch (FileError e) {
         error("Cannot create temporary directory: %s", e.message);
     }
@@ -478,9 +470,8 @@ main (string[] args)
     try {
         child_pid = spawn_process_under_test (opt_devices, child_watch_cb);
     } catch (Error e) {
-        stderr.printf ("Cannot run %s: %s\n", opt_devices[0], e.message);
         remove_dir (root_dir);
-        Process.exit (1);
+        exit_error ("Cannot run %s: %s", opt_devices[0], e.message);
     }
 
     loop.run();

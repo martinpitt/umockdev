@@ -95,7 +95,7 @@ main (string[] args)
         preload = "";
     else
         preload = preload + ":";
-    Environment.set_variable ("LD_PRELOAD", preload + "libumockdev-preload.so.0", true);
+    checked_setenv ("LD_PRELOAD", preload + "libumockdev-preload.so.0");
 
     var testbed = new UMockdev.Testbed ();
 
@@ -196,8 +196,7 @@ main (string[] args)
     try {
         child_pid = spawn_process_under_test (opt_program, child_watch_cb);
     } catch (Error e) {
-        stderr.printf ("Cannot run %s: %s\n", opt_program[0], e.message);
-        Process.exit (1);
+        exit_error("Cannot run %s: %s", opt_program[0], e.message);
     }
 
     loop.run();

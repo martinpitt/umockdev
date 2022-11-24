@@ -106,7 +106,7 @@ public class Testbed: GLib.Object {
         string sockpath = Path.build_filename(this.root_dir, "ioctl", "_default");
         handler.register_path(this.worker_ctx, "_default", sockpath);
 
-        Environment.set_variable("UMOCKDEV_DIR", this.root_dir, true);
+        checked_setenv ("UMOCKDEV_DIR", this.root_dir);
         debug("Created udev test bed %s", this.root_dir);
     }
 
