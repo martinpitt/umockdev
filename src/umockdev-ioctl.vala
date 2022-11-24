@@ -1005,6 +1005,8 @@ internal class IoctlTreeRecorder : IoctlBase {
         if (!write_log)
             return;
 
+        assert (device != null);
+
         log = Posix.FILE.open(logfile, "w+");
         log.printf("@DEV %s\n", device);
         tree.write(log);
