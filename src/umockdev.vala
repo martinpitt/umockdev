@@ -23,6 +23,18 @@ using UMockdevUtils;
 private bool __in_mock_env_initialized = false;
 private bool __in_mock_env_result = false;
 
+static void checked_mkdir (string path, int mode)
+{
+    if (DirUtils.create(path, mode) < 0)
+        error("cannot create directory %s: %m", path);
+}
+
+static void checked_mkdir_with_parents (string path, int mode)
+{
+    if (DirUtils.create_with_parents(path, mode) < 0)
+        error("cannot create directory with parents %s: %m", path);
+}
+
 /**
  * SECTION:umockdev
  * @title: umockdev
@@ -85,13 +97,13 @@ public class Testbed: GLib.Object {
             error("Cannot create temporary directory: %s", e.message);
         }
         this.sys_dir = Path.build_filename(this.root_dir, "sys");
-        DirUtils.create(this.sys_dir, 0755);
+        checked_mkdir(this.sys_dir, 0755);
 
         /* Create "bus" and "class" directories to make libudev happy */
         string bus_path = Path.build_filename(this.sys_dir, "bus");
-        DirUtils.create(bus_path, 0755);
+        checked_mkdir(bus_path, 0755);
         string class_path = Path.build_filename(this.sys_dir, "class");
-        DirUtils.create(class_path, 0755);
+        checked_mkdir(class_path, 0755);
 
         this.dev_fd = new HashTable<string, int> (str_hash, str_equal);
         this.dev_script_runner = new HashTable<string, ScriptRunner> (str_hash, str_equal);
@@ -200,8 +212,7 @@ public class Testbed: GLib.Object {
         var attr_path = Path.build_filename(this.root_dir, devpath, name);
         if ("/" in name) {
             string d = Path.get_dirname(attr_path);
-            if (DirUtils.create_with_parents(d, 0755) != 0)
-                error("cannot create attribute subdir '%s': %m", d);
+            checked_mkdir_with_parents(d, 0755);
         }
 
         try {
@@ -256,8 +267,7 @@ public class Testbed: GLib.Object {
     {
         var path = Path.build_filename(this.root_dir, devpath, name);
         var dir = Path.get_dirname(path);
-        if (DirUtils.create_with_parents(dir, 0755) != 0)
-            error("cannot create attribute dir '%s': %m", dir);
+        checked_mkdir_with_parents(dir, 0755);
         if (FileUtils.symlink(value, path) < 0) {
             error("Cannot create symlink %s: %m", path);
         }
@@ -423,13 +433,11 @@ public class Testbed: GLib.Object {
         string dev_path_no_sys = dev_path.substring(dev_path.index_of("/devices/"));
 
         /* create device and corresponding subsystem dir */
-        if (DirUtils.create_with_parents(dev_dir, 0755) != 0)
-            error("cannot create dev dir '%s': %m", dev_dir);
+        checked_mkdir_with_parents(dev_dir, 0755);
         if (!subsystem_is_bus(subsystem)) {
             /* class/ symlinks */
             var class_dir = Path.build_filename(this.sys_dir, "class", subsystem);
-            if (DirUtils.create_with_parents(class_dir, 0755) != 0)
-                error("cannot create class dir '%s': %m", class_dir);
+            checked_mkdir_with_parents(class_dir, 0755);
 
             /* subsystem symlink */
             assert(FileUtils.symlink(Path.build_filename(make_dotdots(dev_path), "class", subsystem),
@@ -443,7 +451,7 @@ public class Testbed: GLib.Object {
         } else {
             /* bus symlink */
             var bus_dir = Path.build_filename(this.sys_dir, "bus", subsystem, "devices");
-            assert(DirUtils.create_with_parents(bus_dir, 0755) == 0);
+            checked_mkdir_with_parents(bus_dir, 0755);
             assert(FileUtils.symlink(Path.build_filename("..", "..", "..", dev_path_no_sys),
                                      Path.build_filename(bus_dir, Path.get_basename(name))) == 0);
 
@@ -455,8 +463,7 @@ public class Testbed: GLib.Object {
         /* /sys/block symlink */
         if (subsystem == "block") {
             var block_dir = Path.build_filename(this.sys_dir, "block");
-            if (DirUtils.create_with_parents(block_dir, 0755) != 0)
-                error("cannot create block dir '%s': %m", block_dir);
+            checked_mkdir_with_parents(block_dir, 0755);
             assert (FileUtils.symlink(Path.build_filename("..", dev_path_no_sys),
                                      Path.build_filename(block_dir, Path.get_basename(name))) == 0);
         }
@@ -482,14 +489,13 @@ public class Testbed: GLib.Object {
                 var val = attributes[i+1].strip(); // strip off trailing \n
                 /* put the major/minor information into /dev for our preload */
                 string infodir = Path.build_filename(this.root_dir, "dev", ".node");
-                DirUtils.create_with_parents(infodir, 0755);
+                checked_mkdir_with_parents(infodir, 0755);
                 assert(FileUtils.symlink(val, Path.build_filename(infodir, dev_node.replace("/", "_"))) == 0);
 
                 /* create a /sys/dev link for it, like in real sysfs */
                 string sysdev_dir = Path.build_filename(this.sys_dir, "dev",
                     (dev_path.contains("/block/") ? "block" : "char"));
-                if (DirUtils.create_with_parents(sysdev_dir, 0755) != 0)
-                    error("cannot create dir '%s': %m", sysdev_dir);
+                checked_mkdir_with_parents(sysdev_dir, 0755);
                 string dest = Path.build_filename(sysdev_dir, val);
                 if (!FileUtils.test(dest, FileTest.EXISTS)) {
                     if (FileUtils.symlink("../../" + dev_path.substring(5), dest) < 0)
@@ -895,7 +901,7 @@ public class Testbed: GLib.Object {
         recording.seek(0, SeekType.SET);
 
         string dest = Path.build_filename(this.root_dir, "ioctl", owned_dev + ".tree");
-        assert(DirUtils.create_with_parents(Path.get_dirname(dest), 0755) == 0);
+        checked_mkdir_with_parents(Path.get_dirname(dest), 0755);
 
         string? contents = recording.read_upto("", 0, null);
         if (contents == null)
@@ -945,7 +951,7 @@ public class Testbed: GLib.Object {
 
         sockpath = Path.build_filename(this.root_dir, "ioctl", owned_dev);
 
-        assert(DirUtils.create_with_parents(Path.get_dirname(sockpath), 0755) == 0);
+        checked_mkdir_with_parents(Path.get_dirname(sockpath), 0755);
 
         IoctlUsbPcapHandler handler = new IoctlUsbPcapHandler(recordfile, busnum, devnum);
         handler.register_path(this.worker_ctx, owned_dev, sockpath);
@@ -1022,8 +1028,7 @@ public class Testbed: GLib.Object {
             throw new FileError.INVAL ("Cannot create socket type %i: %m".printf(type));
 
         string real_path = Path.build_filename (this.root_dir, path);
-        if (DirUtils.create_with_parents(Path.get_dirname(real_path), 0755) != 0)
-            throw new FileError.INVAL ("Cannot create socket path: %m".printf());
+        checked_mkdir_with_parents(Path.get_dirname(real_path), 0755);
 
         // start thread to accept client connections at first socket creation
         if (this.socket_server == null)
@@ -1377,7 +1382,7 @@ public class Testbed: GLib.Object {
 
             /* create symlinks */
             for (int i = 0; i < devnode_links.length; i++) {
-                assert (DirUtils.create_with_parents(Path.get_dirname(devnode_links[i]), 0755) == 0);
+                checked_mkdir_with_parents(Path.get_dirname(devnode_links[i]), 0755);
                 if (FileUtils.symlink(devnode_path, devnode_links[i]) < 0)
                     warning ("failed to create %s -> %s symlink for device %s: %m",
                              devnode_links[i], devnode_path, devpath);
@@ -1398,7 +1403,7 @@ public class Testbed: GLib.Object {
     create_node_for_device (string subsystem, string node_path, uint8[] node_contents, string? majmin)
         throws UMockdev.Error
     {
-        assert (DirUtils.create_with_parents(Path.get_dirname(node_path), 0755) == 0);
+        checked_mkdir_with_parents(Path.get_dirname(node_path), 0755);
 
         // for pre-defined contents, block, and USB devices we create a normal file
         if (node_contents.length > 0 || subsystem == "block" || subsystem == "usb") {
@@ -1441,7 +1446,7 @@ public class Testbed: GLib.Object {
         // we can map from an fd -> ttyname -> device we emulate
         if (majmin != null) {
             string mapdir = Path.build_filename (this.root_dir, "dev", ".ptymap");
-            DirUtils.create_with_parents (mapdir, 0755);
+            checked_mkdir_with_parents (mapdir, 0755);
             string dest = Path.build_filename (mapdir, ptyname.replace("/", "_"));
             debug ("create_node_for_device: creating ptymap symlink %s", dest);
             assert (FileUtils.symlink(majmin, dest) == 0);
@@ -1539,7 +1544,7 @@ public class Testbed: GLib.Object {
     {
         remove_dir (this.root_dir, false);
         // /sys should always exist
-        DirUtils.create(this.sys_dir, 0755);
+        checked_mkdir_with_parents(this.sys_dir, 0755);
     }
 
     /**
