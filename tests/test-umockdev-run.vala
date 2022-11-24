@@ -121,7 +121,6 @@ check_program_error (string program, string run_command, string expected_err)
     assert_in (expected_err, serr);
 
     assert_cmpint (exit, CompareOperator.NE, 0);
-    assert (Process.if_exited (exit));
     assert_cmpstr (sout, CompareOperator.EQ, "");
 }
 

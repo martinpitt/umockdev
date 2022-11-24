@@ -201,7 +201,7 @@ public class Testbed: GLib.Object {
         if ("/" in name) {
             string d = Path.get_dirname(attr_path);
             if (DirUtils.create_with_parents(d, 0755) != 0)
-                error("cannot create attribute subdir '%s': %s", d, strerror(errno));
+                error("cannot create attribute subdir '%s': %m", d);
         }
 
         try {
@@ -257,9 +257,9 @@ public class Testbed: GLib.Object {
         var path = Path.build_filename(this.root_dir, devpath, name);
         var dir = Path.get_dirname(path);
         if (DirUtils.create_with_parents(dir, 0755) != 0)
-            error("cannot create attribute dir '%s': %s", dir, strerror(errno));
+            error("cannot create attribute dir '%s': %m", dir);
         if (FileUtils.symlink(value, path) < 0) {
-            error("Cannot create symlink %s: %s", path, strerror(errno));
+            error("Cannot create symlink %s: %m", path);
         }
     }
 
@@ -424,12 +424,12 @@ public class Testbed: GLib.Object {
 
         /* create device and corresponding subsystem dir */
         if (DirUtils.create_with_parents(dev_dir, 0755) != 0)
-            error("cannot create dev dir '%s': %s", dev_dir, strerror(errno));
+            error("cannot create dev dir '%s': %m", dev_dir);
         if (!subsystem_is_bus(subsystem)) {
             /* class/ symlinks */
             var class_dir = Path.build_filename(this.sys_dir, "class", subsystem);
             if (DirUtils.create_with_parents(class_dir, 0755) != 0)
-                error("cannot create class dir '%s': %s", class_dir, strerror(errno));
+                error("cannot create class dir '%s': %m", class_dir);
 
             /* subsystem symlink */
             assert(FileUtils.symlink(Path.build_filename(make_dotdots(dev_path), "class", subsystem),
@@ -456,7 +456,7 @@ public class Testbed: GLib.Object {
         if (subsystem == "block") {
             var block_dir = Path.build_filename(this.sys_dir, "block");
             if (DirUtils.create_with_parents(block_dir, 0755) != 0)
-                error("cannot create block dir '%s': %s", block_dir, strerror(errno));
+                error("cannot create block dir '%s': %m", block_dir);
             assert (FileUtils.symlink(Path.build_filename("..", dev_path_no_sys),
                                      Path.build_filename(block_dir, Path.get_basename(name))) == 0);
         }
@@ -489,12 +489,12 @@ public class Testbed: GLib.Object {
                 string sysdev_dir = Path.build_filename(this.sys_dir, "dev",
                     (dev_path.contains("/block/") ? "block" : "char"));
                 if (DirUtils.create_with_parents(sysdev_dir, 0755) != 0)
-                    error("cannot create dir '%s': %s", sysdev_dir, strerror(errno));
+                    error("cannot create dir '%s': %m", sysdev_dir);
                 string dest = Path.build_filename(sysdev_dir, val);
                 if (!FileUtils.test(dest, FileTest.EXISTS)) {
                     if (FileUtils.symlink("../../" + dev_path.substring(5), dest) < 0)
-                        error("add_device %s: failed to symlink %s to %s: %s", name, dest,
-                              dev_path.substring(5), strerror(errno));
+                        error("add_device %s: failed to symlink %s to %s: %m", name, dest,
+                              dev_path.substring(5));
                 }
             }
         }
@@ -1019,13 +1019,11 @@ public class Testbed: GLib.Object {
     {
         int fd = Posix.socket (Posix.AF_UNIX, type, 0);
         if (fd < 0)
-            throw new FileError.INVAL ("Cannot create socket type %i: %s".printf(
-                                       type, strerror(errno)));
+            throw new FileError.INVAL ("Cannot create socket type %i: %m".printf(type));
 
         string real_path = Path.build_filename (this.root_dir, path);
         if (DirUtils.create_with_parents(Path.get_dirname(real_path), 0755) != 0)
-            throw new FileError.INVAL ("Cannot create socket path: %s".printf(
-                                       strerror(errno)));
+            throw new FileError.INVAL ("Cannot create socket path: %m".printf());
 
         // start thread to accept client connections at first socket creation
         if (this.socket_server == null)
@@ -1422,7 +1420,7 @@ public class Testbed: GLib.Object {
         int ptym, ptys;
         char[] ptyname_array = new char[8192];
         if (Linux.openpty (out ptym, out ptys, ptyname_array, null, null) < 0)
-            error ("umockdev Testbed.create_node_for_device: openpty() failed: %s", strerror (errno));
+            error ("umockdev Testbed.create_node_for_device: openpty() failed: %m");
         string ptyname = (string) ptyname_array;
         debug ("create_node_for_device: creating pty device %s: got pty %s", node_path, ptyname);
         Posix.close (ptys);
@@ -1709,7 +1707,7 @@ private class ScriptRunner {
                     debug ("ScriptRunner[%s]: read op after sleep; writing data '%s'", this.device, encode(data));
                     ssize_t l = Posix.write (this.fd, data, data.length);
                     if (l < 0)
-                        error ("ScriptRunner[%s]: write failed: %s", this.device, strerror (errno));
+                        error ("ScriptRunner[%s]: write failed: %m", this.device);
                     assert (l == data.length);
                     break;
 
@@ -1795,8 +1793,7 @@ private class ScriptRunner {
             if (res < 0) {
                 if (errno == Posix.EINTR)
                     continue;
-                error ("ScriptRunner op_write[%s]: select() failed: %s",
-                       this.device, strerror (errno));
+                error ("ScriptRunner op_write[%s]: select() failed: %m", this.device);
             }
 
             if (res == 0) {
@@ -1986,7 +1983,7 @@ private class SocketServer {
             if (res < 0) {
                 if (errno == Posix.EINTR)
                     continue;
-                error ("socket server thread: select() failed: %s", strerror (errno));
+                error ("socket server thread: select() failed: %m");
             }
             if (res == 0)
                 continue;  // timeout
@@ -2013,7 +2010,7 @@ private class SocketServer {
                 if (Posix.FD_ISSET (s.fd, fds) > 0) {
                     int fd = Posix.accept (s.fd, null, null);
                     if (fd < 0)
-                        error ("socket server thread: accept() failed: %s", strerror (errno));
+                        error ("socket server thread: accept() failed: %m");
                     string sock_path = null;
                     try {
                         sock_path = ((UnixSocketAddress) s.get_local_address()).path;

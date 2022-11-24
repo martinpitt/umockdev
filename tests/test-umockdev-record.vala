@@ -247,7 +247,7 @@ t_system_invalid ()
     }
 
     spawn ("umockdev-record" + " /sys/class", out sout, out serr, out exit);
-    assert_cmpstr (serr, CompareOperator.EQ, "Invalid device /sys/class, has no uevent attribute\n");
+    assert (serr.contains("Invalid device /sys/class, has no uevent attribute\n"));
     assert_cmpstr (sout, CompareOperator.EQ, "");
     assert_cmpint (exit, CompareOperator.NE, 0);
 

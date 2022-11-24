@@ -196,7 +196,7 @@ main (string[] args)
     try {
         child_pid = spawn_process_under_test (opt_program, child_watch_cb);
     } catch (Error e) {
-        exit_error("Cannot run %s: %s", opt_program[0], e.message);
+        error("Cannot run %s: %s", opt_program[0], e.message);
     }
 
     loop.run();

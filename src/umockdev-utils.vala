@@ -2,18 +2,10 @@
 namespace UMockdevUtils {
 
 public void
-exit_error(string message, ...)
-{
-    stderr.vprintf(message, va_list());
-    stderr.puts("\n");
-    Process.exit(1);
-}
-
-public void
 checked_setenv(string variable, string value)
 {
     if (!Environment.set_variable(variable, value, true))
-        exit_error("Failed to set env variable %s", variable);
+        error("Failed to set env variable %s", variable);
 }
 
 // only use this in tests, not in runtime code!
@@ -57,8 +49,8 @@ pud_sig_handler (int sig)
 
     debug ("umockdev: caught signal %i, propagating to child\n", sig);
     if (Posix.kill (process_under_test, sig) != 0)
-        stderr.printf ("umockdev: unable to propagate signal %i to child %i: %s\n",
-                       sig, process_under_test, strerror (errno));
+        stderr.printf ("umockdev: unable to propagate signal %i to child %i: %m\n",
+                       sig, process_under_test);
 }
 
 static void
