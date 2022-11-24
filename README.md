@@ -1,3 +1,5 @@
+![CI status](https://github.com/martinpitt/umockdev/actions/workflows/tests.yml/badge.svg)
+
 umockdev
 ========
 umockdev mocks Linux devices for creating integration tests for hardware
