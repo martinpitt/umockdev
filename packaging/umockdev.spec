@@ -39,6 +39,9 @@ using %{name}.
 %meson_build
 
 %check
+# don't be too picky about timing; upstream CI and local developer tests
+# are strict, but many koji arches are emulated and utterly slow
+export SLOW_TESTBED_FACTOR=10
 %meson_test
 
 %install
