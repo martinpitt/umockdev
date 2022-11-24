@@ -1466,10 +1466,11 @@ static bool is_fd_in_mock(int fd, const char *subdir)
     int orig_errno = errno;
     ssize_t linklen = _readlink(fdpath, linkpath, sizeof linkpath);
     errno = orig_errno;
-    if (linklen < 0) {
+    if (linklen < 0 || linklen >= sizeof linkpath) {
 	perror("umockdev: failed to map fd to a path");
 	return false;
     }
+    linkpath[linklen] = '\0';
 
     return is_dir_or_contained(linkpath, getenv("UMOCKDEV_DIR"), subdir);
 }
