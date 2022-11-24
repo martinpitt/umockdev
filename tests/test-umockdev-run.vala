@@ -18,6 +18,7 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+using UMockdevUtils;
 using Assertions;
 
 const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
@@ -207,7 +208,7 @@ A: size=1048576\n
     assert (sout.contains ("E: MAJOR=7"));
     assert (sout.contains ("E: MINOR=23"));
 
-    FileUtils.remove (umockdev_file);
+    checked_remove (umockdev_file);
 }
 
 static void
@@ -333,7 +334,7 @@ t_run_record_null ()
     check_program_out("true", "-d " + umockdev_file + " -- stat -c '%n %F %t %T' /dev/null",
                       "/dev/null character special file 1 3\n");
 
-    FileUtils.remove (umockdev_file);
+    checked_remove (umockdev_file);
 }
 
 static void
@@ -361,8 +362,8 @@ w 0 bye!^J""");
                        " -- " + tests_dir + "/chatter /dev/ttyS0",
                        "Got input: Joe Tester\nGot input: somejunk\n");
 
-    FileUtils.remove (umockdev_file);
-    FileUtils.remove (script_file);
+    checked_remove (umockdev_file);
+    checked_remove (script_file);
 }
 
 static void
@@ -383,7 +384,7 @@ r 30 somejunk""");
                        " -- " + tests_dir + "/chatter-socket-stream /dev/socket/chatter",
                        "Got name: Joe Tester\n\nGot recv: somejunk\n");
 
-    FileUtils.remove (script_file);
+    checked_remove (script_file);
 }
 
 static void
@@ -484,8 +485,8 @@ t_gphoto_thumbs ()
     assert (Posix.stat("thumb_IMG_0002.jpg", out st) == 0);
     assert_cmpuint ((uint) st.st_size, CompareOperator.GT, 500);
 
-    FileUtils.remove ("thumb_IMG_0001.jpg");
-    FileUtils.remove ("thumb_IMG_0002.jpg");
+    checked_remove ("thumb_IMG_0001.jpg");
+    checked_remove ("thumb_IMG_0002.jpg");
 }
 static void
 t_gphoto_download ()
@@ -512,8 +513,8 @@ t_gphoto_download ()
     assert (Posix.stat("IMG_0002.JPG", out st) == 0);
     assert_cmpuint ((uint) st.st_size, CompareOperator.GT, 5000);
 
-    FileUtils.remove ("IMG_0001.JPG");
-    FileUtils.remove ("IMG_0002.JPG");
+    checked_remove ("IMG_0001.JPG");
+    checked_remove ("IMG_0002.JPG");
 }
 
 */
@@ -588,11 +589,11 @@ t_input_touchpad ()
     int status;
     Posix.waitpid (xorg_pid, out status, 0);
     Process.close_pid (xorg_pid);
-    FileUtils.remove (logfile);
-    FileUtils.remove (logfile + ".old");
+    checked_remove (logfile);
+    checked_remove (logfile + ".old");
     // clean up lockfile after killed X server
-    FileUtils.remove ("/tmp/.X5-lock");
-    FileUtils.remove ("/tmp/.X11-unix/X5");
+    checked_remove ("/tmp/.X5-lock");
+    checked_remove ("/tmp/.X11-unix/X5");
 
     assert_cmpstr (xinput_err, CompareOperator.EQ, "");
     assert_cmpint (xinput_exit, CompareOperator.EQ, 0);
@@ -732,7 +733,7 @@ E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
 
     // our script covers 0.5 seconds, give it some slack
     Posix.sleep (1 * slow_testbed_factor);
-    FileUtils.remove (evemu_file);
+    checked_remove (evemu_file);
 #if VALA_0_40
     Posix.kill (evtest_pid, Posix.Signal.TERM);
 #else

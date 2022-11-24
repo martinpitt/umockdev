@@ -1525,7 +1525,8 @@ public class Testbed: GLib.Object {
      */
     public void enable()
     {
-        FileUtils.remove(Path.build_filename(this.root_dir, "disabled"));
+        if (FileUtils.remove(Path.build_filename(this.root_dir, "disabled")) < 0)
+            debug("enable: failed to remove /disabled flag, ignoring: %m");
     }
 
     /**

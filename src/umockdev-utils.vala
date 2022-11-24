@@ -16,6 +16,14 @@ checked_setenv(string variable, string value)
         exit_error("Failed to set env variable %s", variable);
 }
 
+// only use this in tests, not in runtime code!
+public void
+checked_remove(string path)
+{
+    if (FileUtils.remove(path) < 0)
+        error("cannot remove %s: %m", path);
+}
+
 // Recursively remove a directory and all its contents.
 public void
 remove_dir (string path, bool remove_toplevel=true)
@@ -35,8 +43,7 @@ remove_dir (string path, bool remove_toplevel=true)
     }
 
     if (remove_toplevel)
-        if (FileUtils.remove(path) < 0)
-            warning("cannot remove %s: %s", path, strerror(errno));
+        checked_remove(path);
 }
 
 private static Pid process_under_test;

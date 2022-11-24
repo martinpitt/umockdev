@@ -248,7 +248,7 @@ if gudev.found()
   test('umockdev-vala', executable('test-umockdev-vala',
       'tests/test-umockdev-vala.vala',
       dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl],
-      link_with: [umockdev_lib]),
+      link_with: [umockdev_lib, umockdev_utils_lib]),
     depends: [preload_lib],
     suite: 'fails-valgrind')
 endif
@@ -264,13 +264,13 @@ test('ioctl-tree', executable('test-ioctl-tree',
 test('umockdev-run', executable('test-umockdev-run',
     'tests/test-umockdev-run.vala',
     dependencies: [glib, gobject, gio, vapi_posix, vapi_assertions, vapi_config],
-    link_with: [umockdev_lib]),
+    link_with: [umockdev_lib, umockdev_utils_lib]),
   depends: [umockdev_run_exe, preload_lib, test_chatter_exe, test_chatter_stream_exe])
 
 test('umockdev-record', executable('test-umockdev-record',
     'tests/test-umockdev-record.vala',
     dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_assertions, vapi_config, vala_libutil],
-    link_with: [umockdev_lib]),
+    link_with: [umockdev_lib, umockdev_utils_lib]),
   depends: [umockdev_record_exe, preload_lib, test_readbyte_exe, test_chatter_exe, test_chatter_stream_exe],
   suite: 'fails-valgrind')
 

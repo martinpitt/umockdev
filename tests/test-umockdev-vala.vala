@@ -18,6 +18,7 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+using UMockdevUtils;
 using Assertions;
 
 string rootdir;
@@ -280,7 +281,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   } catch (Error e) {
       error ("Cannot load ioctls: %s", e.message);
   }
-  FileUtils.unlink (tmppath);
+  checked_remove (tmppath);
 
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
@@ -378,7 +379,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   } catch (Error e) {
       error ("Cannot load ioctls: %s", e.message);
   }
-  FileUtils.unlink (tmppath);
+  checked_remove (tmppath);
 
   fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
@@ -424,7 +425,7 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   } catch (Error e) {
       error ("Cannot load ioctls: %s", e.message);
   }
-  FileUtils.unlink (tmppath);
+  checked_remove (tmppath);
 
   fd = Posix.open ("/dev/002", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
@@ -477,7 +478,7 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   } catch (Error e) {
       error ("Cannot load ioctls: %s", e.message);
   }
-  FileUtils.unlink (tmppath);
+  checked_remove (tmppath);
 
   int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
