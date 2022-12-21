@@ -844,6 +844,12 @@ t_testbed_uevent_null_action(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 static void
 t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
+    // HACK: https://gitlab.gnome.org/GNOME/glib/-/issues/2852
+    if (g_strcmp0(g_getenv("TEST_OS"), "alpine") == 0) {
+        g_printf("SKIP: glib+musl+pidfd crashes with assert_not_reached in siginfo_t_to_wait_status()");
+        return;
+    }
+
     g_autofree gchar *syspath = umockdev_testbed_add_device(fixture->testbed, "pci", "mydev", NULL, NULL, NULL);
     g_assert(syspath);
 
@@ -862,6 +868,12 @@ t_testbed_uevent_action_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 static void
 t_testbed_uevent_property_overflow(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
+    // HACK: https://gitlab.gnome.org/GNOME/glib/-/issues/2852
+    if (g_strcmp0(g_getenv("TEST_OS"), "alpine") == 0) {
+        g_printf("SKIP: glib+musl+pidfd crashes with assert_not_reached in siginfo_t_to_wait_status()");
+        return;
+    }
+
     /* overly long property */
     if (g_test_subprocess()) {
         char long_name[10000];

@@ -23,6 +23,7 @@ su -s /bin/sh - build << EOG
 set -ex
 git config --global safe.directory /source
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
+export TEST_OS=alpine
 cd /source
 meson setup /tmp/dbg --buildtype debug --werror
 meson test -C /tmp/dbg -v --num-processes=1
