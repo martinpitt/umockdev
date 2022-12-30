@@ -143,16 +143,8 @@ t_run_exit_code ()
     // signal exit
     get_program_out ("sh", umockdev_run_command + "-- sh -c 'kill -SEGV $$'", out sout, out serr, out exit);
     assert (Process.if_signaled (exit));
-    string? test_os = Environment.get_variable("TEST_OS");
-    if (test_os == "alpine") {
-
-        /* HACK: https://gitlab.gnome.org/GNOME/glib/-/issues/2852 alpine/musl, glib runs into a g_assert_not_reached() in
-           siginfo_t_to_wait_status;  explicitly check that so that it becomes obvious when that bug gets fixed */
-        assert_cmpint (Process.term_sig (exit), CompareOperator.EQ, ProcessSignal.ABRT);
-    } else {
-        assert_cmpint (Process.term_sig (exit), CompareOperator.EQ, ProcessSignal.SEGV);
-        assert_cmpstr (sout, CompareOperator.EQ, "");
-    }
+    assert_cmpint (Process.term_sig (exit), CompareOperator.EQ, ProcessSignal.SEGV);
+    assert_cmpstr (sout, CompareOperator.EQ, "");
 }
 
 static void
