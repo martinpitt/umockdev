@@ -301,10 +301,17 @@ ioctl_tree_next(const ioctl_tree * node)
 	return node->child;
     if (node->next != NULL)
 	return node->next;
+
+    /* HACK: -fanalyzer does not understand this loop */
+#pragma GCC diagnostic push
+#if !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wanalyzer-deref-before-check"
+#endif
     /* walk up the parents until we find an alternative sibling */
     for (; node != NULL; node = node->parent)
 	if (node->next != NULL)
 	    return node->next;
+#pragma GCC diagnostic pop
 
     /* no alternative siblings left, iteration done */
     return NULL;
