@@ -90,6 +90,7 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
 	if (errno == ECONNREFUSED) {
 	    /* client side closed its monitor underneath us, so clean up and ignore */
 	    unlink(event_addr.sun_path);
+	    close(fd);
 	    return;
 	}
 	perror("sendmsg_one: cannot connect to client's event socket");
