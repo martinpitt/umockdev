@@ -1633,6 +1633,24 @@ getcwd(char *buf, size_t size)
     return r;
 }
 
+char * __getcwd_chk(char *buf, size_t size, size_t buflen);
+char *
+__getcwd_chk(char *buf, size_t size, size_t buflen)
+{
+    libc_func (__getcwd_chk, char*, char*, size_t, size_t);
+    const char *prefix = getenv("UMOCKDEV_DIR");
+    char *r = ___getcwd_chk (buf, size, buflen);
+
+    if (prefix != NULL && r != NULL) {
+	size_t prefix_len = strlen (prefix);
+	if (strncmp (r, prefix, prefix_len) == 0) {
+	    DBG(DBG_PATH, "testbed wrapped __getcwd_chk: %s -> %s\n", r, r + prefix_len);
+	    memmove(r, r + prefix_len, strlen(r) - prefix_len + 1); \
+	}
+    }
+    return r;
+}
+
 ssize_t
 read(int fd, void *buf, size_t count)
 {
