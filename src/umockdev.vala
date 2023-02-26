@@ -109,6 +109,8 @@ public class Testbed: GLib.Object {
         this.dev_script_runner = new HashTable<string, ScriptRunner> (str_hash, str_equal);
         this.custom_handlers = new HashTable<string, IoctlBase> (str_hash, str_equal);
 
+        checked_setenv ("UMOCKDEV_DIR", this.root_dir);
+
         this.worker_ctx = new MainContext();
         this.worker_loop = new MainLoop(this.worker_ctx);
         this.worker_thread = create_worker_thread(this.worker_loop);
@@ -118,7 +120,6 @@ public class Testbed: GLib.Object {
         string sockpath = Path.build_filename(this.root_dir, "ioctl", "_default");
         handler.register_path(this.worker_ctx, "_default", sockpath);
 
-        checked_setenv ("UMOCKDEV_DIR", this.root_dir);
         debug("Created udev test bed %s", this.root_dir);
     }
 
@@ -148,9 +149,8 @@ public class Testbed: GLib.Object {
 
         debug ("Removing test bed %s", this.root_dir);
         remove_dir (this.root_dir);
-        Environment.unset_variable("UMOCKDEV_DIR");
-
         this.worker_loop.quit();
+        Environment.unset_variable("UMOCKDEV_DIR");
     }
 
     /**
