@@ -28,7 +28,14 @@ apt-get install -y eatmydata
 eatmydata apt-get -y --purge dist-upgrade
 
 # install build and test dependencies
-eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev libpcap-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput procps usbutils evtest gphoto2 valgrind
+eatmydata apt-get install -y --no-install-recommends meson git pkg-config valac libglib2.0-dev libudev-dev libgudev-1.0-dev libpcap-dev python3-gi gobject-introspection libgirepository1.0-dev gir1.2-glib-2.0 gir1.2-gudev-1.0 gtk-doc-tools udev xserver-xorg-video-dummy xserver-xorg-input-evdev xserver-xorg-input-synaptics xinput procps usbutils evtest gphoto2 valgrind gcovr
+
+# run coverage on a stable release, as it's prone to break
+if grep -q jammy /etc/os-release; then
+    coverage=true
+else
+    coverage=false
+fi
 
 # run build as user
 useradd --create-home build
@@ -37,7 +44,7 @@ set -ex
 git config --global safe.directory /source
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 cd /source
-meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true --werror
+meson setup /tmp/dbg --buildtype debug --prefix /usr -Dgtk_doc=true -Db_coverage=\$coverage --werror
 cd /tmp/dbg
 if meson dist --help | grep -q no-tests; then
     if { meson --version; echo 0.62.0; } | sort -V | head -n1 | grep -q "^0.62.0"; then
@@ -52,6 +59,12 @@ else
 fi
 meson test -v --num-processes=1
 meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
+
+if [ "\$coverage" = true ]; then
+    ninja coverage-text
+    meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
+    cat meson-logs/coverage.txt
+fi
 EOG
 
 # install and run check-installed; make sure there is nothing on stderr (for Debian/Ubuntu autopkgtests)

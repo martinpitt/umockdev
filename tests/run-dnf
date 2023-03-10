@@ -30,8 +30,11 @@ elif grep -q rawhide /etc/os-release; then
     coverage=false
     gtk_doc=true
 else
-    packages="gcovr"
-    coverage=true
+    # gcovr 5.2+ is broken: https://bugzilla.redhat.com/show_bug.cgi?id=2166960
+    # packages="gcovr"
+    # coverage=true
+    packages=""
+    coverage=false
     gtk_doc=true
 fi
 
