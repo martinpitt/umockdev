@@ -14,6 +14,10 @@ jobs:
           # need this to also fetch tags
           fetch-depth: 0
 
+      # https://github.blog/2022-04-12-git-security-vulnerability-announced/
+      - name: Pacify git's permission check
+        run: git config --global --add safe.directory /__w
+
       - name: Workaround for https://github.com/actions/checkout/pull/697
         run: git fetch --force origin $(git describe --tags):refs/tags/$(git describe --tags)
 
@@ -22,6 +26,6 @@ jobs:
         run: sudo PUBLISH_TAR=1 tests/run-apt
 
       - name: Create GitHub release
-        uses: eloquent/github-release-action@v2
+        uses: cockpit-project/action-release@88d994da62d1451c7073e26748c18413fcdf46e9
         with:
-          prerelease: "false"
+          filename: "umockdev-${{ github.ref_name }}.tar.xz"
