@@ -42,6 +42,11 @@ cc = meson.get_compiler('c')
 valac = meson.get_compiler('vala')
 g_ir_compiler = find_program('g-ir-compiler', required: false)
 
+# HACK: vala doesn't support declaring const arguments, so we get a lot of errors
+if cc.get_id() == 'clang'
+  add_project_arguments('-Wno-incompatible-function-pointer-types', language: 'c')
+endif
+
 conf.set('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('VERSION', meson.project_version())
 
