@@ -593,7 +593,8 @@ t_input_touchpad ()
     // clean up lockfile after killed X server
     if (FileUtils.remove ("/tmp/.X5-lock") < 0)
         debug("failed to clean up /tmp/.X5-lock: %m");
-    checked_remove ("/tmp/.X11-unix/X5");
+    if (FileUtils.remove ("/tmp/.X11-unix/X5") < 0)
+        debug("failed to clean up .X11-unix/X5: %m");
 
     assert_cmpstr (xinput_err, CompareOperator.EQ, "");
     assert_cmpint (xinput_exit, CompareOperator.EQ, 0);
