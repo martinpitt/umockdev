@@ -1,6 +1,6 @@
 #!/bin/sh
 ROOT=$(dirname $(dirname $(realpath "$0")))
-if [ -n "${MESON_SOURCE_ROOT:-}/.git" ] && VER=$(git -C "$MESON_SOURCE_ROOT" describe); then
+if [ -e "${MESON_SOURCE_ROOT:-}/.git" ] && VER=$(git -C "$MESON_SOURCE_ROOT" describe); then
     # make version number distribution friendly
     VER=$(echo "$VER" | sed 's/-/./g')
     # when invoked as dist script, write the stamp; this is false when invoked from project.version()
