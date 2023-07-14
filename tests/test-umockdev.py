@@ -23,17 +23,23 @@ import os.path
 import unittest
 import fcntl
 import struct
+import warnings
 
 try:
     import gi
     gi.require_version('GUdev', '1.0')
     gi.require_version('UMockdev', '1.0')
-    from gi.repository import GLib, GUdev
+    # 'pkgutil.get_loader' is deprecated and slated for removal in Python 3.14
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        from gi.repository import GLib, GUdev
 except ImportError as e:
     print('GI module not available, skipping test: %s' % e)
     sys.exit(0)
 
-from gi.repository import UMockdev
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    from gi.repository import UMockdev
 
 class Testbed(unittest.TestCase):
     def setUp(self):
