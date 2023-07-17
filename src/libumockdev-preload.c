@@ -185,6 +185,8 @@ trap_path(const char *path)
 
     if (strncmp(abspath, "/dev/", 5) == 0 || strcmp(abspath, "/dev") == 0 || strncmp(abspath, "/proc/", 6) == 0)
 	check_exist = 1;
+    else if (strncmp(abspath, "/run/udev/data", 14) == 0)
+	check_exist = 0;
     else if (strncmp(abspath, "/sys/", 5) != 0 && strcmp(abspath, "/sys") != 0)
 	return path;
 
