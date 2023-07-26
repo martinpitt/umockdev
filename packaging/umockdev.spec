@@ -3,7 +3,7 @@ Version:          0
 Release:          1%{?dist}
 Summary:          Mock hardware devices
 
-License:          LGPLv2+
+License:          LGPL-2.1-or-later
 URL:              https://github.com/martinpitt/%{name}
 Source0:          https://github.com/martinpitt/%{name}/releases/download/%{version}/%{name}-%{version}.tar.xz
 
