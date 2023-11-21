@@ -1394,7 +1394,7 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     /* open() with O_TMPFILE; this hasn't been supported in Linux for very long
      * (>= 3.11), so check that it works in the testbed only if it also works
      * in the "normal" file system. */
-    fd = g_open("/tmp", O_TMPFILE|O_RDWR, 0644);
+    fd = g_open(g_get_tmp_dir(), O_TMPFILE|O_RDWR, 0644);
     if (fd >= 0) {
         close(fd);
         errno = 0;
