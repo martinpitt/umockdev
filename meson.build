@@ -55,6 +55,11 @@ if cc.has_function('__fxstatat', prefix: '#include <sys/stat.h>')
   add_project_arguments('-DHAVE_FXSTATAT', language: 'c')
 endif
 
+# Not always explicit
+if cc.has_function('openat64', prefix: '#include <fcntl.h>')
+  add_project_arguments('-DHAVE_OPENAT64', language: 'c')
+endif
+
 meson.add_dist_script(srcdir / 'getversion.sh')
 
 #

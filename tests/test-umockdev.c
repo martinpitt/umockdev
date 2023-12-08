@@ -1131,11 +1131,13 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(fd, >=, 0);
     close(fd);
 
+#ifdef HAVE_OPENAT64
     fd = openat64(dirfd, "sys/devices/dev1/simple_attr", O_RDONLY);
     if (fd < 0)
         perror("openat64");
     g_assert_cmpint(fd, >=, 0);
     close(fd);
+#endif
 
     close(dirfd);
 
@@ -1146,7 +1148,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(openat(dirfd, "sys", O_RDONLY), <, 0);
     g_assert_cmpint(errno, ==, ENOENT);
 
-    g_assert_cmpint(errno, ==, ENOENT);
+#ifdef HAVE_OPENAT64
     g_assert_cmpint(openat64(dirfd, "sys", O_RDONLY), <, 0);
     close(dirfd);
 
@@ -1154,6 +1156,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(openat(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(openat64(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
+#endif
 
     /* stat */
     g_assert_cmpint(stat ("/sys/bus/pci/devices", &st), ==, 0);
