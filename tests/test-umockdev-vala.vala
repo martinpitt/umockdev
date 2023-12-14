@@ -21,6 +21,10 @@
 using UMockdevUtils;
 using Assertions;
 
+#if HAVE_SELINUX
+using Selinux;
+#endif
+
 string rootdir;
 
 /* exception-handling wrappers */
@@ -193,6 +197,47 @@ t_testbed_fs_ops ()
 
   assert_cmpint (Posix.chdir (orig_cwd), CompareOperator.EQ, 0);
 }
+
+#if HAVE_SELINUX
+void
+t_testbed_selinux ()
+{
+  if (!FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+      stdout.printf ("[SKIP SELinux not active]\n");
+      return;
+  }
+
+  var tb = new UMockdev.Testbed ();
+
+  // valid context
+  tb_add_from_string (tb, """P: /devices/myusbhub/cam
+N: bus/usb/001/002
+E: SUBSYSTEM=usb
+E: DEVTYPE=usb_device
+E: DEVNAME=/dev/bus/usb/001/002
+E: __DEVCONTEXT=system_u:object_r:device_t:s0
+""");
+
+  string context;
+  assert_cmpint (Selinux.lgetfilecon ("/dev/bus/usb/001/002", out context), CompareOperator.GT, 0);
+  assert_cmpstr (context, CompareOperator.EQ, "system_u:object_r:device_t:s0");
+
+  // invalidly context
+  tb_add_from_string (tb, """P: /devices/invalidcontext
+N: invalidcontext
+E: SUBSYSTEM=tty
+E: DEVNAME=/dev/invalidcontext
+E: __DEVCONTEXT=blah
+""");
+
+  assert (FileUtils.test("/dev/invalidcontext", FileTest.EXISTS));
+  string root_context;
+  assert_cmpint (Selinux.lgetfilecon (tb.get_root_dir(), out root_context), CompareOperator.GT, 0);
+  assert_cmpint (Selinux.lgetfilecon ("/dev/invalidcontext", out context), CompareOperator.GT, 0);
+  // has default context
+  assert_cmpstr (context, CompareOperator.EQ, root_context);
+}
+#endif
 
 void
 t_usbfs_ioctl_static ()
@@ -1076,6 +1121,9 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/add_devicev", t_testbed_add_device);
   Test.add_func ("/umockdev-testbed-vala/gudev-query-list", t_testbed_gudev_query_list);
   Test.add_func ("/umockdev-testbed-vala/fs_ops", t_testbed_fs_ops);
+#if HAVE_SELINUX
+  Test.add_func ("/umockdev-testbed-vala/selinux", t_testbed_selinux);
+#endif
 
   /* tests for mocking ioctls */
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);

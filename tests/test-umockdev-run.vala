@@ -21,6 +21,10 @@
 using UMockdevUtils;
 using Assertions;
 
+#if HAVE_SELINUX
+using Selinux;
+#endif
+
 const string umockdev_run_command = "env LC_ALL=C umockdev-run ";
 const string umockdev_record_command = "env LC_ALL=C umockdev-record ";
 
@@ -180,6 +184,7 @@ t_run_udevadm_block ()
     checked_file_set_contents (umockdev_file, """P: /devices/virtual/block/loop23
 N: loop23
 E: DEVNAME=/dev/loop23
+E: __DEVCONTEXT=system_u:object_r:fixed_disk_device_t:s0
 E: DEVTYPE=disk
 E: MAJOR=7
 E: MINOR=23
@@ -206,6 +211,18 @@ A: size=1048576\n
     assert (sout.contains ("E: DEVNAME=/dev/loop23"));
     assert (sout.contains ("E: MAJOR=7"));
     assert (sout.contains ("E: MINOR=23"));
+
+#if HAVE_SELINUX
+    // we may run on a system without SELinux
+    if (FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+        check_program_out("true", "-d " + umockdev_file + " -- stat -c %C /dev/loop23",
+                          "system_u:object_r:fixed_disk_device_t:s0\n");
+    } else {
+        stdout.printf ("[SKIP selinux context check: SELinux not active] ");
+    }
+#else
+        stdout.printf ("[SKIP selinux context check: not built with SELinux support] ");
+#endif
 
     checked_remove (umockdev_file);
 }
@@ -332,6 +349,19 @@ t_run_record_null ()
 
     check_program_out("true", "-d " + umockdev_file + " -- stat -c '%n %F %t %T' /dev/null",
                       "/dev/null character special file 1 3\n");
+
+#if HAVE_SELINUX
+    // we may run on a system without SELinux
+    if (FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+        string orig_context;
+        assert_cmpint (Selinux.lgetfilecon ("/dev/null", out orig_context), CompareOperator.GT, 0);
+        check_program_out("true", "-d " + umockdev_file + " -- stat -c %C /dev/null", orig_context + "\n");
+    } else {
+        stdout.printf ("[SKIP selinux context check: SELinux not active] ");
+    }
+#else
+        stdout.printf ("[SKIP selinux context check: not built with SELinux support] ");
+#endif
 
     checked_remove (umockdev_file);
 }

@@ -22,6 +22,10 @@
 using UMockdevUtils;
 using Assertions;
 
+#if HAVE_SELINUX
+using Selinux;
+#endif
+
 string readbyte_path;
 string tests_dir;
 
@@ -196,6 +200,16 @@ t_system_single ()
     assert_in("E: DEVNAME=/dev/null", sout);
     assert_in("P: /devices/virtual/mem/null", sout);
     assert_in("E: DEVNAME=/dev/zero", sout);
+#if HAVE_SELINUX
+    // we may run on a system without SELinux
+    if (FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+        string context;
+        assert_cmpint (Selinux.lgetfilecon ("/dev/null", out context), CompareOperator.GT, 0);
+        assert_in("E: __DEVCONTEXT=" + context + "\n", sout);
+    } else {
+        assert(!sout.contains("E: __DEVCONTEXT"));
+    }
+#endif
 }
 
 // system /sys: umockdev-record --all works and result loads back

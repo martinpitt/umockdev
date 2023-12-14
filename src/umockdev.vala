@@ -20,6 +20,10 @@ namespace UMockdev {
 
 using UMockdevUtils;
 
+#if HAVE_SELINUX
+using Selinux;
+#endif
+
 private bool __in_mock_env_initialized = false;
 private bool __in_mock_env_result = false;
 
@@ -538,6 +542,9 @@ public class Testbed: GLib.Object {
      * possible to change them later on with umockdev_testbed_set_attribute() and
      * umockdev_testbed_set_property().
      *
+     * If the pseudo-property "__DEVCONTEXT" is present, the SELinux context of the device's
+     * DEVNODE will be set to that value.
+     *
      * This will synthesize an "add" uevent.
      *
      * Returns: The sysfs path for the newly created device. Free with g_free().
@@ -576,6 +583,9 @@ public class Testbed: GLib.Object {
      * properties; usually you should specify them upon creation, but it is also
      * possible to change them later on with umockdev_testbed_set_attribute() and
      * umockdev_testbed_set_property().
+     *
+     * If the pseudo-property "__DEVCONTEXT" is present, the SELinux context of the device's
+     * DEVNODE will be set to that value.
      *
      * This will synthesize an "add" uevent.
      *
@@ -1300,6 +1310,7 @@ public class Testbed: GLib.Object {
         string[] binattrs = {}; /* hex encoded values */
         string[] linkattrs = {};
         string[] props = {};
+        string? selinux_context = null;
 
         /* scan until we see an empty line */
         while (cur_data.length > 0 && cur_data[0] != '\n') {
@@ -1328,6 +1339,14 @@ public class Testbed: GLib.Object {
                     break;
 
                 case 'E':
+                    if (key == "__DEVCONTEXT") {
+                        if (selinux_context != null)
+                            throw new UMockdev.Error.VALUE("duplicate __DEVCONTEXT property in description of device %s",
+                                                           devpath);
+                        selinux_context = val;
+                        break;
+                    }
+
                     props += key;
                     props += val;
                     if (key == "SUBSYSTEM") {
@@ -1378,7 +1397,7 @@ public class Testbed: GLib.Object {
 
         /* create fake device node */
         if (devnode_path != null) {
-            this.create_node_for_device(subsystem, devnode_path, devnode_contents, majmin);
+            this.create_node_for_device(subsystem, devnode_path, devnode_contents, majmin, selinux_context);
 
             /* create symlinks */
             for (int i = 0; i < devnode_links.length; i++) {
@@ -1400,7 +1419,8 @@ public class Testbed: GLib.Object {
     }
 
     private void
-    create_node_for_device (string subsystem, string node_path, uint8[] node_contents, string? majmin)
+    create_node_for_device (string subsystem, string node_path, uint8[] node_contents, string? majmin,
+                            string? selinux_context)
         throws UMockdev.Error
     {
         checked_mkdir_with_parents(Path.get_dirname(node_path), 0755);
@@ -1418,6 +1438,7 @@ public class Testbed: GLib.Object {
                 error("Cannot create dev node file: %s", e.message);
             }
 
+            set_selinux_context (node_path, selinux_context);
             return;
         }
 
@@ -1456,8 +1477,20 @@ public class Testbed: GLib.Object {
         string devname = node_path.substring (this.root_dir.length);
         assert (!this.dev_fd.contains (devname));
         this.dev_fd.insert (devname, ptym);
+
+        set_selinux_context (node_path, selinux_context);
     }
 
+    private void set_selinux_context (string path, string? context)
+    {
+#if HAVE_SELINUX
+        if (context != null) {
+            // this is opportunistic, it needs to work in environments without privilegs or SELinux
+            if (Selinux.lsetfilecon (path, context) < 0)
+                debug ("umockdev Testbed.create_node_for_device: setfilecon(%s, %s) failed: %m", path, context);
+        }
+#endif
+    }
 
     /**
      * umockdev_testbed_record_parse_line:
