@@ -66,7 +66,15 @@ meson.add_dist_script(srcdir / 'getversion.sh')
 # dependencies
 #
 
+optional_defines = []
+
 dl = cc.find_library('dl')
+selinux = cc.find_library('libselinux', required: false)
+if selinux.found()
+  if cc.check_header('selinux/selinux.h')
+    optional_defines += ['--define=HAVE_SELINUX']
+  endif
+endif
 
 glib = dependency('glib-2.0', version: '>= 2.32.0')
 gobject = dependency('gobject-2.0', version: '>= 2.32.0')
@@ -87,6 +95,7 @@ vala_libutil = cc.find_library('util')
 # local VAPIs
 vapi_config = valac.find_library('config', dirs: srcdir)
 vapi_ioctl = valac.find_library('ioctl', dirs: srcdir)
+vapi_selinux = valac.find_library('selinux', dirs: srcdir)
 vapi_assertions = valac.find_library('assertions', dirs: testsdir)
 
 #
@@ -141,7 +150,7 @@ umockdev_lib = shared_library('umockdev',
    'src/debug.c'],
   vala_vapi: 'umockdev-1.0.vapi',
   vala_gir: 'UMockdev-1.0.gir',
-  dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_linux_fixes, vala_libudev, vala_libutil, vapi_ioctl, libpcap],
+  dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_linux_fixes, vala_libudev, vala_libutil, vapi_ioctl, vapi_selinux, libpcap, selinux],
   link_with: [umockdev_utils_lib],
   link_depends: ['src/umockdev.map'],
   link_args: [
@@ -151,7 +160,7 @@ umockdev_lib = shared_library('umockdev',
   ],
   vala_args: ['--define=INTERNAL_REGISTER_API',
               '--define=INTERNAL_UNREGISTER_PATH_API',
-              '--vapidir=@0@/src'.format(meson.current_source_dir())],
+              '--vapidir=@0@/src'.format(meson.current_source_dir())] + optional_defines,
   include_directories: include_directories('src'),
   version: lib_version,
   install: true,
@@ -201,11 +210,11 @@ umockdev_record_exe = executable('umockdev-record',
    'src/ioctl_tree.c',
    'src/utils.c',
    'src/debug.c'],
-  dependencies: [glib, gobject, gio_unix, vapi_posix, vapi_config, vapi_ioctl, libpcap],
+  dependencies: [glib, gobject, gio_unix, vapi_posix, vapi_config, vapi_ioctl, vapi_selinux, libpcap, selinux],
   link_with: [umockdev_utils_lib],
   vala_args: ['--define=INTERNAL_REGISTER_API',
               '--define=INTERNAL_UNREGISTER_ALL_API',
-              '--vapidir=@0@/src'.format(meson.current_source_dir())],
+              '--vapidir=@0@/src'.format(meson.current_source_dir())] + optional_defines,
   include_directories: include_directories('src'),
   install: true)
 
@@ -257,8 +266,9 @@ if gudev.found()
 
   test('umockdev-vala', executable('test-umockdev-vala',
       'tests/test-umockdev-vala.vala',
-      dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl],
-      link_with: [umockdev_lib, umockdev_utils_lib]),
+      dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl, vapi_selinux, selinux],
+      link_with: [umockdev_lib, umockdev_utils_lib],
+      vala_args: optional_defines),
     depends: [preload_lib],
     suite: 'fails-valgrind')
 endif
@@ -273,14 +283,16 @@ test('ioctl-tree', executable('test-ioctl-tree',
 
 test('umockdev-run', executable('test-umockdev-run',
     'tests/test-umockdev-run.vala',
-    dependencies: [glib, gobject, gio, vapi_posix, vapi_assertions, vapi_config],
-    link_with: [umockdev_lib, umockdev_utils_lib]),
+    dependencies: [glib, gobject, gio, vapi_posix, vapi_assertions, vapi_config, vapi_selinux, selinux],
+    link_with: [umockdev_lib, umockdev_utils_lib],
+    vala_args: optional_defines),
   depends: [umockdev_run_exe, preload_lib, test_chatter_exe, test_chatter_stream_exe])
 
 test('umockdev-record', executable('test-umockdev-record',
     'tests/test-umockdev-record.vala',
-    dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_assertions, vapi_config, vala_libutil],
-    link_with: [umockdev_lib, umockdev_utils_lib]),
+    dependencies: [glib, gobject, gio, gio_unix, vapi_posix, vapi_linux, vapi_assertions, vapi_config, vala_libutil, vapi_selinux, selinux],
+    link_with: [umockdev_lib, umockdev_utils_lib],
+    vala_args: optional_defines),
   depends: [umockdev_record_exe, preload_lib, test_readbyte_exe, test_chatter_exe, test_chatter_stream_exe],
   suite: 'fails-valgrind')
 

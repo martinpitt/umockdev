@@ -21,6 +21,9 @@
  */
 
 using UMockdevUtils;
+#if HAVE_SELINUX
+using Selinux;
+#endif
 
 static void
 devices_from_dir (string dir, ref GenericArray<string> devs)
@@ -251,7 +254,16 @@ record_device(string dev)
             continue;
 
         if (line.has_prefix("N: ")) {
-            line = line + dev_contents("/dev/" + line.substring(3).chomp());
+            string devpath = "/dev/" + line.substring(3).chomp();
+            line = line + dev_contents(devpath);
+
+            // record SELinux context
+#if HAVE_SELINUX
+            string context; // this is owned by vala, not calling Selinux.freecon() on it
+            int res = Selinux.lgetfilecon(devpath, out context);
+            if (res > 0)
+                properties.append("E: __DEVCONTEXT=" + context);
+#endif
         }
         stdout.puts(line);
         stdout.putc('\n');
