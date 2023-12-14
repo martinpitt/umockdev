@@ -58,7 +58,10 @@ else
     DESTDIR=/tmp/inst meson install
 fi
 meson test -v --num-processes=1
-meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
+# valgrind is broken on i386
+if [ "\$(dpkg --print-architecture)" = "amd64" ]; then
+    meson test -v --num-processes=1 --setup valgrind --no-suite fails-valgrind
+fi
 
 if [ "\$coverage" = true ]; then
     ninja coverage-text
