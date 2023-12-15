@@ -34,5 +34,12 @@ EOG
 
 [ -z "${DEBUG:-}" ] || nix-env -i cntr
 
-nix-build --keep-failed /tmp/default.nix
+if ! nix-build --keep-failed /tmp/default.nix; then
+    for log in /build/source/build/meson-logs/*; do
+        [ -f "\$log" ] || break
+        echo "=== \$log ==="
+        cat "\$log"
+    done
+    exit 1
+fi
 EOF
