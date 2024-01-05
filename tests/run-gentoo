@@ -17,10 +17,11 @@ $RUNC run --interactive ${OPTS:-} \
   --volume `pwd`:/source:ro --volume gentooportage:/var/db/repos/gentoo \
   --cap-add=CAP_SYS_ADMIN --cap-add=CAP_NET_ADMIN --cap-add=CAP_SYS_PTRACE \
   docker.io/gentoo/stage3 /bin/sh -eux <<EOF
+echo 'FEATURES="\${FEATURES} binpkg-request-signature"' >> /etc/portage/make.conf
 # install build dependencies
-ACCEPT_KEYWORDS="~*" emerge dev-util/umockdev --with-test-deps --onlydeps
+ACCEPT_KEYWORDS="~*" emerge dev-util/umockdev --with-test-deps --onlydeps --getbinpkg
 # install git, "meson dist" dependency
-emerge dev-vcs/git
+emerge --getbinpkg dev-vcs/git
 
 git config --global safe.directory /source
 
