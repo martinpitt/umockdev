@@ -1397,53 +1397,6 @@ WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
 WRAP_4ARGS(ssize_t, -1, getxattr, const char*, void*, size_t);
 WRAP_4ARGS(ssize_t, -1, lgetxattr, const char*, void*, size_t);
 
-#ifdef __GLIBC__
-WRAP_VERSTAT(__x,);
-WRAP_VERSTAT(__x, 64);
-WRAP_VERSTAT(__lx,);
-WRAP_VERSTAT(__lx, 64);
-
-#ifdef HAVE_FXSTATAT
-WRAP_VERFSTATAT(__,);
-WRAP_VERFSTATAT(__,64);
-#endif
-
-int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct statx * stx)
-{
-    const char *p;
-    libc_func(statx, int, int, const char *, int, unsigned, struct statx *);
-    int r;
-
-    TRAP_PATH_LOCK;
-    p = trap_path(pathname);
-    DBG(DBG_PATH, "testbed wrapped statx (%s) -> %s\n", pathname, p ?: "NULL");
-    if (p == NULL)
-        r = -1;
-    else
-        r = _statx(dirfd, p, flags, mask, stx);
-    TRAP_PATH_UNLOCK;
-
-    if (r == 0 && p != pathname && strncmp(pathname, "/dev/", 5) == 0
-            && is_emulated_device(p, stx->stx_mode)) {
-        if (stx->stx_mode & S_ISVTX) {
-            stx->stx_mode = S_IFBLK | (stx->stx_mode & ~S_IFMT);
-            DBG(DBG_PATH, "  %s is an emulated block device (statx)\n", pathname);
-        } else {
-            stx->stx_mode = S_IFCHR | (stx->stx_mode & ~S_IFMT);
-            DBG(DBG_PATH, "  %s is an emulated char device (statx)\n", pathname);
-        }
-	unsigned maj, min;
-	if (get_rdev_maj_min(pathname + 5, &maj, &min)) {
-	    stx->stx_rdev_major = maj;
-	    stx->stx_rdev_minor = min;
-	} else {
-	    stx->stx_rdev_major = stx->stx_rdev_minor = 0;
-	}
-
-    }
-    return r;
-}
-
 static bool is_dir_or_contained(const char *path, const char *dir, const char *subdir)
 {
     if (!path || !dir)
@@ -1490,7 +1443,6 @@ int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
 }
 
 WRAP_FSTATFS();
-WRAP_FSTATFS(64);
 
 #define WRAP_STATFS(suffix) \
 int statfs ## suffix(const char *path, struct statfs ## suffix *buf) {	\
@@ -1512,6 +1464,56 @@ int statfs ## suffix(const char *path, struct statfs ## suffix *buf) {	\
 }
 
 WRAP_STATFS();
+
+#ifdef __GLIBC__
+WRAP_VERSTAT(__x,);
+WRAP_VERSTAT(__x, 64);
+WRAP_VERSTAT(__lx,);
+WRAP_VERSTAT(__lx, 64);
+
+#ifdef HAVE_FXSTATAT
+WRAP_VERFSTATAT(__,);
+WRAP_VERFSTATAT(__,64);
+#endif
+
+WRAP_FSTATFS(64);
+
+int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct statx * stx)
+{
+    const char *p;
+    libc_func(statx, int, int, const char *, int, unsigned, struct statx *);
+    int r;
+
+    TRAP_PATH_LOCK;
+    p = trap_path(pathname);
+    DBG(DBG_PATH, "testbed wrapped statx (%s) -> %s\n", pathname, p ?: "NULL");
+    if (p == NULL)
+        r = -1;
+    else
+        r = _statx(dirfd, p, flags, mask, stx);
+    TRAP_PATH_UNLOCK;
+
+    if (r == 0 && p != pathname && strncmp(pathname, "/dev/", 5) == 0
+            && is_emulated_device(p, stx->stx_mode)) {
+        if (stx->stx_mode & S_ISVTX) {
+            stx->stx_mode = S_IFBLK | (stx->stx_mode & ~S_IFMT);
+            DBG(DBG_PATH, "  %s is an emulated block device (statx)\n", pathname);
+        } else {
+            stx->stx_mode = S_IFCHR | (stx->stx_mode & ~S_IFMT);
+            DBG(DBG_PATH, "  %s is an emulated char device (statx)\n", pathname);
+        }
+	unsigned maj, min;
+	if (get_rdev_maj_min(pathname + 5, &maj, &min)) {
+	    stx->stx_rdev_major = maj;
+	    stx->stx_rdev_minor = min;
+	} else {
+	    stx->stx_rdev_major = stx->stx_rdev_minor = 0;
+	}
+
+    }
+    return r;
+}
+
 WRAP_STATFS(64);
 
 #endif
