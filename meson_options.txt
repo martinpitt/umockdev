@@ -2,3 +2,8 @@ option('gtk_doc',
        type : 'boolean',
        value : false,
        description : 'use gtk-doc to build documentation')
+
+option('gentoo-hacks',
+       type : 'boolean',
+       value : false,
+       description : 'disable gcc fatal warnings, for Gentoo builds')

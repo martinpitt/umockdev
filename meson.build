@@ -37,6 +37,21 @@ if get_option('b_ndebug') == 'true'
   add_project_arguments('-Wno-error=unused-but-set-variable', '-Wno-error=unused-variable', language: 'c')
 endif
 
+# HACK: between Jan 5 and Jan 8 2024, Gentoo changed something that causes
+# hundreds of warnings when compiling the vala-generated C code; ignore these
+if get_option('gentoo-hacks')
+  add_project_arguments(
+    '-Wno-error',
+    '-Wno-error=incompatible-pointer-types',
+    '-Wno-error=pointer-sign',
+    '-Wno-error=unused-function',
+    '-Wno-error=unused-label',
+    '-Wno-error=unused-but-set-variable',
+    '-Wno-error=unused-variable',
+    '-Wno-error=unused-value',
+    language: 'c')
+endif
+
 conf = configuration_data()
 cc = meson.get_compiler('c')
 valac = meson.get_compiler('vala')
