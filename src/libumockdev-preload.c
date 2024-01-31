@@ -1444,6 +1444,8 @@ int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct stat
     return r;
 }
 
+#endif /* __GLIBC__ */
+
 static bool is_dir_or_contained(const char *path, const char *dir, const char *subdir)
 {
     if (!path || !dir)
@@ -1490,7 +1492,9 @@ int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
 }
 
 WRAP_FSTATFS();
+#ifdef __GLIBC__
 WRAP_FSTATFS(64);
+#endif
 
 #define WRAP_STATFS(suffix) \
 int statfs ## suffix(const char *path, struct statfs ## suffix *buf) {	\
@@ -1512,8 +1516,8 @@ int statfs ## suffix(const char *path, struct statfs ## suffix *buf) {	\
 }
 
 WRAP_STATFS();
+#ifdef __GLIBC__
 WRAP_STATFS(64);
-
 #endif
 
 int __open_2(const char *path, int flags);
