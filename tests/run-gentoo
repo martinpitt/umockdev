@@ -27,7 +27,7 @@ git config --global safe.directory /source
 
 cd /source
 export VALAC=\$(ls /usr/bin/valac-* |sort | tail -n1)
-meson setup /tmp/dbg --buildtype debug --werror -Dgentoo-hacks=true
+meson setup /tmp/dbg --buildtype debug --werror
 
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
 meson test -C /tmp/dbg -v --num-processes=1

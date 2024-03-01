@@ -21,7 +21,6 @@ add_project_arguments(
   '-Werror=format-security',
   '-Werror=format=2',
   #'-Werror=missing-include-dirs',
-  '-Werror=unused-variable',
   '-Werror=return-type',
   '-Werror=uninitialized',
   # experimental: first check this on all Debian architectures
@@ -32,30 +31,23 @@ add_project_arguments(
 
 add_project_arguments('--abi-stability', language: 'vala')
 
-# let's not clutter the code with too many #ifdefs
-if get_option('b_ndebug') == 'true'
-  add_project_arguments('-Wno-error=unused-but-set-variable', '-Wno-error=unused-variable', language: 'c')
-endif
-
-# HACK: between Jan 5 and Jan 8 2024, Gentoo changed something that causes
-# hundreds of warnings when compiling the vala-generated C code; ignore these
-if get_option('gentoo-hacks')
-  add_project_arguments(
-    '-Wno-error',
-    '-Wno-error=incompatible-pointer-types',
-    '-Wno-error=pointer-sign',
-    '-Wno-error=unused-function',
-    '-Wno-error=unused-label',
-    '-Wno-error=unused-but-set-variable',
-    '-Wno-error=unused-variable',
-    '-Wno-error=unused-value',
-    language: 'c')
-endif
-
 conf = configuration_data()
 cc = meson.get_compiler('c')
 valac = meson.get_compiler('vala')
 g_ir_compiler = find_program('g-ir-compiler', required: false)
+
+# generated vala code triggers tons of these
+add_project_arguments(
+  cc.get_supported_arguments(
+    '-Wno-error=discarded-qualifiers',
+    '-Wno-error=incompatible-pointer-types',
+    '-Wno-error=pointer-sign',
+    '-Wno-error=unused-but-set-variable',
+    '-Wno-error=unused-function',
+    '-Wno-error=unused-label',
+    '-Wno-error=unused-value',
+    '-Wno-error=unused-variable'
+  ), language: 'c')
 
 # HACK: vala doesn't support declaring const arguments, so we get a lot of errors
 if cc.get_id() == 'clang'
