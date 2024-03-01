@@ -61,7 +61,7 @@ all_devices ()
 {
     var devs = new GenericArray<string>();
     devices_from_dir("/sys/devices", ref devs);
-    return devs.data;
+    return devs.steal();
 }
 
 // If dev is a block or character device, convert it to a sysfs path.
