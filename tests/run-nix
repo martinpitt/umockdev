@@ -25,10 +25,18 @@ in pkgs.umockdev.overrideAttrs (attrs: {
   patches = [];
   preCheck = "";
   doCheck = true;
-  nativeBuildInputs = attrs.nativeBuildInputs ++ [ ${DEBUG:+pkgs.breakpointHook} ];
-  # git is a "meson dist" time dependency
-  # libpcap is a new dependency, it can be removed again later
-  buildInputs = attrs.buildInputs ++ [ pkgs.git pkgs.libpcap ];
+  nativeBuildInputs = attrs.nativeBuildInputs ++ [
+    ${DEBUG:+pkgs.breakpointHook}
+    # git is a "meson dist" time dependency
+    pkgs.git
+  ];
+  buildInputs = attrs.buildInputs ++ [
+    # Add new runtime (executable on host) dependencies here.
+  ];
+  nativeCheckInputs = attrs.nativeCheckInputs or [ ] ++ [
+    # Add udevadm for tests, since unlike Nixpkgs, we do not patch umockdev-record.
+    pkgs.systemdMinimal
+  ];
 })
 EOG
 
