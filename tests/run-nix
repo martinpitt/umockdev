@@ -32,10 +32,9 @@ in pkgs.umockdev.overrideAttrs (attrs: {
 })
 EOG
 
-[ -z "${DEBUG:-}" ] || nix-env -i cntr
-
 if ! nix-build --keep-failed /tmp/default.nix; then
-    for log in /build/source/build/meson-logs/*; do
+    logdir=\$(find /tmp -name meson-logs -type d)
+    for log in "\$logdir"/*; do
         [ -f "\$log" ] || break
         echo "=== \$log ==="
         cat "\$log"
