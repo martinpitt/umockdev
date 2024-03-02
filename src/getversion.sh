@@ -1,4 +1,5 @@
 #!/bin/sh
+set -eu
 ROOT=$(dirname $(dirname $(realpath "$0")))
 if [ -e "${MESON_SOURCE_ROOT:-}/.git" ] && VER=$(git -C "$MESON_SOURCE_ROOT" describe); then
     # make version number distribution friendly
