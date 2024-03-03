@@ -20,6 +20,7 @@
 
 using UMockdevUtils;
 using Assertions;
+using GLibc;
 
 #if HAVE_SELINUX
 using Selinux;
@@ -548,6 +549,13 @@ t_usbfs_ioctl_pcap ()
   var tb = new UMockdev.Testbed ();
   string device;
   Ioctl.usbdevfs_urb* urb_reap = null;
+
+  GLibc.Utsname utsbuf;
+  GLibc.uname (out utsbuf);
+  if (utsbuf.machine ==  "sparc64") {
+      stdout.printf ("[SKIP pre-recorded pcap does not work on sparc64]\n");
+      return;
+  }
 
   /* NOTE: This test is a bit ugly. It wasn't the best idea to use a USB keyboard. */
 
