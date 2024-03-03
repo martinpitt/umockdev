@@ -101,6 +101,7 @@ python = find_program('python3', 'python', required: false)
 vapi_posix = valac.find_library('posix')
 vapi_linux = valac.find_library('linux')
 vapi_linux_fixes = valac.find_library('linux_fixes', dirs: srcdir)
+vapi_glibc = valac.find_library('glibc', dirs: srcdir)
 vala_libudev = cc.find_library('udev')
 vala_libutil = cc.find_library('util')
 
@@ -278,7 +279,7 @@ if gudev.found()
 
   test('umockdev-vala', executable('test-umockdev-vala',
       'tests/test-umockdev-vala.vala',
-      dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl, vapi_selinux, selinux],
+      dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl, vapi_glibc, vapi_selinux, selinux],
       link_with: [umockdev_lib, umockdev_utils_lib],
       vala_args: optional_defines),
     depends: [preload_lib],
