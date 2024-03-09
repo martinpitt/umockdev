@@ -203,7 +203,13 @@ t_testbed_fs_ops ()
 void
 t_testbed_selinux ()
 {
-  if (!FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+  int exit;
+  try {
+      Process.spawn_command_line_sync ("command -v selinuxenabled", null, null, out exit);
+  } catch (SpawnError e) {
+      exit = 1;
+  }
+  if (exit != 0) {
       stdout.printf ("[SKIP SELinux not active]\n");
       return;
   }

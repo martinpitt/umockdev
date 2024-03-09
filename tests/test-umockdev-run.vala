@@ -214,7 +214,12 @@ A: size=1048576\n
 
 #if HAVE_SELINUX
     // we may run on a system without SELinux
-    if (FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+    try {
+        Process.spawn_command_line_sync ("command -v selinuxenabled", null, null, out exit);
+    } catch (SpawnError e) {
+        exit = 1;
+    }
+    if (exit == 0) {
         check_program_out("true", "-d " + umockdev_file + " -- stat -c %C /dev/loop23",
                           "system_u:object_r:fixed_disk_device_t:s0\n");
     } else {
@@ -352,7 +357,12 @@ t_run_record_null ()
 
 #if HAVE_SELINUX
     // we may run on a system without SELinux
-    if (FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
+    try {
+        Process.spawn_command_line_sync ("command -v selinuxenabled", null, null, out exit);
+    } catch (SpawnError e) {
+        exit = 1;
+    }
+    if (exit == 0) {
         string orig_context;
         assert_cmpint (Selinux.lgetfilecon ("/dev/null", out orig_context), CompareOperator.GT, 0);
         check_program_out("true", "-d " + umockdev_file + " -- stat -c %C /dev/null", orig_context + "\n");
