@@ -1,0 +1,11 @@
+# started on Debian testing in March 2024
+{
+   dyn_linker_invalid_write
+   Memcheck:Addr8
+   obj:/usr/lib/x86_64-linux-gnu/liblzma.so.5.6.0
+   ...
+   fun:elf_machine_rela
+   fun:elf_dynamic_do_Rela
+   fun:_dl_relocate_object
+   ...
+}

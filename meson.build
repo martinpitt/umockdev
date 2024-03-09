@@ -255,6 +255,7 @@ add_test_setup('default',
 
 add_test_setup('valgrind',
   exe_wrapper: [srcdir / 'umockdev-wrapper', 'valgrind', '-q', '--leak-check=full', '--show-possibly-lost=no',
+    '--gen-suppressions=all', '--suppressions=' + srcdir / 'valgrind.supp',
     '--errors-for-leak-kinds=definite', '--error-exitcode=33',
     '--trace-children=yes', '--trace-children-skip=/bin*,/usr/bin/*,/usr/local/bin/*'],
   timeout_multiplier: 10,
