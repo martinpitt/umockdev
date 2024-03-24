@@ -710,6 +710,7 @@ t_spidev_ioctl ()
   tx_buf[1] = 0xff;
 
   Posix.memset (xfer, 0, sizeof (Ioctl.spi_ioc_transfer) * 2);
+  /* these casts are evil, bad, and wrong -- but that's how Linux defines them, even 32 bit platforms have u64 */
   xfer[0].tx_buf = (uint64) tx_buf;
   xfer[0].len = 2;
   xfer[1].rx_buf = (uint64) rx_buf;
