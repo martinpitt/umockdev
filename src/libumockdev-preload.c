@@ -1239,6 +1239,8 @@ rettype name(const char *path, arg2t arg2, arg3t arg3, arg4t arg4) \
  * the emulated /dev to indicate a block device (the sticky bit has no
  * real functionality for device nodes) */
 #define WRAP_STAT(prefix, suffix) \
+extern int prefix ## stat ## suffix (const char *path, \
+                                     struct stat ## suffix *st); \
 int prefix ## stat ## suffix (const char *path, struct stat ## suffix *st) \
 { \
     const char *p;								\
@@ -1259,6 +1261,8 @@ int prefix ## stat ## suffix (const char *path, struct stat ## suffix *st) \
 
 /* wrapper template for fstatat family */
 #define WRAP_FSTATAT(prefix, suffix) \
+extern int prefix ## fstatat ## suffix (int dirfd, const char *path, \
+                                        struct stat ## suffix *st, int flags); \
 int prefix ## fstatat ## suffix (int dirfd, const char *path, struct stat ## suffix *st, int flags) \
 { \
     const char *p;								\
@@ -1416,6 +1420,12 @@ WRAP_STAT(,64);
 WRAP_STAT(l,64);
 WRAP_FSTATAT(,64);
 WRAP_FOPEN(,64);
+#if defined(__USE_FILE_OFFSET64) && defined(__USE_TIME_BITS64)
+#define stat64_time64 stat64
+WRAP_STAT(__,64_time64);
+WRAP_STAT(__l,64_time64);
+WRAP_FSTATAT(__,64_time64);
+#endif
 #endif
 
 WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
@@ -1785,6 +1795,18 @@ recvmsg(int sockfd, struct msghdr * msg, int flags)
     return ret;
 }
 
+extern ssize_t __recvmsg64(int sockfd, struct msghdr * msg, int flags);
+ssize_t
+__recvmsg64(int sockfd, struct msghdr * msg, int flags)
+{
+    libc_func(__recvmsg64, int, int, struct msghdr *, int);
+    ssize_t ret = ___recvmsg64(sockfd, msg, flags);
+
+    netlink_recvmsg(sockfd, msg, ret);
+
+    return ret;
+}
+
 int
 socket(int domain, int type, int protocol)
 {
@@ -1901,6 +1923,42 @@ ioctl(int d, IOCTL_REQUEST_TYPE request, ...)
 
     return result;
 }
+
+#ifdef __GLIBC__
+
+extern int __ioctl_time64 (int __fd, unsigned long int __request, ...) __THROW;
+int
+__ioctl_time64(int d, IOCTL_REQUEST_TYPE request, ...)
+{
+    libc_func(__ioctl_time64, int, int, IOCTL_REQUEST_TYPE, ...);
+    int result;
+    va_list ap;
+    void* arg;
+
+    /* one cannot reliably forward arbitrary varargs
+     * (http://c-faq.com/varargs/handoff.html), but we know that ioctl gets at
+     * most one extra argument, and almost all of them are pointers or ints,
+     * both of which fit into a void*.
+     */
+    va_start(ap, request);
+    arg = va_arg(ap, void*);
+    va_end(ap);
+
+    result = remote_emulate(d, IOCTL_REQ_IOCTL, (unsigned int) request, (long) arg);
+    if (result != UNHANDLED) {
+	DBG(DBG_IOCTL, "ioctl fd %i request %X: emulated, result %i\n", d, (unsigned) request, result);
+	return result;
+    }
+
+    /* fallback to call original ioctl */
+    result = ___ioctl_time64(d, request, arg);
+    DBG(DBG_IOCTL, "ioctl fd %i request %X: original, result %i\n", d, (unsigned) request, result);
+
+    return result;
+}
+
+#endif /* __GLIBC__ */
+
 
 int
 isatty(int fd)
