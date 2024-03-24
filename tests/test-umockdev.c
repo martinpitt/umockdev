@@ -1578,7 +1578,12 @@ t_testbed_script_replay_evdev_event_framing(UMockdevTestbedFixture * fixture, UN
   int fd;
   char buf[1024];
 
+#if __BITS_PER_LONG != 32 || !defined(__USE_TIME_BITS64)
   struct timeval dummy = {0};
+#else
+  __kernel_ulong_t dummy = 0;
+#endif
+
   /* Simple evdev stream - x coordinate followed by SYN, times 2 */
   struct input_event dummy_events[] = {
       {dummy, 0003, 0000, 2534},
