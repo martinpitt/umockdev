@@ -22,11 +22,29 @@
  * along with umockdev; If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* override -D_FILE_OFFSET_BITS, it breaks us */
-#undef _FILE_OFFSET_BITS
-
 /* for getting stat64 */
 #define _GNU_SOURCE
+
+#include <features.h>
+
+#ifdef __GLIBC__
+/* Remove gcc asm aliasing so that our interposed symbols work as expected */
+#include <sys/cdefs.h>
+
+#include <stddef.h>
+extern int __REDIRECT_NTH (__ttyname_r_alias, (int __fd, char *__buf,
+                                               size_t __buflen), ttyname_r);
+
+#ifdef __REDIRECT
+#undef __REDIRECT
+#endif
+#define __REDIRECT(name, proto, alias) name proto
+#ifdef __REDIRECT_NTH
+#undef __REDIRECT_NTH
+#endif
+#define __REDIRECT_NTH(name, proto, alias) name proto __THROW
+
+#endif /* __GLIBC__ */
 
 #include <assert.h>
 #include <errno.h>
@@ -62,6 +80,14 @@
 #include "debug.h"
 #include "utils.h"
 #include "ioctl_tree.h"
+
+#ifdef __GLIBC__
+/* Fixup for making a mess with __REDIRECT above */
+#ifdef __USE_TIME_BITS64
+#define clock_gettime __clock_gettime64
+extern int clock_gettime(clockid_t clockid, struct timespec *tp);
+#endif
+#endif
 
 /* fix missing O_TMPFILE on some systems */
 #ifndef O_TMPFILE
