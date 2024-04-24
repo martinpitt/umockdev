@@ -644,6 +644,10 @@ public class Testbed: GLib.Object {
             return;
         }
 
+        // Generate the removal event (must be called before the directory
+        // structure is removed).
+        uevent(syspath, "remove");
+
         string subsystem;
 
         try {
