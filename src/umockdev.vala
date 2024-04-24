@@ -655,6 +655,10 @@ public class Testbed: GLib.Object {
             return;
         }
 
+        // Generate the removal event (must be called before the directory
+        // structure is removed).
+        uevent(syspath, "remove");
+
         // /dev and pointers to it
         try {
             string dev_maj_min;
