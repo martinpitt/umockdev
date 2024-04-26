@@ -302,16 +302,10 @@ ioctl_tree_next(const ioctl_tree * node)
     if (node->next != NULL)
 	return node->next;
 
-    /* HACK: -fanalyzer does not understand this loop */
-#pragma GCC diagnostic push
-#if !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wanalyzer-deref-before-check"
-#endif
     /* walk up the parents until we find an alternative sibling */
     for (; node != NULL; node = node->parent)
 	if (node->next != NULL)
 	    return node->next;
-#pragma GCC diagnostic pop
 
     /* no alternative siblings left, iteration done */
     return NULL;
@@ -348,14 +342,8 @@ ioctl_node_list_append(ioctl_node_list * list, ioctl_tree * element)
     if (list->n == list->capacity) {
 	assert(list->capacity < SIZE_MAX / 2);
 	list->capacity *= 2;
-    /* HACK: -fanalyzer incorrectly treats this as memory leak */
-#pragma GCC diagnostic push
-#if !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
-#endif
 	list->items = reallocarray(list->items, list->capacity, sizeof(ioctl_tree *));
 	assert(list->items != NULL);
-#pragma GCC diagnostic pop
     }
 
     list->items[list->n++] = element;
