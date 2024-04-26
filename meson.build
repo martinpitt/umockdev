@@ -25,8 +25,6 @@ add_project_arguments(
   '-Werror=uninitialized',
   # experimental: first check this on all Debian architectures
   '-Wcast-align',
-  # older gcc versions don't know about all the -Wanalyzer errors which we want to quiesce
-  '-Wno-error=pragmas',
   language: 'c')
 
 add_project_arguments('--abi-stability', language: 'vala')
