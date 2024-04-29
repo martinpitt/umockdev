@@ -637,13 +637,57 @@ public class Testbed: GLib.Object {
     public void remove_device (string syspath)
     {
         string real_path = Path.build_filename(this.root_dir, syspath);
-        string devname = Path.get_basename(syspath);
 
         if (!FileUtils.test(real_path, FileTest.IS_DIR)) {
             critical("umockdev_testbed_remove_device(): device %s does not exist", syspath);
             return;
         }
 
+        string path = Path.build_filename(real_path, "uevent");
+        if (!FileUtils.test(path, FileTest.IS_REGULAR)) {
+            critical("umockdev_testbed_remove_device(): device %s does not appear to be a device", syspath);
+            return;
+        }
+
+        remove_with_children(syspath);
+    }
+
+    private void remove_with_children (string syspath)
+    {
+        string real_path = Path.build_filename(this.root_dir, syspath);
+
+        try {
+            Dir dir = Dir.open(real_path);
+            string? name = null;
+            while (( name = dir.read_name( )) != null) {
+                string path = Path.build_filename(real_path, name);
+                // Skip over symlinks
+                if (FileUtils.test(path, FileTest.IS_SYMLINK)) {
+                    continue;
+                }
+
+                // Recurse into the directory and remove any children therein.
+                if (FileUtils.test(path, FileTest.IS_DIR)) {
+                    string child_syspath = Path.build_filename(syspath, name);
+                    remove_with_children(child_syspath);
+                }
+            }
+        } catch (FileError e) {
+            critical("umockdev_testbed_remove_device(): cannot determine children of %s: %s",
+                     syspath, e.message);
+        }
+
+        // See if this syspath actually corresponds to a device by seeing if
+        // there is a "uevent" file in the directory. If not, then there is
+        // no device to remove so the work is finished.
+        string path = Path.build_filename(real_path, "uevent");
+        if (!FileUtils.test(path, FileTest.IS_REGULAR)) {
+            return;
+        }
+
+        // This syspath corresponds to a device, so remove it.
+
+        string devname = Path.get_basename(syspath);
         string subsystem;
 
         try {
