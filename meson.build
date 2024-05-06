@@ -23,8 +23,6 @@ add_project_arguments(
   #'-Werror=missing-include-dirs',
   '-Werror=return-type',
   '-Werror=uninitialized',
-  # experimental: first check this on all Debian architectures
-  '-Wcast-align',
   language: 'c')
 
 add_project_arguments('--abi-stability', language: 'vala')
