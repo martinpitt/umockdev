@@ -50,8 +50,8 @@ public class IoctlData : GLib.Object {
      */
     private uint8[] client_data;
 
-    [CCode(array_length_cname="data_len")]
-    public uint8[] data;
+    public size_t data_len;
+    public void* data;
 
     public ulong client_addr;
 
@@ -115,7 +115,7 @@ public class IoctlData : GLib.Object {
                 return children[i];
         }
 
-        if (offset + sizeof(size_t) > data.length)
+        if (offset + sizeof(size_t) > data_len)
             return null;
 
         res = new IoctlData(stream);
@@ -161,7 +161,7 @@ public class IoctlData : GLib.Object {
             assert(o != offset);
         }
 
-        assert(offset + sizeof(size_t) <= data.length);
+        assert(offset + sizeof(size_t) <= data_len);
 
         children += child;
         children_offset += offset;
@@ -211,7 +211,7 @@ public class IoctlData : GLib.Object {
      * Since: 0.18
      */
     public void update(size_t offset, uint8[] new_data) {
-        assert(offset + new_data.length <= data.length);
+        assert(offset + new_data.length <= data_len);
 
         Posix.memcpy(&data[offset], new_data, new_data.length);
     }
@@ -291,7 +291,7 @@ public class IoctlData : GLib.Object {
      *
      * Return data as pointer. This avoids problems with unaligned memory.
      */
-    public void* get_pointer() {
+    internal void* get_pointer() {
         void* value = null;  // unnecessary initialization, avoids "Use of possibly unassigned local variable"
         Posix.memcpy(&value, data, sizeof(void*));
         return value;
@@ -323,16 +323,16 @@ public class IoctlData : GLib.Object {
         if (client_addr == 0)
             return;
 
-        client_data = new uint8[data.length];
+        client_data = new uint8[data_len];
 
         args[0] = 5; /* READ_MEM */
         args[1] = client_addr;
-        args[2] = data.length;
+        args[2] = data_len;
 
         output.write_all((uint8[])args, null, null);
         input.read_all(client_data, null, null);
 
-        Posix.memcpy(data, client_data, data.length);
+        Posix.memcpy(data, client_data, data_len);
     }
 
     /*
