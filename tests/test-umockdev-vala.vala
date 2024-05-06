@@ -1000,15 +1000,13 @@ static bool
 ioctl_custom_handle_ioctl_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient client)
 {
     if (client.request == 1) {
-        client.complete(*(long*)client.arg.data, 0);
+        client.complete(client.arg.get_long(), 0);
     } else if (client.request == 2) {
         client.complete(-1, Posix.ENOMEM);
     } else if (client.request == 3 ) {
         try {
             var data = client.arg.resolve(0, sizeof(int));
-
-            *(int*) data.data = (int) 0xc00fffee;
-
+            data.set_int((int) 0xc00fffee);
             client.complete(0, 0);
         } catch (Error e) {
             error ("cannot resolve client arg: %s", e.message);

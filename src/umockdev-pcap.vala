@@ -93,7 +93,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
         switch (request) {
             case USBDEVFS_GET_CAPABILITIES:
-                *(uint32*) data.data = capabilities;
+                data.set_uint32(capabilities);
 
                 client.complete(0, 0);
                 return true;
@@ -108,7 +108,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
             case USBDEVFS_DISCARDURB:
                 for (int i = 0; i < urbs.length; i++) {
-                    if (urbs.index(i).urb_data.client_addr == *((ulong*)client.arg.data)) {
+                    if (urbs.index(i).urb_data.client_addr == client.arg.get_ulong()) {
                         /* Found the urb, add to discard array, remove it and return success */
                         discarded.prepend_val(urbs.index(i));
                         urbs.remove_index(i);

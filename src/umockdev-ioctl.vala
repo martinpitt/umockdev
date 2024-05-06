@@ -217,6 +217,87 @@ public class IoctlData : GLib.Object {
     }
 
     /**
+     * umockdev_ioctl_get_int:
+     * @self: A #UMockdevIoctlData
+     *
+     * Return data as integer. This avoids problems with unaligned memory.
+     */
+    public int get_int() {
+        int value = 0;  // unnecessary initialization, avoids "Use of possibly unassigned local variable"
+        Posix.memcpy(&value, data, sizeof(int));
+        return value;
+    }
+
+    /**
+     * umockdev_ioctl_set_int:
+     * @self: A #UMockdevIoctlData
+     * @value: Value to set
+     *
+     * Set data to given value. This avoids problems with unaligned memory.
+     */
+    public void set_int(int value) {
+        Posix.memcpy(data, &value, sizeof(int));
+    }
+
+    /**
+     * umockdev_ioctl_set_uint32:
+     * @self: A #UMockdevIoctlData
+     * @value: Value to set
+     *
+     * Set data to given value. This avoids problems with unaligned memory.
+     */
+    public void set_uint32(uint32 value) {
+        Posix.memcpy(data, &value, sizeof(uint32));
+    }
+
+    /**
+     * umockdev_ioctl_get_ulong:
+     * @self: A #UMockdevIoctlData
+     *
+     * Return data as ulong. This avoids problems with unaligned memory.
+     */
+    public ulong get_ulong() {
+        ulong value = 0;  // unnecessary initialization, avoids "Use of possibly unassigned local variable"
+        Posix.memcpy(&value, data, sizeof(ulong));
+        return value;
+    }
+
+    /**
+     * umockdev_ioctl_set_ulong:
+     * @self: A #UMockdevIoctlData
+     * @value: Value to set
+     *
+     * Set data to given value. This avoids problems with unaligned memory.
+     */
+    public void set_ulong(ulong value) {
+        Posix.memcpy(data, &value, sizeof(ulong));
+    }
+
+    /**
+     * umockdev_ioctl_get_long:
+     * @self: A #UMockdevIoctlData
+     *
+     * Return data as long. This avoids problems with unaligned memory.
+     */
+    public long get_long() {
+        long value = 0;  // unnecessary initialization, avoids "Use of possibly unassigned local variable"
+        Posix.memcpy(&value, data, sizeof(long));
+        return value;
+    }
+
+    /**
+     * umockdev_ioctl_get_pointer:
+     * @self: A #UMockdevIoctlData
+     *
+     * Return data as pointer. This avoids problems with unaligned memory.
+     */
+    public void* get_pointer() {
+        void* value = null;  // unnecessary initialization, avoids "Use of possibly unassigned local variable"
+        Posix.memcpy(&value, data, sizeof(void*));
+        return value;
+    }
+
+    /**
      * umockdev_ioctl_retrieve:
      * @self: A #UMockdevIoctlData
      * @read_data: (array length=length) (out): Data to set
@@ -934,7 +1015,7 @@ internal class IoctlTreeHandler : IoctlBase {
         } else {
             Posix.errno = Posix.ENOTTY;
         }
-        last = tree.execute(last, request, *(void**) client.arg.data, ref ret);
+        last = tree.execute(last, request, client.arg.get_pointer(), ref ret);
         my_errno = Posix.errno;
         Posix.errno = 0;
         if (last != null)
@@ -955,7 +1036,7 @@ internal class IoctlTreeHandler : IoctlBase {
              * This should only happen for REAPURB, but it does not hurt to
              * just always check.
              */
-            if (*(void**) data.data == (void*) last_submit_urb.data) {
+            if (data.get_pointer() == (void*) last_submit_urb.data) {
                 data.set_ptr(0, last_submit_urb);
 
                 last_submit_urb = null;
@@ -1062,7 +1143,7 @@ internal class IoctlTreeRecorder : IoctlBase {
         }
 
         /* Record */
-        node = new IoctlTree.Tree.from_bin(request, *(void**) client.arg.data, ret);
+        node = new IoctlTree.Tree.from_bin(request, client.arg.get_pointer(), ret);
         if (node != null) {
             tree.insert((owned) node);
         }
