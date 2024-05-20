@@ -885,7 +885,7 @@ is_test_inside_testbed (int pipefd)
     if (UMockdev.in_mock_environment())
         buf[0] = '1';
 
-    Posix.write(pipefd, buf, 1);
+    assert_cmpint ((int) Posix.write(pipefd, buf, 1), CompareOperator.EQ, 1);
     return int.parse((string) buf);
 }
 
