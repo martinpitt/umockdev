@@ -14,6 +14,7 @@ fi
 $RUNC run  --rm -v gentooportage:/var/db/repos/gentoo docker.io/gentoo/portage /bin/true
 
 $RUNC run --interactive ${OPTS:-} \
+  --security-opt=seccomp=unconfined \
   --volume `pwd`:/source:ro --volume gentooportage:/var/db/repos/gentoo \
   --cap-add=CAP_SYS_ADMIN --cap-add=CAP_NET_ADMIN --cap-add=CAP_SYS_PTRACE \
   docker.io/gentoo/stage3 /bin/sh -eux <<EOF
