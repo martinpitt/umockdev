@@ -83,7 +83,7 @@ extern int __REDIRECT_NTH (__ttyname_r_alias, (int __fd, char *__buf,
 
 #ifdef __GLIBC__
 /* Fixup for making a mess with __REDIRECT above */
-#ifdef __USE_TIME_BITS64
+#ifdef __USE_TIME64_REDIRECTS
 #define clock_gettime __clock_gettime64
 extern int clock_gettime(clockid_t clockid, struct timespec *tp);
 #endif
@@ -1420,7 +1420,7 @@ WRAP_STAT(,64);
 WRAP_STAT(l,64);
 WRAP_FSTATAT(,64);
 WRAP_FOPEN(,64);
-#if defined(__USE_FILE_OFFSET64) && defined(__USE_TIME_BITS64)
+#if defined(__USE_FILE_OFFSET64) && defined(__USE_TIME64_REDIRECTS)
 #define stat64_time64 stat64
 WRAP_STAT(__,64_time64);
 WRAP_STAT(__l,64_time64);
