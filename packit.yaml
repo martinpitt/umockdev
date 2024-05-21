@@ -5,8 +5,6 @@ issue_repository: https://github.com/martinpitt/umockdev
 copy_upstream_release_description: true
 upstream_package_name: umockdev
 downstream_package_name: umockdev
-# HACK: should be implied, but fails propose_downstream: https://github.com/packit/packit-service/issues/1511
-specfile_path: packaging/umockdev.spec
 
 actions:
   create-archive:
@@ -23,9 +21,17 @@ srpm_build_deps:
   - glib2-devel
   - systemd-devel
 
+packages:
+  umockdev-fedora:
+    specfile_path: packaging/umockdev.spec
+  umockdev-centos:
+    specfile_path: packaging/umockdev.spec
+    pkg_tool: centpkg
+
 jobs:
   - job: copr_build
     trigger: pull_request
+    packages: [umockdev-fedora]
     targets:
       - fedora-development-x86_64
       - fedora-development-i386
@@ -34,17 +40,36 @@ jobs:
       - fedora-development-s390x
       - fedora-development-armhfp
 
+  - job: copr_build
+    trigger: pull_request
+    packages: [umockdev-centos]
+    targets:
+      - centos-stream-9-x86_64
+
   - job: tests
     trigger: pull_request
+    packages: [umockdev-fedora]
     targets:
       - fedora-latest
+
+  - job: tests
+    trigger: pull_request
+    packages: [umockdev-centos]
+    targets:
       - centos-stream-9-x86_64
 
   - job: propose_downstream
     trigger: release
+    packages: [umockdev-fedora]
     dist_git_branches:
       - fedora-development
       - fedora-stable
+
+  - job: propose_downstream
+    trigger: release
+    packages: [umockdev-centos]
+    dist_git_branches:
+      - c9s
 
   - job: koji_build
     trigger: commit
