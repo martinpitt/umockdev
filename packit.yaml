@@ -45,6 +45,7 @@ jobs:
     packages: [umockdev-centos]
     targets:
       - centos-stream-9-x86_64
+      - centos-stream-10-x86_64
 
   - job: tests
     trigger: pull_request
@@ -57,6 +58,8 @@ jobs:
     packages: [umockdev-centos]
     targets:
       - centos-stream-9-x86_64
+        # blocked: https://issues.redhat.com/browse/TFT-2612
+        # - centos-stream-10-x86_64
 
   - job: propose_downstream
     trigger: release
@@ -70,6 +73,7 @@ jobs:
     packages: [umockdev-centos]
     dist_git_branches:
       - c9s
+      - c10s
 
   - job: koji_build
     trigger: commit
