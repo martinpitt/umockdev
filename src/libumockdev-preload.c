@@ -82,6 +82,15 @@ extern int __REDIRECT_NTH (__ttyname_r_alias, (int __fd, char *__buf,
 #include "ioctl_tree.h"
 
 #ifdef __GLIBC__
+
+/* __USE_TIME64_REDIRECTS was introduced in glibc 2.39.9. With older releases we need to look at
+ * __USE_TIME_BITS64 instead, but the latter is always defined in 2.39.9 now. So make some guesswork
+ * and define the former when appropriate. */
+#if !defined(__USE_TIME64_REDIRECTS) && defined(__USE_TIME_BITS64) && __TIMESIZE == 32
+#pragma message "Defining backwards compatibility shim __USE_TIME64_REDIRECTS for glibc < 2.39.9"
+#define __USE_TIME64_REDIRECTS 1
+#endif
+
 /* Fixup for making a mess with __REDIRECT above */
 #ifdef __USE_TIME64_REDIRECTS
 #define clock_gettime __clock_gettime64
