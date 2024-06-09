@@ -278,6 +278,7 @@ if gudev.found()
 
   test('umockdev-vala', executable('test-umockdev-vala',
       'tests/test-umockdev-vala.vala',
+      include_directories: include_directories('src'),
       dependencies: [glib, gobject, gio, gudev, vapi_posix, vapi_assertions, vapi_ioctl, vapi_glibc, vapi_selinux, selinux],
       link_with: [umockdev_lib, umockdev_utils_lib],
       vala_args: optional_defines),

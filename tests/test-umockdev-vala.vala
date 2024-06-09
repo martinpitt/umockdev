@@ -782,6 +782,56 @@ t_hidraw_ioctl ()
 }
 
 void
+t_cros_ec_ioctl ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  string device;
+  checked_file_get_contents (Path.build_filename(rootdir + "/devices/cros_ec/crosfingerprint.umockdev"), out device);
+  tb_add_from_string (tb, device);
+
+  try {
+      tb.load_ioctl ("/dev/cros_fp", Path.build_filename(rootdir + "/devices/cros_ec/crosfingerprint.ioctl"));
+  } catch (Error e) {
+      error ("Cannot load ioctl file: %s", e.message);
+  }
+
+  int fd = Posix.open ("/dev/cros_fp", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+
+  Ioctl.cros_ec_command_v2 *s_cmd = malloc (sizeof (Ioctl.cros_ec_command_v2) + 4);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.CROS_EC_DEV_IOCXCMD_V2, s_cmd), CompareOperator.EQ, 4);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  uint8 fpmode_data[] = {
+    0x80, 0x00, 0x00, 0x00
+  };
+  assert_cmpint (Posix.memcmp(s_cmd->data, fpmode_data, 4), CompareOperator.EQ, 0);
+
+  s_cmd = realloc(s_cmd, sizeof (Ioctl.cros_ec_command_v2) + 48);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.CROS_EC_DEV_IOCXCMD_V2, s_cmd), CompareOperator.EQ, 48);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  uint8 fpinfo_data[] = {
+    0x46, 0x50, 0x43, 0x20, 0x09, 0x00, 0x00, 0x00, 0x1B, 0x02, 0x00, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x94, 0x66, 0x00, 0x00, 0x47, 0x52, 0x45, 0x59,
+    0xA0, 0x00, 0xA0, 0x00, 0x08, 0x00, 0xFF, 0x03, 0x24, 0x14, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00
+  };
+  assert_cmpint (Posix.memcmp(s_cmd->data, fpinfo_data, 48), CompareOperator.EQ, 0);
+
+  s_cmd = realloc(s_cmd, sizeof (Ioctl.cros_ec_command_v2) + 22);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.CROS_EC_DEV_IOCXCMD_V2, s_cmd), CompareOperator.EQ, 22);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  uint8 fpstats_data[] = {
+    0x65, 0x63, 0x01, 0x00, 0xB4, 0x4A, 0x02, 0x00, 0x07, 0xB3, 0x03, 0x00,
+    0xDC, 0x33, 0x50, 0x5A, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+  assert_cmpint (Posix.memcmp(s_cmd->data, fpstats_data, 22), CompareOperator.EQ, 0);
+
+  free (s_cmd);
+  Posix.close (fd);
+}
+
+void
 t_tty_stty ()
 {
   var tb = new UMockdev.Testbed ();
@@ -1152,6 +1202,8 @@ main (string[] args)
   Test.add_func ("/umockdev-testbed-vala/spidev_ioctl", t_spidev_ioctl);
 
   Test.add_func ("/umockdev-testbed-vala/hidraw_ioctl", t_hidraw_ioctl);
+
+  Test.add_func ("/umockdev-testbed-vala/cros_ec_ioctl", t_cros_ec_ioctl);
 
   /* tests for mocking TTYs */
   Test.add_func ("/umockdev-testbed-vala/tty_stty", t_tty_stty);

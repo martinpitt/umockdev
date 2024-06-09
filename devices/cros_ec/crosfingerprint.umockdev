@@ -1,0 +1,93 @@
+P: /devices/platform/AMDI0020:01/AMDI0020:01:0/AMDI0020:01:0.0/serial0/serial0-0/cros-ec-dev.2.auto/misc/cros_fp
+N: cros_fp
+E: DEVNAME=/dev/cros_fp
+E: MAJOR=10
+E: MINOR=122
+E: SUBSYSTEM=misc
+A: dev=10:122\n
+L: device=../../../cros-ec-dev.2.auto
+A: power/control=auto\n
+A: power/runtime_active_time=0\n
+A: power/runtime_status=unsupported\n
+A: power/runtime_suspended_time=0\n
+
+P: /devices/platform/AMDI0020:01/AMDI0020:01:0/AMDI0020:01:0.0/serial0/serial0-0/cros-ec-dev.2.auto
+E: DRIVER=cros-ec-dev
+E: ID_PATH=platform-AMDI0020:01-platform-cros-ec-dev.2.auto
+E: ID_PATH_TAG=platform-AMDI0020_01-platform-cros-ec-dev_2_auto
+E: ID_VENDOR_FROM_DATABASE=Amdek Corporation
+E: MODALIAS=platform:cros-ec-dev
+E: SUBSYSTEM=platform
+L: driver=../../../../../../../../bus/platform/drivers/cros-ec-dev
+A: driver_override=(null)\n
+A: modalias=platform:cros-ec-dev\n
+A: power/control=auto\n
+A: power/runtime_active_time=0\n
+A: power/runtime_status=unsupported\n
+A: power/runtime_suspended_time=0\n
+
+P: /devices/platform/AMDI0020:01/AMDI0020:01:0/AMDI0020:01:0.0/serial0/serial0-0
+E: DRIVER=cros-ec-uart
+E: MODALIAS=of:NcrfpTCgoogle,cros-ec-uart
+E: SUBSYSTEM=serial
+L: driver=../../../../../../../bus/serial/drivers/cros-ec-uart
+L: firmware_node=../../../../../../LNXSYSTM:00/LNXSYBUS:00/AMDI0020:01/PRP0001:00
+A: modalias=of:NcrfpTCgoogle,cros-ec-uart\n
+A: power/control=auto\n
+A: power/runtime_active_time=0\n
+A: power/runtime_status=unsupported\n
+A: power/runtime_suspended_time=0\n
+
+P: /devices/platform/AMDI0020:01/AMDI0020:01:0/AMDI0020:01:0.0/serial0
+E: SUBSYSTEM=serial
+L: firmware_node=../../../../../LNXSYSTM:00/LNXSYBUS:00/AMDI0020:01
+A: power/wakeup=disabled\n
+A: power/wakeup_abort_count=\n
+A: power/wakeup_active=\n
+A: power/wakeup_active_count=\n
+A: power/wakeup_count=\n
+A: power/wakeup_expire_count=\n
+A: power/wakeup_last_time_ms=\n
+A: power/wakeup_max_time_ms=\n
+A: power/wakeup_total_time_ms=\n
+L: software_node=../../../../../../kernel/software_nodes/node1
+A: waiting_for_supplier=0\n
+
+P: /devices/platform/AMDI0020:01/AMDI0020:01:0/AMDI0020:01:0.0
+E: DEVTYPE=port
+E: DRIVER=port
+E: SUBSYSTEM=serial-base
+L: driver=../../../../../bus/serial-base/drivers/port
+A: power/autosuspend_delay_ms=500\n
+A: power/control=auto\n
+A: power/runtime_active_time=31736669\n
+A: power/runtime_status=active\n
+A: power/runtime_suspended_time=5190\n
+
+P: /devices/platform/AMDI0020:01/AMDI0020:01:0
+E: DEVTYPE=ctrl
+E: DRIVER=ctrl
+E: SUBSYSTEM=serial-base
+L: driver=../../../../bus/serial-base/drivers/ctrl
+A: power/control=auto\n
+A: power/runtime_active_time=31736676\n
+A: power/runtime_status=active\n
+A: power/runtime_suspended_time=5190\n
+
+P: /devices/platform/AMDI0020:01
+E: DRIVER=dw-apb-uart
+E: ID_PATH=platform-AMDI0020:01
+E: ID_PATH_TAG=platform-AMDI0020_01
+E: ID_VENDOR_FROM_DATABASE=Amdek Corporation
+E: MODALIAS=acpi:AMDI0020:
+E: SUBSYSTEM=platform
+L: driver=../../../bus/platform/drivers/dw-apb-uart
+A: driver_override=(null)\n
+L: firmware_node=../../LNXSYSTM:00/LNXSYBUS:00/AMDI0020:01
+A: modalias=acpi:AMDI0020:\n
+A: power/control=auto\n
+A: power/runtime_active_time=31736687\n
+A: power/runtime_status=active\n
+A: power/runtime_suspended_time=5189\n
+L: software_node=../../../kernel/software_nodes/node1
+
