@@ -10,7 +10,7 @@ gnome.gtkdoc('umockdev',
   content_files: [version_xml],
   gobject_typesfile: 'umockdev.types',
   scan_args: ['--ignore-decorators', 'VALA_EXTERN'],
-  ignore_headers: ['uevent_sender.h', 'ioctl.h', 'ioctl_tree.h', 'debug.h'],
+  ignore_headers: ['uevent_sender.h', 'cros_ec.h', 'ioctl_tree.h', 'debug.h'],
   dependencies: [glib, gobject, declare_dependency(link_with : [umockdev_lib])],
   install: true,
 )

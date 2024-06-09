@@ -29,7 +29,7 @@
 
 #include "debug.h"
 #include "utils.h"
-#include "ioctl.h"
+#include "cros_ec.h"
 #include "ioctl_tree.h"
 
 #define TRUE 1

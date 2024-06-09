@@ -1,5 +1,5 @@
-#ifndef __IOCTL_H
-#define __IOCTL_H
+#ifndef __CROS_EC_H
+#define __CROS_EC_H
 
 #include <stdint.h>
 
