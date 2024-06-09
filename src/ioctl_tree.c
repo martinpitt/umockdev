@@ -983,6 +983,7 @@ ioctl_type ioctl_db[] = {
 
     /* cros_ec */
     I_VARLEN_STRUCT_IN(CROS_EC_DEV_IOCXCMD_V2, cros_ec_ioctl_equal, ioctl_insertion_parent_stateless, cros_ec_ioctl_get_data_size),
+    I_NOSTATE(CROS_EC_DEV_IOCEVENTMASK_V2, enodata),
 
     /* terminator */
     {0, 0, 0, "", NULL, NULL, NULL, NULL, NULL}
