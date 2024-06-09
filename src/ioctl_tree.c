@@ -29,6 +29,7 @@
 
 #include "debug.h"
 #include "utils.h"
+#include "ioctl.h"
 #include "ioctl_tree.h"
 
 #define TRUE 1
@@ -414,6 +415,18 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, 
     return NULL;
 }
 
+int
+ioctl_tree_next_ret(ioctl_tree * tree, ioctl_tree * last)
+{
+    const ioctl_tree *i = ioctl_tree_next_wrap(tree, last);
+
+    if (i == NULL) {
+        return 0;
+    }
+
+    return i->ret;
+}
+
 /***********************************
  *
  * Utility functions for ioctl implementations
@@ -555,10 +568,6 @@ ioctl_simplestruct_in_execute(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, vo
  *
  ***********************************/
 
-/* Note, we don't currently have any of those */
-
-#if 0
-
 static void
 ioctl_varlenstruct_init_from_bin(ioctl_tree * node, const void *data)
 {
@@ -621,8 +630,6 @@ ioctl_varlenstruct_in_execute(const ioctl_tree * node, IOCTL_REQUEST_TYPE id, vo
 
     return 0;
 }
-
-#endif
 
 /***********************************
  *
@@ -872,11 +879,11 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, UNUSED ioctl_tree *_node)
     I_NAMED_SIZED_SIMPLE_STRUCT_IN(name, #name, -1, nr_range, insertion_parent_fn)
 
 /* input structs with a variable length (but no pointers to substructures) */
-#define I_VARLEN_STRUCT_IN(name, insertion_parent_fn, data_size_fn) \
+#define I_VARLEN_STRUCT_IN(name, equal_fn, insertion_parent_fn, data_size_fn) \
     {name, -1, 0, #name,                                                       \
      ioctl_varlenstruct_init_from_bin, ioctl_varlenstruct_init_from_text,      \
      ioctl_simplestruct_free_data,                                             \
-     ioctl_varlenstruct_write, ioctl_varlenstruct_equal,                       \
+     ioctl_varlenstruct_write, equal_fn,                       \
      ioctl_varlenstruct_in_execute, insertion_parent_fn, data_size_fn}
 
 /* data with custom handlers; necessary for structs with pointers to nested
@@ -891,6 +898,20 @@ ioctl_insertion_parent_stateless(ioctl_tree * tree, UNUSED ioctl_tree *_node)
 #define I_DUMMY(name, size, nr_range)               \
     {name, size, nr_range, #name,                  \
      NULL, NULL, NULL, NULL, NULL, NULL, NULL}     \
+
+static int
+cros_ec_ioctl_equal(UNUSED const ioctl_tree *_n1, UNUSED const ioctl_tree *_n2)
+{
+  return FALSE;
+}
+
+static size_t
+cros_ec_ioctl_get_data_size(IOCTL_REQUEST_TYPE _id, const void *data)
+{
+    const struct cros_ec_command_v2 *s_cmd = (struct cros_ec_command_v2 *)data;
+
+    return sizeof(struct cros_ec_command_v2) + s_cmd->insize;
+}
 
 ioctl_type ioctl_db[] = {
     I_SIMPLE_STRUCT_IN(USBDEVFS_CONNECTINFO, 0, ioctl_insertion_parent_stateless),
@@ -959,6 +980,9 @@ ioctl_type ioctl_db[] = {
     I_NAMED_SIMPLE_STRUCT_IN(HIDIOCSOUTPUT(32), "HIDIOCSOUTPUT", 0, ioctl_insertion_parent_stateless),
     I_NAMED_SIMPLE_STRUCT_IN(HIDIOCGOUTPUT(32), "HIDIOCGOUTPUT", 0, ioctl_insertion_parent_stateless),
 #endif
+
+    /* cros_ec */
+    I_VARLEN_STRUCT_IN(CROS_EC_DEV_IOCXCMD_V2, cros_ec_ioctl_equal, ioctl_insertion_parent_stateless, cros_ec_ioctl_get_data_size),
 
     /* terminator */
     {0, 0, 0, "", NULL, NULL, NULL, NULL, NULL}

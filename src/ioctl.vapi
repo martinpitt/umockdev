@@ -131,5 +131,8 @@ namespace Ioctl {
 		uint32 size;
 		uint8 value[HID_MAX_DESCRIPTOR_SIZE];
 	}
+
+  [CCode (cheader_filename = "ioctl.h")]
+  public const int CROS_EC_DEV_IOCXCMD_V2;
 }
 

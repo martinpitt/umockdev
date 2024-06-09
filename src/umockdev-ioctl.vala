@@ -906,7 +906,13 @@ internal class IoctlTreeHandler : IoctlBase {
             return true;
         }
 
+        last = client.get_data("last");
+
         try {
+            if (request == Ioctl.CROS_EC_DEV_IOCXCMD_V2) {
+                size += tree.next_ret(last);
+            }
+
             if (size > 0)
                 data = client.arg.resolve(0, size);
 
@@ -926,8 +932,6 @@ internal class IoctlTreeHandler : IoctlBase {
             warning("Error resolving IOCtl data: %s", e.message);
             return false;
         }
-
-        last = client.get_data("last");
 
         if ((char) type == 'E') {
             Posix.errno = Posix.ENOENT;
@@ -1028,6 +1032,10 @@ internal class IoctlTreeRecorder : IoctlBase {
             if (ret == -1) {
                 client.complete(ret, my_errno);
                 return true;
+            }
+
+            if (request == Ioctl.CROS_EC_DEV_IOCXCMD_V2) {
+              size += ret;
             }
 
             /* Resolve data */
