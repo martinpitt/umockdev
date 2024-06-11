@@ -910,7 +910,7 @@ cros_ec_ioctl_get_data_size(IOCTL_REQUEST_TYPE _id, const void *data)
 {
     const struct cros_ec_command_v2 *s_cmd = (struct cros_ec_command_v2 *)data;
 
-    return sizeof(struct cros_ec_command_v2) + s_cmd->insize;
+    return sizeof(struct cros_ec_command_v2) + le32toh(s_cmd->insize);
 }
 
 ioctl_type ioctl_db[] = {
