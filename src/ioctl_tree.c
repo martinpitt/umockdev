@@ -22,7 +22,6 @@
 #include <stdint.h>
 #include <assert.h>
 #include <errno.h>
-#include <glib.h>
 #include <linux/ioctl.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
@@ -32,6 +31,9 @@
 #include "utils.h"
 #include "cros_ec.h"
 #include "ioctl_tree.h"
+
+#define TRUE 1
+#define FALSE 0
 
 #define UNUSED __attribute__ ((unused))
 
@@ -908,7 +910,7 @@ cros_ec_ioctl_get_data_size(IOCTL_REQUEST_TYPE _id, const void *data)
 {
     const struct cros_ec_command_v2 *s_cmd = (struct cros_ec_command_v2 *)data;
 
-    return sizeof(struct cros_ec_command_v2) + GUINT32_FROM_LE(s_cmd->insize);
+    return sizeof(struct cros_ec_command_v2) + s_cmd->insize;
 }
 
 ioctl_type ioctl_db[] = {

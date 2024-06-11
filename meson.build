@@ -135,7 +135,7 @@ preload_lib = shared_library('umockdev-preload',
    'src/ioctl_tree.c'],
   c_args: ['-fvisibility=default'],
   version: '0.0.0',
-  dependencies: [dl, glib, pthread],
+  dependencies: [dl, pthread],
   install: true)
 
 #
