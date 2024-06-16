@@ -13,6 +13,8 @@ namespace IoctlTree {
       public void* execute(void* last, ulong id, void* addr, ref int ret);
       [CCode (instance_pos = -1)]
       public void write(Posix.FILE f);
+
+      public int next_ret(void* last);
   }
 
   public int data_size_by_id(ulong id);

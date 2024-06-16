@@ -131,5 +131,17 @@ namespace Ioctl {
 		uint32 size;
 		uint8 value[HID_MAX_DESCRIPTOR_SIZE];
 	}
+
+  [CCode (cheader_filename = "cros_ec.h")]
+  public const int CROS_EC_DEV_IOCXCMD_V2;
+  [CCode (cname = "struct cros_ec_command_v2", cheader_filename = "cros_ec.h")]
+  public struct cros_ec_command_v2 {
+    uint32 version;
+    uint32 command;
+    uint32 outsize;
+    uint32 insize;
+    uint32 result;
+    uint8 data[0];
+  }
 }
 

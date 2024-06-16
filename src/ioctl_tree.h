@@ -73,6 +73,7 @@ ioctl_tree *ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node);
 ioctl_tree *ioctl_tree_find_equal(ioctl_tree * tree, ioctl_tree * node);
 ioctl_tree *ioctl_tree_next(const ioctl_tree * node);
 ioctl_tree *ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, void *arg, int *ret);
+int ioctl_tree_next_ret(ioctl_tree * tree, ioctl_tree * last);
 
 /* node lists */
 ioctl_node_list *ioctl_node_list_new(void);
