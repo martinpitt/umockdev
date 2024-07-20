@@ -175,13 +175,13 @@ pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
     do { \
         sigset_t sig_set; \
         sigfillset(&sig_set); \
-        pthread_sigmask(SIG_SETMASK, &sig_set, &trap_path_sig_restore); \
         pthread_mutex_lock (&trap_path_lock); \
+        pthread_sigmask(SIG_SETMASK, &sig_set, &trap_path_sig_restore); \
     } while (0)
 #define TRAP_PATH_UNLOCK \
     do { \
-        pthread_mutex_unlock (&trap_path_lock); \
         pthread_sigmask(SIG_SETMASK, &trap_path_sig_restore, NULL); \
+        pthread_mutex_unlock (&trap_path_lock); \
     } while (0)
 
 #define IOCTL_LOCK pthread_mutex_lock (&ioctl_lock)
