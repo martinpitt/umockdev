@@ -825,11 +825,10 @@ public class Testbed: GLib.Object {
      */
     public void uevent (string devpath, string action)
     {
-        if (this.ev_sender == null) {
-            debug("umockdev_testbed_uevent: lazily initializing uevent_sender");
-            this.ev_sender = new UeventSender.sender(this.root_dir);
-            assert(this.ev_sender != null);
-        }
+        UeventSender.sender ev_sender = null;
+        ev_sender = new UeventSender.sender(this.root_dir);
+        assert(ev_sender != null);
+
         debug("umockdev_testbed_uevent: sending uevent %s for device %s", action, devpath);
 
         var uevent_path = Path.build_filename(this.root_dir, devpath, "uevent");
@@ -839,7 +838,7 @@ public class Testbed: GLib.Object {
         } catch (FileError e) {
             debug("uevent: devpath %s has no uevent file: %s",  devpath, e.message);
         }
-        this.ev_sender.send(devpath, action, properties);
+        ev_sender.send(devpath, action, properties);
     }
 
     /**
@@ -1660,7 +1659,6 @@ public class Testbed: GLib.Object {
     private Regex re_record_val;
     private Regex re_record_keyval;
     private Regex re_record_optval;
-    private UeventSender.sender? ev_sender = null;
     private HashTable<string,int> dev_fd;
     private HashTable<string,ScriptRunner> dev_script_runner;
     private SocketServer socket_server = null;
