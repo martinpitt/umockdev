@@ -201,13 +201,25 @@ t_system_single ()
     assert_in("P: /devices/virtual/mem/null", sout);
     assert_in("E: DEVNAME=/dev/zero", sout);
 #if HAVE_SELINUX
-    // we may run on a system without SELinux
-    if (FileUtils.test("/sys/fs/selinux", FileTest.EXISTS)) {
-        string context;
-        assert_cmpint (Selinux.lgetfilecon ("/dev/null", out context), CompareOperator.GT, 0);
-        assert_in("E: __DEVCONTEXT=" + context + "\n", sout);
+    string context;
+    int res = Selinux.lgetfilecon ("/dev/null", out context);
+    if (res > 0) {
+        assert_in ("E: __DEVCONTEXT=" + context + "\n", sout);
+    } else if (res == -1 && (Posix.errno == Posix.ENODATA ||
+                             Posix.errno == Posix.ENOTSUP ||
+                             Posix.errno == Posix.ENOSYS)) {
+        // If SELinux is not available, or is available but
+        // there is no context defined for /dev/null,
+        // we should skip this check as there is
+        // no context recorded.
+        //
+        // ENODATA: context doesn't exist, or the process
+        //          can't access it
+        // ENOTSUP: extended attributes not supported/disabled
+        // ENOSYS:  lgetxattr syscall not available
+        assert (!sout.contains("E: __DEVCONTEXT"));
     } else {
-        assert(!sout.contains("E: __DEVCONTEXT"));
+        assert_cmpint (res, CompareOperator.GT, 0);
     }
 #endif
 }
