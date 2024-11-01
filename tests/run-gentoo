@@ -21,6 +21,8 @@ $RUNC run --interactive ${OPTS:-} \
 echo 'FEATURES="\${FEATURES} binpkg-request-signature"' >> /etc/portage/make.conf
 # install build dependencies
 ACCEPT_KEYWORDS="~*" emerge dev-util/umockdev --with-test-deps --onlydeps --getbinpkg
+# HACK: for some reason not part of build deps any more
+emerge --getbinpkg dev-lang/vala
 # install git, "meson dist" dependency
 emerge --getbinpkg dev-vcs/git
 
