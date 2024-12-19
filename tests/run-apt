@@ -10,9 +10,12 @@ else
     RUNC="sudo docker"
 fi
 
+IMAGE="${1:-docker.io/amd64/ubuntu:rolling}"
+[ "${IMAGE%i386*}" = "$IMAGE" ] || OPTS="${OPTS:-} --arch i386"
+
 [ -n "${PUBLISH_TAR:-}" ] || MOUNT_MODE=":ro"
 
-$RUNC run --interactive ${RUNC_OPTIONS:-} ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} ${1:-docker.io/amd64/ubuntu:rolling} /bin/sh << EOF
+$RUNC run --interactive ${RUNC_OPTIONS:-} ${OPTS:-} --volume `pwd`:/source${MOUNT_MODE:-} "$IMAGE" /bin/sh << EOF
 set -ex
 
 # avoid meson exit code 125; https://github.com/containers/podman/issues/11540

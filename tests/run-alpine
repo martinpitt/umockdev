@@ -10,7 +10,10 @@ else
     RUNC="sudo docker"
 fi
 
-$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro ${1:-docker.io/alpine} /bin/sh <<EOF
+IMAGE="${1:-docker.io/alpine}"
+[ "${IMAGE%i386*}" = "$IMAGE" ] || OPTS="${OPTS:-} --arch i386"
+
+$RUNC run --interactive ${OPTS:-} --volume `pwd`:/source:ro "$IMAGE" /bin/sh <<EOF
 # avoid meson exit code 125; https://github.com/containers/podman/issues/11540
 trap '[ \$? -eq 0 ] || exit 1' EXIT
 
