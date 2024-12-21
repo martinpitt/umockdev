@@ -2022,8 +2022,6 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
-  int fd;
-  g_autofree char *tmppath = NULL;
   struct timeval tv_begin, tv_end;
   struct input_event ev;
   static const char* test_data = "E: 1234.500000 0000 0000 0\n"   /* SYN */
@@ -2038,20 +2036,13 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, UNUSED_DATA)
           "E: DEVNAME=/dev/input/event1\nE: SUBSYSTEM=input\n", &error);
   g_assert_no_error(error);
 
-  /* write evemu events file */
-  fd = g_file_open_tmp("test_evemu.XXXXXX", &tmppath, &error);
-  g_assert_no_error(error);
-  g_assert_cmpint(write(fd, test_data, strlen(test_data)), ==, strlen(test_data));
-  close(fd);
-
   /* load it */
-  success = umockdev_testbed_load_evemu_events(fixture->testbed, "/dev/input/event1", tmppath, &error);
+  success = umockdev_testbed_load_evemu_events_from_string(fixture->testbed, "/dev/input/event1", test_data, &error);
   g_assert_no_error(error);
   g_assert(success);
-  g_unlink (tmppath);
 
   /* start communication */
-  fd = g_open("/dev/input/event1", O_RDONLY, 0);
+  int fd = g_open("/dev/input/event1", O_RDONLY, 0);
   g_assert_cmpint(fd, >=, 0);
 
   g_assert_cmpint(gettimeofday(&tv_begin, NULL), ==, 0);
@@ -2098,6 +2089,24 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, UNUSED_DATA)
   g_assert_cmpint(ev.code, ==, 0x174);
   g_assert_cmpint(ev.value, ==, 1);
   assert_delta_t(&tv_begin, &tv_end, 550);
+
+  /* "flush" the script by waiting for it */
+  success = umockdev_testbed_wait_script(fixture->testbed, "/dev/input/event1", &error);
+  g_assert(success);
+  g_assert_no_error(error);
+
+  /* can load a new script now */
+  success = umockdev_testbed_load_evemu_events_from_string(fixture->testbed, "/dev/input/event1",
+                                                           "E: 1239.200000 0001 0123 1\n", &error);
+  g_assert_no_error(error);
+  g_assert(success);
+
+  g_assert_cmpint(read(fd, &ev, sizeof(ev)), ==, sizeof(ev));
+  g_assert_cmpint(ev.input_event_sec, ==, 1239);
+  g_assert_cmpint(ev.input_event_usec, ==, 200000);
+  g_assert_cmpint(ev.type, ==, 1);
+  g_assert_cmpint(ev.code, ==, 0x123);
+  g_assert_cmpint(ev.value, ==, 1);
 
   close(fd);
 }
