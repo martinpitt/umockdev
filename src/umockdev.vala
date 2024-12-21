@@ -1034,8 +1034,37 @@ public class Testbed: GLib.Object {
     public bool load_script (string? dev, string recordfile)
         throws GLib.Error, FileError, IOError, RegexError
     {
-        var script = new DataInputStream(File.new_for_path(recordfile).read());
+        return this.load_script_from_stream(dev,
+                                            new DataInputStream(File.new_for_path(recordfile).read()),
+                                            recordfile);
+    }
 
+    /**
+     * umockdev_testbed_load_script_from_string:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) for which to load the script record.
+     *       %NULL is valid; in this case the script is associated with
+     *       the device node it was recorded from.
+     * @script: script string
+     * @error: return location for a GError, or %NULL
+     *
+     * Load a script record file for a particular device into the testbed.
+     * script records can be created with umockdev-record --script.
+     *
+     * Returns: %TRUE on success, %FALSE if @recordfile is invalid and an error
+     *          occurred.
+     */
+    public bool load_script_from_string (string? dev, string script)
+        throws GLib.Error, IOError, RegexError
+    {
+        return this.load_script_from_stream(dev,
+                                            new DataInputStream(new MemoryInputStream.from_data(script.data)),
+                                            "<string>");
+    }
+
+    private bool load_script_from_stream (string? dev, DataInputStream script, string scriptname)
+        throws GLib.Error, IOError, RegexError
+    {
         string? owned_dev = dev;
         if (owned_dev == null) {
 
@@ -1046,11 +1075,11 @@ public class Testbed: GLib.Object {
 
             // Next must be our d 0 <devicenode> header
             if (line == null)
-                error("script %s has no non-comment content", recordfile);
+                error("script %s has no non-comment content", scriptname);
 
             MatchInfo header_matcher;
             if (!(new Regex("^d 0 (.*)(\n|$)")).match(line, 0, out header_matcher))
-                error("null passed for device node, but script %s has no d 0 header", recordfile);
+                error("null passed for device node, but script %s has no d 0 header", scriptname);
             owned_dev = header_matcher.fetch(1);
         }
 
@@ -1060,7 +1089,7 @@ public class Testbed: GLib.Object {
         if (fd < 0)
             throw new FileError.INVAL (owned_dev + " is not a device suitable for scripts");
 
-        this.dev_script_runner.insert (owned_dev, new ScriptRunner (fd, owned_dev, script, recordfile));
+        this.dev_script_runner.insert (owned_dev, new ScriptRunner (fd, owned_dev, script, scriptname));
         return true;
     }
 
