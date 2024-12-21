@@ -1184,8 +1184,7 @@ public class Testbed: GLib.Object {
         var default_dev_re = new Regex("^# device (.*)$");
         var event_re = new Regex("^E: ([0-9]+)\\.([0-9]+) +([0-9a-fA-F]+) +([0-9a-fA-F]+) +(-?[0-9]+) *#?");
 
-        string script_file;
-        int script_fd = FileUtils.open_tmp ("evemu.XXXXXX.script", out script_file);
+        string script = "";
         int delay = 0;
         bool first = true;
 
@@ -1218,11 +1217,8 @@ public class Testbed: GLib.Object {
 
             uint8[] ev_data = new uint8[sizeof(LinuxFixes.Input.Event)];
             Posix.memcpy(ev_data, &ev, ev_data.length);
-            string script_line = "r " + delay.to_string() + " " + ScriptRunner.encode(ev_data) + "\n";
-            assert (Posix.write(script_fd, script_line, script_line.length) == script_line.length);
+            script += "r " + delay.to_string() + " " + ScriptRunner.encode(ev_data) + "\n";
         }
-
-        Posix.close (script_fd);
 
         string? owned_dev = dev;
         if (owned_dev == null) {
@@ -1231,9 +1227,7 @@ public class Testbed: GLib.Object {
             owned_dev = recorded_dev;
         }
 
-        bool ret = load_script(owned_dev, script_file);
-        FileUtils.unlink(script_file);
-        return ret;
+        return load_script_from_string(owned_dev, script);
     }
 
     private static HashTable<string, string> bus_lookup_table;
