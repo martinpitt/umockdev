@@ -1064,6 +1064,28 @@ public class Testbed: GLib.Object {
     }
 
     /**
+     * umockdev_testbed_wait_script:
+     * @self: A #UMockdevTestbed.
+     * @dev: Device path (/dev/...) to wait for
+     * @error: return location for a GError, or %NULL
+     *
+     * Wait for a previously loaded script or evemu record to finish.
+     *
+     * Returns: %TRUE on success, %FALSE if @dev is invalid and an error
+     *          occurred.
+     */
+    public bool wait_script (string dev)
+        throws FileError
+    {
+        unowned var runner = this.dev_script_runner.lookup (dev);
+        if (runner == null)
+            throw new FileError.NOENT (dev + " has no active script runner");
+        runner.wait ();
+        this.dev_script_runner.remove (dev);
+        return true;
+    }
+
+    /**
      * umockdev_testbed_load_socket_script:
      * @self: A #UMockdevTestbed.
      * @path: Unix socket path
@@ -1770,6 +1792,18 @@ private class ScriptRunner {
         debug ("Stopping script runner for %s: joining thread", this.device);
         this.running = false;
         this.thread.join ();
+    }
+
+    public void wait ()
+    {
+        if (!this.running) {
+            debug ("Script runner for %s already finished, nothing to wait for", this.device);
+            return;
+        }
+
+        debug ("Waiting for script runner for %s to finish", this.device);
+        this.thread.join ();
+        assert (this.running == false);
     }
 
     private void* run ()

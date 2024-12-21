@@ -1747,6 +1747,11 @@ r 0 ^@^^^`^@a\n";
   /* end of script */
   ASSERT_EOF;
 
+  /* waiting is a no-op */
+  success = umockdev_testbed_wait_script(fixture->testbed, "/dev/greeter", &error);
+  g_assert(success);
+  g_assert_no_error(error);
+
   close(fd);
 }
 
@@ -1828,6 +1833,64 @@ r 0 OK\n";
   g_assert_cmpint(memcmp(buf, "OK", 2), ==, 0);
 
   close(fd);
+}
+
+static void
+t_testbed_script_replay_wait(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+  gboolean success;
+  GError *error = NULL;
+  g_autofree char *tmppath = NULL;
+  int fd;
+  char buf[1024];
+
+  static const char* test_script = "r 100 Hello \n\
+r 100 world\n";
+
+  umockdev_testbed_add_from_string(fixture->testbed,
+          "P: /devices/greeter\nN: greeter\n"
+          "E: DEVNAME=/dev/greeter\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
+  g_assert_no_error(error);
+
+  /* write script into temporary file */
+  fd = g_file_open_tmp("test_script_simple.XXXXXX", &tmppath, &error);
+  g_assert_no_error(error);
+  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
+  close(fd);
+
+  /* load it */
+  success = umockdev_testbed_load_script(fixture->testbed, "/dev/greeter", tmppath, &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  g_unlink (tmppath);
+
+  /* wait for it; this writes the output into the pipe buffer, and theoretically may block
+   * take the risk for the unit test, it's small enough */
+  success = umockdev_testbed_wait_script(fixture->testbed, "/dev/greeter", &error);
+  g_assert(success);
+  g_assert_no_error(error);
+
+  /* start communication */
+  fd = g_open("/dev/greeter", O_RDWR, 0);
+  g_assert_cmpint(fd, >=, 0);
+
+  /* we get the full message in a single read */
+  g_assert_cmpint(read(fd, buf, sizeof buf), ==, 11);
+  g_assert_cmpint(memcmp(buf, "Hello world", 11), ==, 0);
+
+  close(fd);
+
+  /* device has no script any more */
+  success = umockdev_testbed_wait_script(fixture->testbed, "/dev/greeter", &error);
+  g_assert_false(success);
+  g_assert_error(error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
+  g_clear_error(&error);
+
+  /* invalid device */
+  success = umockdev_testbed_wait_script(fixture->testbed, "/dev/invalid", &error);
+  g_assert_false(success);
+  g_assert_error(error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
+  g_clear_error(&error);
 }
 
 static void
@@ -2389,6 +2452,8 @@ main(int argc, char **argv)
 	       t_testbed_script_replay_default_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_override_default_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_script_replay_override_default_device, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/script_replay_wait", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_script_replay_wait, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_evdev_event_framing", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_script_replay_evdev_event_framing, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_socket_stream", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
