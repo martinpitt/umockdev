@@ -1034,22 +1034,23 @@ public class Testbed: GLib.Object {
     public bool load_script (string? dev, string recordfile)
         throws GLib.Error, FileError, IOError, RegexError
     {
+        var script = new DataInputStream(File.new_for_path(recordfile).read());
+
         string? owned_dev = dev;
         if (owned_dev == null) {
-            var recording = new DataInputStream(File.new_for_path(recordfile).read());
 
             // Ignore any leading comments
-            string line = recording.read_line();
+            string line = script.read_line();
             while (line != null && line.has_prefix("#"))
-                line = recording.read_line();
+                line = script.read_line();
 
             // Next must be our d 0 <devicenode> header
             if (line == null)
-                error("script recording %s has no non-comment content", recordfile);
+                error("script %s has no non-comment content", recordfile);
 
             MatchInfo header_matcher;
             if (!(new Regex("^d 0 (.*)(\n|$)")).match(line, 0, out header_matcher))
-                error("null passed for device node, but recording %s has no d 0 header", recordfile);
+                error("null passed for device node, but script %s has no d 0 header", recordfile);
             owned_dev = header_matcher.fetch(1);
         }
 
@@ -1059,7 +1060,7 @@ public class Testbed: GLib.Object {
         if (fd < 0)
             throw new FileError.INVAL (owned_dev + " is not a device suitable for scripts");
 
-        this.dev_script_runner.insert (owned_dev, new ScriptRunner (fd, owned_dev, recordfile));
+        this.dev_script_runner.insert (owned_dev, new ScriptRunner (fd, owned_dev, script, recordfile));
         return true;
     }
 
@@ -1769,19 +1770,16 @@ private class ScriptRunner {
      * ScriptRunner:
      * @device_fd: File descriptor of the emulated device node
      * @device: Name of the emulated device node, only for debug/error messages
-     * @script_file: Path to the script to load and run
+     * @script: Script to load and run
+     * @script_file: Description (e.g. file name) of @script, only for debug/error messages
      *
      * Create a new script runner for running @script.
      */
-    public ScriptRunner (int device_fd, string device, string script_file) throws FileError
+    public ScriptRunner (int device_fd, string device, DataInputStream script, string script_file) throws FileError
     {
         this.fd = device_fd;
         this.device = device;
-
-        this.script = FileStream.open (script_file, "r");
-        if (this.script == null)
-            throw new FileError.FAILED ("Cannot open script record file " + script_file);
-
+        this.script = script;
         this.script_file = script_file;
         this.running = true;
 
@@ -1871,37 +1869,58 @@ private class ScriptRunner {
 
     private uint8[] next_line (out char op, out uint32 delta)
     {
-        // read operation code; skip empty lines and comments
-        int c;
-        for (;;) {
-            c = this.script.getc ();
-            if (c == FileStream.EOF) {
-                debug ("ScriptRunner[%s]: end of script %s, closing", this.device, this.script_file);
-                op = 'Q';
-                delta = 0;
-                return {};
-            } else if (c == '#') {
-                assert (this.script.read_line () != null);
-            } else if (c != '\n') {
-                op = (char) c;
-                break;
+        try {
+            // read operation code; skip empty lines and comments
+            for (;;) {
+                int c;
+                try {
+                    c = this.script.read_byte ();
+                } catch (GLib.IOError e) {
+                    if (e.code == GLib.IOError.FAILED) {
+                        debug ("ScriptRunner[%s]: end of script %s, closing: %s", this.device, this.script_file, e.message);
+                        op = 'Q';
+                        delta = 0;
+                        return {};
+                    }
+                    error ("ScriptRunner[%s]: failed to read script %s: %s", this.device, this.script_file, e.message);
+                }
+                if (c == '#') {
+                    assert (this.script.read_line () != null);
+                } else if (c != '\n') {
+                    op = (char) c;
+                    break;
+                }
             }
+
+            var cur_pos = this.script.tell ();
+            if (this.script.read_byte () != ' ')
+                error ("Missing space after operation code in %s at position %" + uint64.FORMAT, this.script_file, cur_pos);
+
+            // read time delta
+            cur_pos = this.script.tell ();
+            string delta_str;
+            try {
+                size_t len;
+                delta_str = this.script.read_upto (" ", -1, out len, null);
+            } catch (GLib.IOError e) {
+                error ("No time value in %s at position %" + uint64.FORMAT + ": %s", this.script_file, cur_pos, e.message);
+            }
+            uint8 b = this.script.read_byte();
+            assert(b == ' ');
+
+            int d;
+            if (!int.try_parse (delta_str, out d) || d < 0)
+                error ("Invalid time value '%s' in %s at position %" + uint64.FORMAT, delta_str, this.script_file, cur_pos);
+            delta = d;
+
+            // remainder of the line is the data
+            string? line = this.script.read_line ();
+            assert (line != null);
+
+            return decode (line);
+        } catch (GLib.IOError e) {
+            error ("ScriptRunner[%s]: failed to read script %s: %s", this.device, this.script_file, e.message);
         }
-
-        var cur_pos = this.script.tell ();
-        if (this.script.getc () != ' ')
-            error ("Missing space after operation code in %s at position %li", this.script_file, cur_pos);
-
-        // read time delta
-        cur_pos = this.script.tell ();
-        if (this.script.scanf ("%" + uint32.FORMAT + " ", out delta) != 1)
-            error ("Cannot parse time in %s at position %li", this.script_file, cur_pos);
-
-        // remainder of the line is the data
-        string? line = this.script.read_line ();
-        assert (line != null);
-
-        return decode (line);
     }
 
     private void op_write (uint8[] data, uint32 delta)
@@ -1934,7 +1953,11 @@ private class ScriptRunner {
             if (ret <= 0) {
                 debug ("ScriptRunner[%s]: got failure or EOF on read operation on expected block '%s', resetting",
                        this.device, encode(data[len:data.length]));
-                this.script.seek (0, FileSeek.SET);
+                try {
+                    this.script.seek (0, SeekType.SET);
+                } catch (GLib.Error e) {
+                    error ("ScriptRunner[%s]: failed to reset script %s: %s", this.device, this.script_file, e.message);
+                }
                 return;
             }
 
@@ -1972,8 +1995,12 @@ private class ScriptRunner {
 
     private static uint8[] decode (string quoted)
     {
+        int i;
+        // skip over initial whitespace
+        for (i = 0; quoted.data[i] == ' ' && i < quoted.length; ++i);
+
         uint8[] data = {};
-        for (int i = 0; i < quoted.length; ++i) {
+        for (; i < quoted.length; ++i) {
             if (quoted.data[i] == '^') {
                 assert (i + 1 < quoted.length);
                 data += (quoted.data[i+1] == '`') ? '^' : (quoted.data[i+1] - 64);
@@ -2019,7 +2046,7 @@ private class ScriptRunner {
 
     private int fd;
     public string device { get; private set; }
-    private FileStream script;
+    private DataInputStream script;
     private string script_file;
     private Thread<void*> thread;
     private bool running;
@@ -2141,11 +2168,12 @@ private class SocketServer {
                     string sock_path = null;
                     try {
                         sock_path = ((UnixSocketAddress) s.get_local_address()).path;
-                        string script = this.socket_scriptfile.get (sock_path);
+                        string scriptfile = this.socket_scriptfile.get (sock_path);
                         debug ("socket server thread: accepted request on server socket fd %i, path %s, script %s",
-                               s.fd, sock_path, script);
+                               s.fd, sock_path, scriptfile);
                         string key = "%s%i".printf (sock_path, fd);
-                        this.script_runners.insert (key, new ScriptRunner (fd, key, script));
+                        var script = new DataInputStream(File.new_for_path(scriptfile).read());
+                        this.script_runners.insert (key, new ScriptRunner (fd, key, script, scriptfile));
                     } catch (GLib.Error e) {
                         error ("socket server thread: cannot launch ScriptRunner: %s", e.message);
                     }
