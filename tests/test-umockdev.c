@@ -1840,8 +1840,6 @@ t_testbed_script_replay_wait(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
-  g_autofree char *tmppath = NULL;
-  int fd;
   char buf[1024];
 
   static const char* test_script = "r 100 Hello \n\
@@ -1852,17 +1850,10 @@ r 100 world\n";
           "E: DEVNAME=/dev/greeter\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
   g_assert_no_error(error);
 
-  /* write script into temporary file */
-  fd = g_file_open_tmp("test_script_simple.XXXXXX", &tmppath, &error);
-  g_assert_no_error(error);
-  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
-  close(fd);
-
   /* load it */
-  success = umockdev_testbed_load_script(fixture->testbed, "/dev/greeter", tmppath, &error);
+  success = umockdev_testbed_load_script_from_string(fixture->testbed, "/dev/greeter", test_script, &error);
   g_assert_no_error(error);
   g_assert(success);
-  g_unlink (tmppath);
 
   /* wait for it; this writes the output into the pipe buffer, and theoretically may block
    * take the risk for the unit test, it's small enough */
@@ -1871,7 +1862,7 @@ r 100 world\n";
   g_assert_no_error(error);
 
   /* start communication */
-  fd = g_open("/dev/greeter", O_RDWR, 0);
+  int fd = g_open("/dev/greeter", O_RDWR, 0);
   g_assert_cmpint(fd, >=, 0);
 
   /* we get the full message in a single read */
@@ -1885,6 +1876,19 @@ r 100 world\n";
   g_assert_false(success);
   g_assert_error(error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
   g_clear_error(&error);
+
+  /* can load a new script into the same device after waiting */
+  success = umockdev_testbed_load_script_from_string(fixture->testbed, "/dev/greeter", "r 50 Again\n", &error);
+  g_assert_no_error(error);
+  g_assert(success);
+  success = umockdev_testbed_wait_script(fixture->testbed, "/dev/greeter", &error);
+  g_assert(success);
+  g_assert_no_error(error);
+  fd = g_open("/dev/greeter", O_RDWR, 0);
+  g_assert_cmpint(fd, >=, 0);
+  g_assert_cmpint(read(fd, buf, sizeof buf), ==, 5);
+  g_assert_cmpint(memcmp(buf, "Again", 5), ==, 0);
+  close(fd);
 
   /* invalid device */
   success = umockdev_testbed_wait_script(fixture->testbed, "/dev/invalid", &error);
@@ -1964,8 +1968,6 @@ t_testbed_script_replay_fuzz(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
   gboolean success;
   GError *error = NULL;
-  g_autofree char *tmppath = NULL;
-  int fd;
   char buf[1024];
 
   static const char* test_script = "f 20 -\n\
@@ -1978,20 +1980,13 @@ r 0 OK\n";
           "E: DEVNAME=/dev/fuzzy\nE: SUBSYSTEM=tty\nA: dev=4:64\n", &error);
   g_assert_no_error(error);
 
-  /* write script into temporary file */
-  fd = g_file_open_tmp("test_script_fuzzy.XXXXXX", &tmppath, &error);
-  g_assert_no_error(error);
-  g_assert_cmpint(write(fd, test_script, strlen(test_script)), >, 10);
-  close(fd);
-
   /* load it */
-  success = umockdev_testbed_load_script(fixture->testbed, "/dev/fuzzy", tmppath, &error);
+  success = umockdev_testbed_load_script_from_string(fixture->testbed, "/dev/fuzzy", test_script, &error);
   g_assert_no_error(error);
   g_assert(success);
-  g_unlink (tmppath);
 
   /* start communication */
-  fd = g_open("/dev/fuzzy", O_RDWR | O_NONBLOCK, 0);
+  int fd = g_open("/dev/fuzzy", O_RDWR | O_NONBLOCK, 0);
   g_assert_cmpint(fd, >=, 0);
   errno = 0;
 
