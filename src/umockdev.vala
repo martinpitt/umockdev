@@ -1174,8 +1174,22 @@ public class Testbed: GLib.Object {
     public bool load_evemu_events (string? dev, string eventsfile)
         throws GLib.Error, FileError, IOError, RegexError
     {
-        File f_ev = File.new_for_path(eventsfile);
-        var s_ev = new DataInputStream(f_ev.read());
+        return this.load_evemu_events_from_stream(dev,
+                                                  new DataInputStream(File.new_for_path(eventsfile).read()),
+                                                  eventsfile);
+    }
+
+    public bool load_evemu_events_from_string (string? dev, string events)
+        throws GLib.Error, FileError, IOError, RegexError
+    {
+        return this.load_evemu_events_from_stream(dev,
+                                                  new DataInputStream(new MemoryInputStream.from_data(events.data)),
+                                                  "<string>");
+    }
+
+    private bool load_evemu_events_from_stream (string? dev, DataInputStream events, string eventsname)
+        throws GLib.Error, IOError, RegexError
+    {
         string line;
         string? recorded_dev = null;
         size_t len;
@@ -1188,7 +1202,7 @@ public class Testbed: GLib.Object {
         int delay = 0;
         bool first = true;
 
-        while ((line = s_ev.read_line(out len)) != null) {
+        while ((line = events.read_line(out len)) != null) {
             if (default_dev_re.match(line, 0, out match)) {
                 recorded_dev = match.fetch(1);
                 continue;
@@ -1196,7 +1210,7 @@ public class Testbed: GLib.Object {
 
             if (!event_re.match(line, 0, out match)) {
                 if (!line.has_prefix("#"))
-                    warning("Ignoring invalid line in %s: %s", eventsfile, line);
+                    warning("Ignoring invalid line in %s: %s", eventsname, line);
                 continue;
             }
             time_t ev_sec = (time_t) uint64.parse(match.fetch(1));
@@ -1223,7 +1237,7 @@ public class Testbed: GLib.Object {
         string? owned_dev = dev;
         if (owned_dev == null) {
             if (recorded_dev == null)
-                error("null passed for device node, but recording %s has no '# device' header", eventsfile);
+                error("null passed for device node, but recording %s has no '# device' header", eventsname);
             owned_dev = recorded_dev;
         }
 
