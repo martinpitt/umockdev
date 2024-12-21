@@ -1059,7 +1059,7 @@ public class Testbed: GLib.Object {
         if (fd < 0)
             throw new FileError.INVAL (owned_dev + " is not a device suitable for scripts");
 
-        this.dev_script_runner.insert (owned_dev, new ScriptRunner (owned_dev, recordfile, fd));
+        this.dev_script_runner.insert (owned_dev, new ScriptRunner (fd, owned_dev, recordfile));
         return true;
     }
 
@@ -1765,15 +1765,24 @@ find_devnode (string devpath)
 
 private class ScriptRunner {
 
-    public ScriptRunner (string device, string script_file, int fd) throws FileError
+    /**
+     * ScriptRunner:
+     * @device_fd: File descriptor of the emulated device node
+     * @device: Name of the emulated device node, only for debug/error messages
+     * @script_file: Path to the script to load and run
+     *
+     * Create a new script runner for running @script.
+     */
+    public ScriptRunner (int device_fd, string device, string script_file) throws FileError
     {
+        this.fd = device_fd;
+        this.device = device;
+
         this.script = FileStream.open (script_file, "r");
         if (this.script == null)
             throw new FileError.FAILED ("Cannot open script record file " + script_file);
 
-        this.device = device;
         this.script_file = script_file;
-        this.fd = fd;
         this.running = true;
 
         this.thread = new Thread<void*> (device, this.run);
@@ -2008,11 +2017,11 @@ private class ScriptRunner {
         return d;
     }
 
+    private int fd;
     public string device { get; private set; }
+    private FileStream script;
     private string script_file;
     private Thread<void*> thread;
-    private FileStream script;
-    private int fd;
     private bool running;
     private uint fuzz = 0;
 }
@@ -2136,7 +2145,7 @@ private class SocketServer {
                         debug ("socket server thread: accepted request on server socket fd %i, path %s, script %s",
                                s.fd, sock_path, script);
                         string key = "%s%i".printf (sock_path, fd);
-                        this.script_runners.insert (key, new ScriptRunner (key, script, fd));
+                        this.script_runners.insert (key, new ScriptRunner (fd, key, script));
                     } catch (GLib.Error e) {
                         error ("socket server thread: cannot launch ScriptRunner: %s", e.message);
                     }
