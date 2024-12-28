@@ -572,7 +572,7 @@ public class IoctlClient : GLib.Object {
             IoctlData? data = null;
             ulong size = IoctlTree.data_size_by_id(_request);
             ulong type = (_request >> Ioctl._IOC_TYPESHIFT) & ((1 << Ioctl._IOC_TYPEBITS) - 1);
-            int ret = -1;
+            int ret;
             int my_errno;
 
             try {
@@ -590,7 +590,7 @@ public class IoctlClient : GLib.Object {
             } else {
                 Posix.errno = Posix.ENOTTY;
             }
-            tree.execute(null, _request, *(void**) _arg.data, ref ret);
+            tree.execute(null, _request, *(void**) _arg.data, out ret);
             my_errno = Posix.errno;
             Posix.errno = 0;
 
@@ -897,7 +897,7 @@ internal class IoctlTreeHandler : IoctlBase {
         ulong request = client.request;
         ulong size = IoctlTree.data_size_by_id(request);
         ulong type = (request >> Ioctl._IOC_TYPESHIFT) & ((1 << Ioctl._IOC_TYPEBITS) - 1);
-        int ret = -1;
+        int ret;
         int my_errno;
 
         if (tree == null) {
@@ -938,7 +938,7 @@ internal class IoctlTreeHandler : IoctlBase {
         } else {
             Posix.errno = Posix.ENOTTY;
         }
-        last = tree.execute(last, request, *(void**) client.arg.data, ref ret);
+        last = tree.execute(last, request, *(void**) client.arg.data, out ret);
         my_errno = Posix.errno;
         Posix.errno = 0;
         if (last != null)

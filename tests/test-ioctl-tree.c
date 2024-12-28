@@ -554,9 +554,9 @@ t_evdev(void)
     g_assert(memcmp(&bits_query, "\0\0\0\0\xAA\xAA\xAA\xAA", 8) == 0);
 
     /* undefined for other ev type */
-    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_REL, sizeof(synbits)), &bits_query, NULL));
+    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_REL, sizeof(synbits)), &bits_query, &ret));
     /* undefined for other length */
-    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_KEY, 4), &bits_query, NULL));
+    g_assert(!ioctl_tree_execute(tree, NULL, EVIOCGBIT(EV_KEY, 4), &bits_query, &ret));
 
     ioctl_tree_free(tree);
 }

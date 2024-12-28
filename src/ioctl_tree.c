@@ -357,6 +357,10 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, 
     ioctl_tree *i;
     int r, handled;
 
+    /* initialize return code */
+    assert(ret != NULL);
+    *ret = -1;
+
     DBG(DBG_IOCTL_TREE, "ioctl_tree_execute ioctl %X\n", (unsigned) id);
 
     t = ioctl_type_get_by_id(id);
@@ -369,8 +373,6 @@ ioctl_tree_execute(ioctl_tree * tree, ioctl_tree * last, IOCTL_REQUEST_TYPE id, 
 	DBG(DBG_IOCTL_TREE, "  ioctl_tree_execute: stateless\n");
 	if (t->execute(NULL, id, arg, &r))
 	    *ret = r;
-	else
-	    *ret = -1;
 	return last;
     }
 
