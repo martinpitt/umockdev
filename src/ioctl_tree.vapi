@@ -10,7 +10,7 @@ namespace IoctlTree {
 
       [ReturnsModifiedPointer]
       public void insert(owned Tree node);
-      public void* execute(void* last, ulong id, void* addr, ref int ret);
+      public void* execute(void* last, ulong id, void* addr, out int ret);
       [CCode (instance_pos = -1)]
       public void write(Posix.FILE f);
 

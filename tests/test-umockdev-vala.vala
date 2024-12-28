@@ -271,7 +271,7 @@ E: SUBSYSTEM=usb
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, -1);
   // usually ENOTTY, but seem to be EINVAL
   assert_cmpint (Posix.errno, CompareOperator.GE, 22);
-  errno = 0;
+  Posix.errno = 0;
 
   // unknown ioctls don't work on an emulated device
   assert_cmpint (Posix.ioctl (fd, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, -1);
