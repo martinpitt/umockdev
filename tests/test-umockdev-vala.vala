@@ -682,6 +682,12 @@ t_usbfs_ioctl_pcap ()
 void
 t_spidev_ioctl ()
 {
+  // does not work on 32 bit big-endian (such as Debian hppa)
+  if (sizeof(long) != sizeof(int64) && BYTE_ORDER == ByteOrder.BIG_ENDIAN) {
+      stdout.printf ("[SKIP: SPI emulation does not work on 32 bit big-endian] ");
+      return;
+  }
+
   var tb = new UMockdev.Testbed ();
 
   string device;
