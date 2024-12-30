@@ -281,8 +281,8 @@ E: SUBSYSTEM=usb
   // unknown ioctls do work on non-emulated devices
   int fd2 = Posix.open ("/dev/tty", Posix.O_RDWR, 0);
   if (fd2 > 0) {
-      assert_cmpint (Posix.ioctl (fd2, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, 0);
-      assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+      assert_cmpint (Posix.ioctl (fd2, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, -1);
+      assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOTTY);
       Posix.close (fd2);
   }
 
