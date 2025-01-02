@@ -269,23 +269,22 @@ E: SUBSYSTEM=usb
   /* no ioctl tree loaded */
   var ci = Ioctl.usbdevfs_connectinfo();
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, -1);
-  // usually ENOTTY, but seem to be EINVAL
-  assert_cmpint (Posix.errno, CompareOperator.GE, 22);
+  assert_cmpint (Posix.errno, CompareOperator.GE, Posix.EINVAL);
   Posix.errno = 0;
 
   // unknown ioctls don't work on an emulated device
-  assert_cmpint (Posix.ioctl (fd, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, -1);
+  int argp;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.FIONREAD, &argp), CompareOperator.EQ, -1);
   assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOTTY);
+  Posix.close (fd);
   Posix.errno = 0;
 
   // unknown ioctls do work on non-emulated devices
-  int fd2 = Posix.open ("/dev/tty", Posix.O_RDWR, 0);
-  if (fd2 > 0) {
-      assert_cmpint (Posix.ioctl (fd2, Ioctl.TIOCSBRK, 0), CompareOperator.EQ, 0);
-      assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
-      Posix.close (fd2);
-  }
-
+  fd = Posix.open ("/dev/stdout", Posix.O_WRONLY, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.FIONREAD, out argp), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   Posix.close (fd);
 }
 
