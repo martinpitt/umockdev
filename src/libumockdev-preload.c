@@ -528,6 +528,7 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 	is_default = 1;
     }
 
+    int orig_errno = errno;
     sock = _socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
 	if (must_exist) {
@@ -535,6 +536,7 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 		    dev_path);
 	    exit(1);
 	} else {
+	    errno = orig_errno;
 	    return;
 	}
     }
@@ -546,6 +548,7 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 		    dev_path);
 	    exit(1);
 	} else {
+	    errno = orig_errno;
 	    return;
 	}
     }
@@ -558,6 +561,7 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 
     fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
     DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl sockert\n", fd, dev_path);
+    errno = orig_errno;
 }
 
 static void
