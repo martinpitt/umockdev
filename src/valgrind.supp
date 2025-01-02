@@ -9,3 +9,15 @@
    fun:_dl_relocate_object
    ...
 }
+# ioctl emulation reads the client memory unconditionally; even for a read() call, as that is simpler overall
+{
+   remote_emulate_send_uninited
+   Memcheck:Param
+   socketcall.sendto(msg)
+   ...
+   fun:__libc_send
+   fun:send
+   fun:remote_emulate
+   fun:read
+   ...
+}
