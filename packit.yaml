@@ -58,8 +58,7 @@ jobs:
     packages: [umockdev-centos]
     targets:
       - centos-stream-9-x86_64
-        # blocked: https://issues.redhat.com/browse/TFT-2612
-        # - centos-stream-10-x86_64
+      - centos-stream-10-x86_64
 
   - job: propose_downstream
     trigger: release
