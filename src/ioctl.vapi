@@ -25,7 +25,7 @@ namespace Ioctl {
     [CCode (cheader_filename = "sys/ioctl.h")]
     public const int USBDEVFS_RESETEP;
     [CCode (cheader_filename = "sys/ioctl.h")]
-    public const int TIOCSBRK;
+    public const int FIONREAD;
 
     [CCode (cheader_filename = "linux/usbdevice_fs.h")]
     public const int USBDEVFS_CAP_ZERO_PACKET;
@@ -144,4 +144,3 @@ namespace Ioctl {
     uint8 data[0];
   }
 }
-

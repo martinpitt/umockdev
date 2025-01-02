@@ -502,16 +502,16 @@ static fd_map ioctl_wrapped_fds;
 struct ioctl_fd_info {
     char *dev_path;
     int ioctl_sock;
-    int is_default;
+    bool is_emulated;
     pthread_mutex_t sock_lock;
 };
 
 static void
-ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
+ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
 {
     libc_func(socket, int, int, int, int);
     libc_func(connect, int, int, const struct sockaddr *, socklen_t);
-    int is_default = 0;
+    bool is_default = false;
     int sock;
     int ret;
     struct ioctl_fd_info *fdinfo;
@@ -525,27 +525,22 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
 
     if (path_exists (addr.sun_path) != 0) {
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/ioctl/_default", getenv("UMOCKDEV_DIR"));
-	is_default = 1;
+	is_default = true;
     }
 
     int orig_errno = errno;
     sock = _socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock == -1) {
-	if (must_exist) {
-	    fprintf(stderr, "ERROR: libumockdev-preload: Failed to open ioctl socket for %s",
-		    dev_path);
-	    exit(1);
-	} else {
-	    errno = orig_errno;
-	    return;
-	}
+	DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): not emulated\n", fd, dev_path);
+	errno = orig_errno;
+	return;
     }
 
     ret = _connect(sock, (const struct sockaddr *) &addr, sizeof(addr));
     if (ret == -1) {
-	if (must_exist) {
-	    fprintf(stderr, "ERROR: libumockdev-preload: Failed to connect to ioctl socket for %s",
-		    dev_path);
+	if (!is_default || errno != ENOENT) {
+	    fprintf(stderr, "ERROR: libumockdev-preload: Failed to connect to ioctl socket %s for %s: %m\n",
+		    addr.sun_path, dev_path);
 	    exit(1);
 	} else {
 	    errno = orig_errno;
@@ -554,13 +549,13 @@ ioctl_emulate_open(int fd, const char *dev_path, int must_exist)
     }
 
     fdinfo = mallocx(sizeof(struct ioctl_fd_info));
+    fdinfo->is_emulated = is_emulated;
     fdinfo->ioctl_sock = sock;
     fdinfo->dev_path = strdupx(dev_path);
-    fdinfo->is_default = is_default;
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
 
     fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
-    DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl sockert\n", fd, dev_path);
+    DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl socket\n", fd, dev_path);
     errno = orig_errno;
 }
 
@@ -625,8 +620,8 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
     }
     IOCTL_UNLOCK;
 
-    /* Only pass on ioctl requests for the default handler. */
-    if (fdinfo->is_default && cmd != IOCTL_REQ_IOCTL) {
+    /* Only pass on ioctl requests for emulated devices */
+    if (!fdinfo->is_emulated) {
 	pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
 	return UNHANDLED;
     }
