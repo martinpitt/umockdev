@@ -1140,10 +1140,11 @@ E: SUBSYSTEM=test
   int fd = Posix.open ("/dev/test", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
 
-  assert_cmpint (Posix.ioctl (fd, 1, 0xdeadbeef), CompareOperator.EQ, (int) 0xdeadbeef);
+  int value = (int) 0xdeadbeef;
+  assert_cmpint (Posix.ioctl (fd, 1, value), CompareOperator.EQ, value);
   assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
-  assert_cmpint (Posix.ioctl (fd, 2, 0xdeadbeef), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.ioctl (fd, 2, value), CompareOperator.EQ, -1);
   assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOMEM);
 
   assert_cmpint (Posix.ioctl (fd, 3, &ioctl_target), CompareOperator.EQ, 0);
