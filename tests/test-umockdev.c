@@ -250,6 +250,44 @@ t_testbed_add_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     udev_unref(udev);
 }
 
+static void
+t_testbed_add_devicev_fstat(UMockdevTestbedFixture * fixture, gconstpointer data)
+{
+    gboolean success;
+    GError *error = NULL;
+    gchar const* devnode;
+    int fd;
+    struct stat stat_from_fstat;
+    struct stat stat_from_stat;
+    struct udev *udev;
+    struct udev_monitor *udev_mon;
+    struct udev_device *device;
+
+    /* Set up Udev monitor to check for added event */
+    udev = udev_new();
+    g_assert(udev != NULL);
+    udev_mon = udev_monitor_new_from_netlink(udev, "udev");
+    g_assert(udev_mon != NULL);
+    g_assert_cmpint(udev_monitor_get_fd(udev_mon), >, 0);
+    g_assert_cmpint(udev_monitor_enable_receiving(udev_mon), ==, 0);
+
+    success = umockdev_testbed_add_from_file(fixture->testbed, "tests/w740su-touchpad.umockdev", &error);
+    g_assert_no_error(error);
+    g_clear_error(&error);
+    g_assert(success);
+
+    g_assert((device = udev_monitor_receive_device(udev_mon))!=NULL);
+    g_assert((devnode = udev_device_get_devnode(device))!=NULL);
+    g_assert_cmpint(fd = g_open(devnode, O_RDWR | O_NONBLOCK), >, 0);
+    g_assert_cmpint(fstat(fd, &stat_from_fstat), ==, 0);
+    g_assert_cmpint(stat(devnode, &stat_from_stat), ==, 0);
+    g_assert_cmpint(stat_from_stat.st_rdev, ==, stat_from_fstat.st_rdev);
+
+    udev_device_unref(device);
+    udev_monitor_unref(udev_mon);
+    udev_unref(udev);
+}
+
 /* UMockdevTestbed add_device() with adding a child device */
 static void
 t_testbed_child_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
@@ -2397,6 +2435,8 @@ main(int argc, char **argv)
 	       t_testbed_add_devicev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_device, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/add_devicev_fstat", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_add_devicev_fstat, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_block_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_block_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_device_errors", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
