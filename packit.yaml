@@ -39,6 +39,8 @@ jobs:
       - fedora-development-ppc64le
       - fedora-development-s390x
       - fedora-development-armhfp
+      # needed for tests
+      - fedora-latest
 
   - job: copr_build
     trigger: pull_request
