@@ -15,7 +15,6 @@
    Memcheck:Param
    socketcall.sendto(msg)
    ...
-   fun:__libc_send
    fun:send
    fun:remote_emulate
    fun:read
