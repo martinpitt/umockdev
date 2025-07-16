@@ -207,7 +207,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
             usb_header_mmapped *urb_hdr = (void*) cur_buf;
 
             cur_waiting_since = now;
-            last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+            last_pkt_time_ms = uint64.from_little_endian(urb_hdr.ts_sec) * 1000 + uint32.from_little_endian(urb_hdr.ts_usec) / 1000;
             start_time_ms = last_pkt_time_ms;
         }
 
@@ -216,10 +216,10 @@ internal class IoctlUsbPcapHandler : IoctlBase {
 
             usb_header_mmapped *urb_hdr = (void*) cur_buf;
 
-            uint64 cur_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+            uint64 cur_pkt_time_ms = uint64.from_little_endian(urb_hdr.ts_sec) * 1000 + uint32.from_little_endian(urb_hdr.ts_usec) / 1000;
 
             /* Discard anything from a different bus/device */
-            if (urb_hdr.bus_id != bus || urb_hdr.device_address != device)
+            if (uint16.from_little_endian(urb_hdr.bus_id) != bus || urb_hdr.device_address != device)
                 continue;
 
             /* Print out debug info, if we need 5s longer than the recording
@@ -230,7 +230,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                         (ulong) (now - cur_waiting_since) / 1000,
                         (ulong) (cur_pkt_time_ms - last_pkt_time_ms));
                 message("Trying to reap at recording position %c %s packet, for endpoint 0x%02x with length %u, replay may be stuck (time: %.3f)",
-                        urb_hdr.event_type, urb_type_to_string(urb_hdr.transfer_type), urb_hdr.endpoint_number, urb_hdr.urb_len, (cur_pkt_time_ms - start_time_ms) / 1000.0);
+                        urb_hdr.event_type, urb_type_to_string(urb_hdr.transfer_type), urb_hdr.endpoint_number, uint32.from_little_endian(urb_hdr.urb_len), (cur_pkt_time_ms - start_time_ms) / 1000.0);
                 message("The device has currently %u in-flight URBs:", urbs.length);
 
                 for (var i = 0; i < urbs.length; i++) {
@@ -277,7 +277,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                      */
                     if ((urb.type != urb_hdr.transfer_type) ||
                         ((urb.type != URB_CONTROL) && (urb.endpoint != urb_hdr.endpoint_number)) ||
-                        (urb_buffer_length != urb_hdr.urb_len)) {
+                        (urb_buffer_length != uint32.from_little_endian(urb_hdr.urb_len))) {
 
                         if (debug)
                             stderr.printf("UMockdev: Queued URB %d has a metadata mismatch!\n", i);
@@ -290,10 +290,10 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                             continue;
                     }
 
-                    if (urb_hdr.data_len > 0) {
+                    if (uint32.from_little_endian(urb_hdr.data_len) > 0) {
                         /* Data must have been captured. */
                         assert(urb_hdr.data_flag == 0);
-                        assert(urb_hdr.data_len == urb_buffer_length);
+                        assert(uint32.from_little_endian(urb_hdr.data_len) == urb_buffer_length);
 
                         /* Compare the full buffer (as we are outgoing) */
                         if (Posix.memcmp(urb_buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_buffer_length) != 0) {
@@ -317,10 +317,10 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     }
 
                     /* Everything matches, mark as submitted */
-                    urb_data.pcap_id = urb_hdr.id;
+                    urb_data.pcap_id = uint64.from_little_endian(urb_hdr.id);
 
                     /* Packet was handled. */
-                    last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+                    last_pkt_time_ms = uint64.from_little_endian(urb_hdr.ts_sec) * 1000 + uint32.from_little_endian(urb_hdr.ts_usec) / 1000;
                     break;
                 }
 
@@ -337,7 +337,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                 for (int i = 0; i < urbs.length; i++) {
                     urb_info = urbs.index(i);
 
-                    if (urb_info.pcap_id == urb_hdr.id) {
+                    if (urb_info.pcap_id == uint64.from_little_endian(urb_hdr.id)) {
                         urb = (Ioctl.usbdevfs_urb*) urb_info.urb_data.data;
                         urbs.remove_index(i);
                         break;
@@ -355,7 +355,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                 /* We can reap this urb!
                  * Copy any data back if present.
                  */
-                if (urb_hdr.data_len > 0) {
+                if (uint32.from_little_endian(urb_hdr.data_len) > 0) {
                     assert(urb_hdr.data_flag == 0);
 
                     uint8* urb_buffer = urb.buffer;
@@ -366,16 +366,16 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     if (urb.type == URB_CONTROL)
                         urb_buffer = &urb.buffer[8];
 
-                    Posix.memcpy(urb_buffer, &cur_buf[sizeof(usb_header_mmapped)], urb_hdr.data_len);
+                    Posix.memcpy(urb_buffer, &cur_buf[sizeof(usb_header_mmapped)], uint32.from_little_endian(urb_hdr.data_len));
                 }
-                urb.status = (int) urb_hdr.status;
-                urb.actual_length = (int) urb_hdr.urb_len;
+                urb.status = (int) int32.from_little_endian(urb_hdr.status);
+                urb.actual_length = (int) uint32.from_little_endian(urb_hdr.urb_len);
 
                 /* Does this need further handling? */
-                assert(urb_hdr.start_frame == 0);
-                urb.start_frame = (int) urb_hdr.start_frame;
+                assert(uint32.from_little_endian(urb_hdr.start_frame) == 0);
+                urb.start_frame = (int) uint32.from_little_endian(urb_hdr.start_frame);
 
-                last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+                last_pkt_time_ms = uint64.from_little_endian(urb_hdr.ts_sec) * 1000 + uint32.from_little_endian(urb_hdr.ts_usec) / 1000;
 
                 return urb_info;
             }
