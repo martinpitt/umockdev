@@ -1069,7 +1069,9 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     /* start with adding one device */
     success = umockdev_testbed_add_from_string(fixture->testbed,
 					       "P: /devices/dev1\n"
+					       "N: pd1\n"
 					       "E: SUBSYSTEM=pci\n"
+					       "E: DEVNAME=/dev/pd1\n"
 					       "A: simple_attr=1", &error);
     g_assert_no_error(error);
     g_assert(success);
@@ -1117,9 +1119,18 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(dirfd_root, >=, 0);
     int dirfd_bin = open("/bin", O_RDONLY | O_DIRECTORY);
     g_assert_cmpint(dirfd_bin, >=, 0);
+    int dirfd_dev = open("/dev", O_RDONLY | O_DIRECTORY);
+    int dirfd_sys = open("/sys", O_RDONLY | O_DIRECTORY);
 
     /* sys/ in root dir should be trapped */
     fd = openat(dirfd_root, "sys/devices/dev1/simple_attr", O_RDONLY);
+    if (fd < 0)
+        perror("openat");
+    g_assert_cmpint(fd, >=, 0);
+    close(fd);
+
+    /* dirfd == sys/ should be trapped */
+    fd = openat(dirfd_sys, "devices/dev1/simple_attr", O_RDONLY);
     if (fd < 0)
         perror("openat");
     g_assert_cmpint(fd, >=, 0);
@@ -1133,9 +1144,28 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     close(fd);
 #endif
 
+    /* dev/ in root dir should be trapped */
+    fd = openat(dirfd_root, "dev/pd1", O_RDONLY);
+    if (fd < 0)
+        perror("openat");
+    g_assert_cmpint(fd, >=, 0);
+    close(fd);
+
+    /* dirfd == dev/ should be trapped */
+    fd = openat(dirfd_dev, "pd1", O_RDONLY);
+    if (fd < 0)
+        perror("openat");
+    g_assert_cmpint(fd, >=, 0);
+    close(fd);
+
     /* sys/ in other dir should not be trapped */
     errno = 0;
     g_assert_cmpint(openat(dirfd_bin, "sys", O_RDONLY), <, 0);
+    g_assert_cmpint(errno, ==, ENOENT);
+
+    /* dev/ in other dir should not be trapped */
+    errno = 0;
+    g_assert_cmpint(openat(dirfd_bin, "pd1", O_RDONLY), <, 0);
     g_assert_cmpint(errno, ==, ENOENT);
 
 #ifdef HAVE_OPENAT64
@@ -1150,6 +1180,8 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     close(dirfd_root);
     close(dirfd_bin);
+    close(dirfd_dev);
+    close(dirfd_sys);
 
     /* stat */
     g_assert_cmpint(stat ("/sys/bus/pci/devices", &st), ==, 0);
