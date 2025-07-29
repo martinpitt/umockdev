@@ -18,6 +18,12 @@ trap '[ \$? -eq 0 ] || exit 1' EXIT
 
 dnf -y update
 
+if [ -n "${SYSTEMD_MAIN:-}" ]; then
+    . /etc/os-release
+    dnf config-manager addrepo --from-repofile="https://download.opensuse.org/repositories/system:systemd/Fedora_\${VERSION_ID}/system:systemd.repo"
+    dnf -y update --repo=system_systemd --setopt=install_weak_deps=False
+fi
+
 if grep -q ID=.*centos /etc/os-release; then
     repos=--enablerepo=crb
     packages=""
