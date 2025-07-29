@@ -1314,6 +1314,22 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, UNUSED_DATA)
         g_assert(strstr(out, "Canon, Inc. PowerShot SX200 IS"));
 }
 
+#define assert_dev_zero_stat(st) \
+{ \
+    g_assert_cmpint((st)->st_uid, ==, uid); \
+    g_assert(S_ISCHR((st)->st_mode)); \
+    g_assert_cmpint((st)->st_rdev, ==, 0); \
+}
+
+#define assert_dev_zero_fstat(fd) \
+{ \
+    GStatBuf st_macro; \
+    g_assert_cmpint((fd), >, 0); \
+    g_assert_cmpint(fstat((fd), &st_macro), ==, 0); /* we don't set any dev= */ \
+    close(fd); \
+    assert_dev_zero_stat(&st_macro); \
+}
+
 static void
 t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
@@ -1348,16 +1364,13 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     /* now /dev/zero should be the mocked one */
     g_assert_cmpint(g_open("/dev/wishyouwerehere", O_RDONLY, 0), ==, -1);
     g_assert_cmpint(errno, ==, ENOENT);
+
     g_assert_cmpint(g_stat("/dev/zero", &st), ==, 0);
-    g_assert_cmpuint(st.st_uid, ==, uid);
-    g_assert(S_ISCHR(st.st_mode));
-    g_assert_cmpint(st.st_rdev, ==, 0);	/* we did not set anything */
+    assert_dev_zero_stat(&st);
 
     memset(&st, 42, sizeof st);
     g_assert_cmpint(fstatat(AT_FDCWD, "/dev/zero", &st, 0), ==, 0);
-    g_assert_cmpuint(st.st_uid, ==, uid);
-    g_assert(S_ISCHR(st.st_mode));
-    g_assert_cmpint(st.st_rdev, ==, 0);	/* we did not set anything */
+    assert_dev_zero_stat(&st);
 
 #ifdef __GLIBC__
     struct statx stx;
@@ -1434,6 +1447,24 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     } else {
         g_printf("(Skipping O_TMPFILE test, not supported on this kernel: %m) ");
     }
+
+    /* fstat() via standard open() */
+    fd = g_open("/dev/zero", O_RDONLY, 0);
+    assert_dev_zero_fstat(fd);
+
+    /* fstat() via openat() */
+    int dirfd = g_open("/dev", O_RDONLY, 0);
+    g_assert_cmpint(dirfd, >, 0);
+    fd = openat(dirfd, "zero", O_RDONLY, 0);
+    close(dirfd);
+    assert_dev_zero_fstat(fd);
+
+    /* fstat() on duplicated fd */
+    int fd1 = g_open("/dev/zero", O_RDONLY, 0);
+    int fd2 = dup(fd1);
+    g_assert_cmpint(fd1, !=, fd2);
+    assert_dev_zero_fstat(fd1);
+    assert_dev_zero_fstat(fd2);
 }
 
 static void
@@ -1453,6 +1484,14 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA
 
     g_assert_cmpint(umockdev_testbed_get_dev_fd(fixture->testbed, "/dev/empty"), >, 0);
     g_assert_cmpint(g_stat("/dev/empty", &st), ==, 0);
+    g_assert(S_ISCHR(st.st_mode));
+    g_assert_cmpint(st.st_rdev, ==, makedev(1, 3));
+
+    /* fstat() should also work */
+    int fd = g_open("/dev/empty", O_RDONLY, 0);
+    g_assert_cmpint(fd, >, 0);
+    g_assert_cmpint(fstat(fd, &st), ==, 0);
+    close(fd);
     g_assert(S_ISCHR(st.st_mode));
     g_assert_cmpint(st.st_rdev, ==, makedev(1, 3));
 
@@ -1507,7 +1546,10 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
     /* N: without value should create an empty dev */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
 					      "P: /devices/empty\n"
-					      "N: empty\n" "E: SUBSYSTEM=block\n" "E: DEVNAME=/dev/empty\n", &error));
+					      "A: dev=5:4\n"
+					      "N: empty\n"
+					      "E: SUBSYSTEM=block\n"
+					      "E: DEVNAME=/dev/empty\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/empty", &contents, &length, &error));
@@ -1522,6 +1564,14 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
     g_assert_cmpint(fstatat(AT_FDCWD, "/dev/empty", &st, 0), ==, 0);
     g_assert_cmpuint(st.st_uid, ==, getuid());
     g_assert(S_ISBLK(st.st_mode));
+
+    /* fstat() should also work */
+    int fd = g_open("/dev/empty", O_RDONLY, 0);
+    g_assert_cmpint(fd, >, 0);
+    g_assert_cmpint(fstat(fd, &st), ==, 0);
+    close(fd);
+    g_assert(S_ISBLK(st.st_mode));
+    g_assert(st.st_rdev == makedev(5, 4));
 
 #ifdef __GLIBC__
     struct statx stx;
