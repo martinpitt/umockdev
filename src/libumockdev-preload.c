@@ -342,7 +342,7 @@ is_emulated_device(const char *path, const mode_t st_mode)
     return !S_ISDIR(st_mode);
 }
 
-/* dirfd helper (openat family): intercept opening /sys from the root dir */
+/* dirfd helper (openat family): intercept opening /dev and /sys from the root dir */
 static const char *
 resolve_dirfd_path(int dirfd, const char *pathname)
 {
@@ -350,7 +350,8 @@ resolve_dirfd_path(int dirfd, const char *pathname)
     const char *p = NULL;
     int trapped = 0;
 
-    if (strncmp(pathname, "sys", 3) == 0 && (pathname[3] == '/' || pathname[3] == '\0')) {
+    if ((strncmp(pathname, "sys", 3) == 0 || strncmp(pathname, "dev", 3) == 0) &&
+        (pathname[3] == '/' || pathname[3] == '\0')) {
         static char buf[PATH_MAX], link[PATH_MAX];
         snprintf(buf, sizeof(buf), "/proc/self/fd/%d", dirfd);
         if (_readlink(buf, link, sizeof(link)) == 1 && link[0] == '/') {
