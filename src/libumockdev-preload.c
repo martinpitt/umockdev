@@ -141,9 +141,10 @@ dev_of_fd(int fd)
 {
     struct stat st;
     int ret, orig_errno;
+    libc_func(fstat, int, int, struct stat*);
 
     orig_errno = errno;
-    ret = fstat(fd, &st);
+    ret = _fstat(fd, &st);
     errno = orig_errno;
     if (ret < 0)
 	return 0;
@@ -382,21 +383,29 @@ static bool is_dir_or_contained(const char *path, const char *dir, const char *s
 	    (path[dir_len + subdir_len] == '\0' || path[dir_len + subdir_len] == '/'));
 }
 
-static bool is_fd_in_mock(int fd, const char *subdir)
+static bool get_fd_path(int fd, char *path_out, size_t path_size)
 {
     static char fdpath[PATH_MAX];
-    static char linkpath[PATH_MAX];
     libc_func(readlink, ssize_t, const char*, char *, size_t);
 
     snprintf(fdpath, sizeof fdpath, "/proc/self/fd/%i", fd);
     int orig_errno = errno;
-    ssize_t linklen = _readlink(fdpath, linkpath, sizeof linkpath);
+    ssize_t linklen = _readlink(fdpath, path_out, path_size);
     errno = orig_errno;
-    if (linklen < 0 || linklen >= sizeof linkpath) {
+    if (linklen < 0 || linklen >= (ssize_t)path_size)
+        return false;
+    path_out[linklen] = '\0';
+    return true;
+}
+
+static bool is_fd_in_mock(int fd, const char *subdir)
+{
+    static char linkpath[PATH_MAX];
+
+    if (!get_fd_path(fd, linkpath, sizeof linkpath)) {
 	perror("umockdev: failed to map fd to a path");
 	return false;
     }
-    linkpath[linklen] = '\0';
 
     return is_dir_or_contained(linkpath, getenv("UMOCKDEV_DIR"), subdir);
 }
@@ -579,6 +588,40 @@ struct ioctl_fd_info {
     bool is_emulated;
     pthread_mutex_t sock_lock;
 };
+
+/* Helper to adjust fstat results for emulated devices */
+static void
+fstat_adjust_emulated_device(int fd, mode_t *st_mode, dev_t *st_rdev)
+{
+    /* Check if this fd is for an emulated device using the ioctl tracking system */
+    struct ioctl_fd_info *fdinfo;
+    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo) && fdinfo->is_emulated) {
+        DBG(DBG_PATH, "fstat(%i): adjusting emulated device %s\n", fd, fdinfo->dev_path);
+        adjust_emulated_device_mode_rdev(fdinfo->dev_path, st_mode, st_rdev);
+        return;
+    }
+
+        /* Check if this untracked fd points to an emulated device in the mock testbed */
+    if (is_fd_in_mock(fd, "/dev")) {
+        static char linkpath[PATH_MAX];
+
+        if (get_fd_path(fd, linkpath, sizeof linkpath)) {
+            /* Extract the /dev/... part from the mock path */
+            const char *umockdev_dir = getenv("UMOCKDEV_DIR");
+            if (umockdev_dir) {
+                size_t prefix_len = strlen(umockdev_dir);
+                if (strncmp(linkpath, umockdev_dir, prefix_len) == 0 &&
+                    strncmp(linkpath + prefix_len, "/dev/", 5) == 0) {
+                    const char *dev_path = linkpath + prefix_len;
+                    if (is_emulated_device(linkpath, *st_mode)) {
+                        DBG(DBG_PATH, "fstat(%i): adjusting untracked emulated device %s\n", fd, dev_path);
+                        adjust_emulated_device_mode_rdev(dev_path, st_mode, st_rdev);
+                    }
+                }
+            }
+        }
+    }
+}
 
 static void
 ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
@@ -1342,7 +1385,7 @@ int prefix ## fstatat ## suffix (int dirfd, const char *path, struct stat ## suf
     libc_func(prefix ## fstatat ## suffix, int, int, const char*, struct stat ## suffix *, int); \
     int ret;									\
     TRAP_PATH_LOCK;								\
-    p = trap_path(path);							\
+    p = resolve_dirfd_path(dirfd, path);					\
     if (p == NULL) {								\
 	TRAP_PATH_UNLOCK;							\
 	return -1;								\
@@ -1387,7 +1430,7 @@ int prefix ## fxstatat ## suffix (int ver, int dirfd, const char *path, struct s
     libc_func(prefix ## fxstatat ## suffix, int, int, int, const char*, struct stat ## suffix *, int); \
     int ret;									\
     TRAP_PATH_LOCK;								\
-    p = trap_path(path);							\
+    p = resolve_dirfd_path(dirfd, path);					\
     if (p == NULL) {								\
 	TRAP_PATH_UNLOCK;							\
 	return -1;								\
@@ -1399,6 +1442,18 @@ int prefix ## fxstatat ## suffix (int ver, int dirfd, const char *path, struct s
     return ret;									\
 }
 
+/* wrapper template for fstat family */
+#define WRAP_FSTAT(prefix, suffix) \
+extern int prefix ## fstat ## suffix (int fd, struct stat ## suffix *st); \
+int prefix ## fstat ## suffix (int fd, struct stat ## suffix *st) \
+{ \
+    libc_func(prefix ## fstat ## suffix, int, int, struct stat ## suffix *); \
+    int ret = _ ## prefix ## fstat ## suffix(fd, st); \
+    if (ret == 0) { \
+        fstat_adjust_emulated_device(fd, &st->st_mode, &st->st_rdev); \
+    } \
+    return ret; \
+}
 /* wrapper template for open family */
 #define WRAP_OPEN(prefix, suffix) \
 int prefix ## open ## suffix (const char *path, int flags, ...)	    \
@@ -1486,11 +1541,13 @@ WRAP_2ARGS(int, -1, access, int);
 WRAP_STAT(,);
 WRAP_STAT(l,);
 WRAP_FSTATAT(,);
+WRAP_FSTAT(,);
 
 #ifdef __GLIBC__
 WRAP_STAT(,64);
 WRAP_STAT(l,64);
 WRAP_FSTATAT(,64);
+WRAP_FSTAT(,64);
 WRAP_FOPEN(,64);
 #if defined(__USE_FILE_OFFSET64) && defined(__USE_TIME64_REDIRECTS)
 #define stat64_time64 stat64
