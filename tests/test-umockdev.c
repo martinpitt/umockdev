@@ -1062,7 +1062,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     GError *error = NULL;
     char *path;
     char pathbuf[PATH_MAX];
-    int dirfd, fd;
+    int fd;
     struct stat st;
     uid_t uid = getuid();
 
@@ -1113,41 +1113,43 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* openat */
 
+    int dirfd_root = open("/", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd_root, >=, 0);
+    int dirfd_bin = open("/bin", O_RDONLY | O_DIRECTORY);
+    g_assert_cmpint(dirfd_bin, >=, 0);
+
     /* sys/ in root dir should be trapped */
-    dirfd = open("/", O_RDONLY | O_DIRECTORY);
-    g_assert_cmpint(dirfd, >=, 0);
-    fd = openat(dirfd, "sys/devices/dev1/simple_attr", O_RDONLY);
+    fd = openat(dirfd_root, "sys/devices/dev1/simple_attr", O_RDONLY);
     if (fd < 0)
         perror("openat");
     g_assert_cmpint(fd, >=, 0);
     close(fd);
 
 #ifdef HAVE_OPENAT64
-    fd = openat64(dirfd, "sys/devices/dev1/simple_attr", O_RDONLY);
+    fd = openat64(dirfd_root, "sys/devices/dev1/simple_attr", O_RDONLY);
     if (fd < 0)
         perror("openat64");
     g_assert_cmpint(fd, >=, 0);
     close(fd);
 #endif
 
-    close(dirfd);
-
     /* sys/ in other dir should not be trapped */
-    dirfd = open("/bin", O_RDONLY | O_DIRECTORY);
-    g_assert_cmpint(dirfd, >=, 0);
     errno = 0;
-    g_assert_cmpint(openat(dirfd, "sys", O_RDONLY), <, 0);
+    g_assert_cmpint(openat(dirfd_bin, "sys", O_RDONLY), <, 0);
     g_assert_cmpint(errno, ==, ENOENT);
 
 #ifdef HAVE_OPENAT64
-    g_assert_cmpint(openat64(dirfd, "sys", O_RDONLY), <, 0);
-    close(dirfd);
+    g_assert_cmpint(openat64(dirfd_bin, "sys", O_RDONLY), <, 0);
 
     errno = 0;
     g_assert_cmpint(openat(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
     g_assert_cmpint(errno, ==, ENOENT);
     g_assert_cmpint(openat64(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
 #endif
+
+
+    close(dirfd_root);
+    close(dirfd_bin);
 
     /* stat */
     g_assert_cmpint(stat ("/sys/bus/pci/devices", &st), ==, 0);
@@ -1194,7 +1196,7 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(S_ISDIR(stx.stx_mode));
 
     struct statfs buf;
-    dirfd = open("/sys", O_RDONLY | O_DIRECTORY);
+    int dirfd = open("/sys", O_RDONLY | O_DIRECTORY);
     g_assert_cmpint(dirfd, >=, 0);
     g_assert_cmpint(fstatfs(dirfd, &buf), ==, 0);
     g_assert_cmpint(buf.f_type, ==, SYSFS_MAGIC);
