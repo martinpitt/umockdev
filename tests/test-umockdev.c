@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/sysmacros.h>
 #include <sys/un.h>
@@ -1177,6 +1178,33 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert_cmpint(openat64(AT_FDCWD, "sys/devices", O_RDONLY), <, 0);
 #endif
 
+#if defined(__GLIBC__) && defined(HAVE_OPEN_TREE)
+    /* open_tree */
+
+    /* sys/ in root dir should be trapped */
+    fd = open_tree(dirfd_root, "sys/devices/dev1/simple_attr", O_RDONLY);
+    if (fd < 0 && errno == ENOSYS) {
+        /* can happen under valgrind or old kernels */
+        g_printf("SKIP: open_tree() not available\n");
+    } else {
+        if (fd < 0)
+            perror("openat");
+        g_assert_cmpint(fd, >=, 0);
+        close(fd);
+
+        /* dev/ in root dir should be trapped */
+        fd = open_tree(dirfd_root, "dev/pd1", O_RDONLY);
+        if (fd < 0)
+            perror("openat");
+        g_assert_cmpint(fd, >=, 0);
+        close(fd);
+
+        /* sys/ in other dir should not be trapped */
+        errno = 0;
+        g_assert_cmpint(open_tree(dirfd_bin, "sys", O_RDONLY), <, 0);
+        g_assert_cmpint(errno, ==, ENOENT);
+    }
+#endif
 
     close(dirfd_root);
     close(dirfd_bin);

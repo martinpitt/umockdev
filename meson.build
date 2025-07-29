@@ -70,6 +70,11 @@ if cc.has_function('openat64', prefix: '#include <fcntl.h>')
   add_project_arguments('-DHAVE_OPENAT64', language: 'c')
 endif
 
+# glibc 2.36
+if cc.has_function('open_tree', prefix: '#include <sys/mount.h>')
+  add_project_arguments('-DHAVE_OPEN_TREE', language: 'c')
+endif
+
 meson.add_dist_script(srcdir / 'getversion.sh')
 
 #

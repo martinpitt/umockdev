@@ -65,6 +65,7 @@ extern int __REDIRECT_NTH (__ttyname_r_alias, (int __fd, char *__buf,
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <sys/inotify.h>
+#include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/vfs.h>
 #include <sys/xattr.h>
@@ -1687,6 +1688,27 @@ WRAP_OPENAT(,);
 WRAP_OPEN(, 64);
 WRAP_OPEN2(__,64_2);
 WRAP_OPENAT(, 64);
+#endif
+
+#if defined(__GLIBC__) && defined(HAVE_OPEN_TREE)
+int
+open_tree(int dfd, const char *filename, unsigned int flags)
+{
+    const char *p;
+    libc_func(open_tree, int, int, const char *, unsigned int);
+    int ret;
+
+    TRAP_PATH_LOCK;
+    p = resolve_dirfd_path(dfd, filename);
+    if (p == NULL) {
+        TRAP_PATH_UNLOCK;
+        return -1;
+    }
+    DBG(DBG_PATH, "testbed wrapped open_tree(%i, %s) -> %s\n", dfd, filename, p);
+    ret = _open_tree(dfd, p, flags);
+    TRAP_PATH_UNLOCK;
+    return ret;
+}
 #endif
 
 int
