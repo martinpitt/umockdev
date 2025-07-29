@@ -342,6 +342,32 @@ is_emulated_device(const char *path, const mode_t st_mode)
     return !S_ISDIR(st_mode);
 }
 
+/* dirfd helper (openat family): intercept opening /sys from the root dir */
+static const char *
+resolve_dirfd_path(int dirfd, const char *pathname)
+{
+    libc_func(readlink, ssize_t, const char*, char *, size_t);
+    const char *p = NULL;
+    int trapped = 0;
+
+    if (strncmp(pathname, "sys", 3) == 0 && (pathname[3] == '/' || pathname[3] == '\0')) {
+        static char buf[PATH_MAX], link[PATH_MAX];
+        snprintf(buf, sizeof(buf), "/proc/self/fd/%d", dirfd);
+        if (_readlink(buf, link, sizeof(link)) == 1 && link[0] == '/') {
+            trapped = 1;
+            strncpy(link + 1, pathname, sizeof(link) - 2);
+            link[sizeof(link) - 1] = 0;
+            p = trap_path(link);
+        }
+    }
+
+    if (!trapped)
+        p = trap_path(pathname);
+
+    return p;
+}
+
+
 /********************************
  *
  * fd -> pointer map
@@ -1570,29 +1596,15 @@ int __open64_2(const char *path, int flags);
 WRAP_OPEN(,);
 WRAP_OPEN2(__,_2);
 
-/* wrapper template for openat family; intercept opening /sys from the root dir */
+/* wrapper template for openat family */
 #define WRAP_OPENAT(prefix, suffix) \
 int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)		\
 { \
     const char *p = NULL;									\
     libc_func(prefix ## openat ## suffix, int, int, const char *, int, ...);			\
-    libc_func(readlink, ssize_t, const char*, char *, size_t);					\
-    int trapped = 0, ret;									\
+    int ret;											\
     TRAP_PATH_LOCK;										\
-  \
-    if (strncmp(pathname, "sys", 3) == 0 && (pathname[3] == '/' || pathname[3] == '\0')) {	\
-        static char buf[PATH_MAX],link[PATH_MAX];						\
-        snprintf(buf, sizeof(buf), "/proc/self/fd/%d", dirfd);					\
-        if (_readlink(buf, link, sizeof(link)) == 1 && link[0] == '/') {			\
-            trapped = 1;									\
-            strncpy(link + 1, pathname, sizeof(link) - 2);					\
-            buf[sizeof(link) - 1] = 0;								\
-            p = trap_path(link);								\
-        } \
-    } \
-  \
-    if (!trapped)										\
-        p = trap_path(pathname);								\
+    p = resolve_dirfd_path(dirfd, pathname);							\
     if (p == NULL) { TRAP_PATH_UNLOCK; return -1; }						\
     DBG(DBG_PATH, "testbed wrapped " #prefix "openat" #suffix "(%s) -> %s\n", pathname, p);	\
     if (flags & (O_CREAT | O_TMPFILE)) {							\
