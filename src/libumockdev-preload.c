@@ -401,6 +401,21 @@ static bool is_fd_in_mock(int fd, const char *subdir)
     return is_dir_or_contained(linkpath, getenv("UMOCKDEV_DIR"), subdir);
 }
 
+/* Helper to adjust stat for known emulated devices */
+static inline void
+adjust_emulated_device_mode_rdev(const char *dev_path, mode_t *st_mode, dev_t *st_rdev)
+{
+    *st_mode &= ~S_IFREG;
+    if (*st_mode & S_ISVTX) {
+        *st_mode = S_IFBLK | (*st_mode & ~S_IFMT);
+        DBG(DBG_PATH, "  %s is an emulated block device\n", dev_path);
+    } else {
+        *st_mode = S_IFCHR | (*st_mode & ~S_IFMT);
+        DBG(DBG_PATH, "  %s is an emulated char device\n", dev_path);
+    }
+    *st_rdev = get_rdev(dev_path + 5);
+}
+
 /********************************
  *
  * fd -> pointer map
@@ -1289,18 +1304,9 @@ rettype name(const char *path, arg2t arg2, arg3t arg3, arg4t arg4) \
 }
 
 #define STAT_ADJUST_MODE \
-    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0			\
-	&& is_emulated_device(p, st->st_mode)) {				\
-	st->st_mode &= ~S_IFREG;						\
-	if (st->st_mode & S_ISVTX) {						\
-            st->st_mode = S_IFBLK | (st->st_mode & ~S_IFMT);			\
-	    DBG(DBG_PATH, "  %s is an emulated block device\n", path);		\
-	} else {								\
-            st->st_mode = S_IFCHR | (st->st_mode & ~S_IFMT);			\
-	    DBG(DBG_PATH, "  %s is an emulated char device\n", path);		\
-	}									\
-	st->st_rdev = get_rdev(path + 5);					\
-    }										\
+    if (ret == 0 && p != path && strncmp(path, "/dev/", 5) == 0 \
+	    && is_emulated_device(p, st->st_mode)) \
+        adjust_emulated_device_mode_rdev(path, &st->st_mode, &st->st_rdev);
 
 /* wrapper template for stat family; note that we abuse the sticky bit in
  * the emulated /dev to indicate a block device (the sticky bit has no
@@ -1392,7 +1398,6 @@ int prefix ## fxstatat ## suffix (int ver, int dirfd, const char *path, struct s
     STAT_ADJUST_MODE;                                                           \
     return ret;									\
 }
-
 
 /* wrapper template for open family */
 #define WRAP_OPEN(prefix, suffix) \
@@ -1528,21 +1533,20 @@ int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct stat
 
     if (r == 0 && p != pathname && strncmp(pathname, "/dev/", 5) == 0
             && is_emulated_device(p, stx->stx_mode)) {
-        if (stx->stx_mode & S_ISVTX) {
-            stx->stx_mode = S_IFBLK | (stx->stx_mode & ~S_IFMT);
-            DBG(DBG_PATH, "  %s is an emulated block device (statx)\n", pathname);
-        } else {
-            stx->stx_mode = S_IFCHR | (stx->stx_mode & ~S_IFMT);
-            DBG(DBG_PATH, "  %s is an emulated char device (statx)\n", pathname);
-        }
-	unsigned maj, min;
-	if (get_rdev_maj_min(pathname + 5, &maj, &min)) {
-	    stx->stx_rdev_major = maj;
-	    stx->stx_rdev_minor = min;
-	} else {
-	    stx->stx_rdev_major = stx->stx_rdev_minor = 0;
-	}
+        /* Adjust mode using the common helper - need to handle type conversion for statx */
+        mode_t adjusted_mode = stx->stx_mode;
+        dev_t dummy_rdev = 0;
+        adjust_emulated_device_mode_rdev(pathname, &adjusted_mode, &dummy_rdev);
+        stx->stx_mode = adjusted_mode;
 
+        /* Handle statx-specific rdev fields */
+        unsigned maj, min;
+        if (get_rdev_maj_min(pathname + 5, &maj, &min)) {
+            stx->stx_rdev_major = maj;
+            stx->stx_rdev_minor = min;
+        } else {
+            stx->stx_rdev_major = stx->stx_rdev_minor = 0;
+        }
     }
     return r;
 }
