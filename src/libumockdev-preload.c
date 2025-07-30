@@ -368,6 +368,38 @@ resolve_dirfd_path(int dirfd, const char *pathname)
     return p;
 }
 
+static bool is_dir_or_contained(const char *path, const char *dir, const char *subdir)
+{
+    if (!path || !dir)
+	return false;
+
+    const ssize_t subdir_len = strlen(subdir);
+    const size_t dir_len = strlen(dir);
+
+    return (dir_len + subdir_len <= strlen(path) &&
+	    strncmp(path, dir, dir_len) == 0 &&
+	    strncmp(path + dir_len, subdir, subdir_len) == 0 &&
+	    (path[dir_len + subdir_len] == '\0' || path[dir_len + subdir_len] == '/'));
+}
+
+static bool is_fd_in_mock(int fd, const char *subdir)
+{
+    static char fdpath[PATH_MAX];
+    static char linkpath[PATH_MAX];
+    libc_func(readlink, ssize_t, const char*, char *, size_t);
+
+    snprintf(fdpath, sizeof fdpath, "/proc/self/fd/%i", fd);
+    int orig_errno = errno;
+    ssize_t linklen = _readlink(fdpath, linkpath, sizeof linkpath);
+    errno = orig_errno;
+    if (linklen < 0 || linklen >= sizeof linkpath) {
+	perror("umockdev: failed to map fd to a path");
+	return false;
+    }
+    linkpath[linklen] = '\0';
+
+    return is_dir_or_contained(linkpath, getenv("UMOCKDEV_DIR"), subdir);
+}
 
 /********************************
  *
@@ -1516,39 +1548,6 @@ int statx(int dirfd, const char *pathname, int flags, unsigned mask, struct stat
 }
 
 #endif /* __GLIBC__ */
-
-static bool is_dir_or_contained(const char *path, const char *dir, const char *subdir)
-{
-    if (!path || !dir)
-	return false;
-
-    const ssize_t subdir_len = strlen(subdir);
-    const size_t dir_len = strlen(dir);
-
-    return (dir_len + subdir_len <= strlen(path) &&
-	    strncmp(path, dir, dir_len) == 0 &&
-	    strncmp(path + dir_len, subdir, subdir_len) == 0 &&
-	    (path[dir_len + subdir_len] == '\0' || path[dir_len + subdir_len] == '/'));
-}
-
-static bool is_fd_in_mock(int fd, const char *subdir)
-{
-    static char fdpath[PATH_MAX];
-    static char linkpath[PATH_MAX];
-    libc_func(readlink, ssize_t, const char*, char *, size_t);
-
-    snprintf(fdpath, sizeof fdpath, "/proc/self/fd/%i", fd);
-    int orig_errno = errno;
-    ssize_t linklen = _readlink(fdpath, linkpath, sizeof linkpath);
-    errno = orig_errno;
-    if (linklen < 0 || linklen >= sizeof linkpath) {
-	perror("umockdev: failed to map fd to a path");
-	return false;
-    }
-    linkpath[linklen] = '\0';
-
-    return is_dir_or_contained(linkpath, getenv("UMOCKDEV_DIR"), subdir);
-}
 
 #define WRAP_FSTATFS(suffix) \
 int fstatfs ## suffix(int fd, struct statfs ## suffix *buf)	\
