@@ -1449,6 +1449,7 @@ extern int prefix ## fstat ## suffix (int fd, struct stat ## suffix *st); \
 int prefix ## fstat ## suffix (int fd, struct stat ## suffix *st) \
 { \
     libc_func(prefix ## fstat ## suffix, int, int, struct stat ## suffix *); \
+    DBG(DBG_PATH, "testbed wrapped " #prefix "fstat" #suffix "(%i)\n", fd); \
     int ret = _ ## prefix ## fstat ## suffix(fd, st); \
     if (ret == 0) { \
         fstat_adjust_emulated_device(fd, &st->st_mode, &st->st_rdev); \
@@ -1554,6 +1555,7 @@ WRAP_FOPEN(,64);
 #define stat64_time64 stat64
 WRAP_STAT(__,64_time64);
 WRAP_STAT(__l,64_time64);
+WRAP_FSTAT(__,64_time64);
 WRAP_FSTATAT(__,64_time64);
 #endif
 #endif
