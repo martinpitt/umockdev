@@ -214,7 +214,7 @@ A: size=1048576\n
 
     // correct type wihtout the internally used sticky bit
     check_program_out("true", "-d " + umockdev_file + " -- stat -c %A /dev/loop23",
-                        "brw-r--r--\n");
+                      "brw-r--r--\n");
 
 #if HAVE_SELINUX
     // we may run on a system without SELinux

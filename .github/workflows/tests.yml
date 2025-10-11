@@ -7,6 +7,8 @@ on:
 jobs:
   OS:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +36,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Clone repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # need this to also fetch tags
           fetch-depth: 0
