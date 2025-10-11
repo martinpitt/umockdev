@@ -417,7 +417,7 @@ adjust_emulated_device_mode_rdev(const char *dev_path, mode_t *st_mode, dev_t *s
 {
     *st_mode &= ~S_IFREG;
     if (*st_mode & S_ISVTX) {
-        *st_mode = S_IFBLK | (*st_mode & ~S_IFMT);
+        *st_mode = S_IFBLK | (*st_mode & ~(S_IFMT | S_ISVTX));
         DBG(DBG_PATH, "  %s is an emulated block device\n", dev_path);
     } else {
         *st_mode = S_IFCHR | (*st_mode & ~S_IFMT);
