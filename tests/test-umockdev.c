@@ -34,6 +34,7 @@
 #include <sys/sysmacros.h>
 #include <sys/un.h>
 #include <sys/vfs.h>
+#include <sys/xattr.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
 #include <linux/magic.h>
@@ -1628,6 +1629,29 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
     g_assert_cmpuint(stx.stx_uid, ==, getuid());
     g_assert(S_ISBLK(stx.stx_mode));
 #endif
+
+    /* listxattr() */
+    char xattr_buf[1024];
+    ssize_t res = listxattr("/dev/empty", xattr_buf, sizeof(xattr_buf));
+    g_assert_cmpint(res, >=, 0);
+
+    res = listxattr("/dev/sdf", xattr_buf, sizeof(xattr_buf));
+    g_assert_cmpint(res, >=, 0);
+
+    res = listxattr("/nonexisting", xattr_buf, sizeof(xattr_buf));
+    g_assert_cmpint(res, ==, -1);
+    g_assert_cmpint(errno, ==, ENOENT);
+
+    /* llistxattr() */
+    res = llistxattr("/dev/empty", xattr_buf, sizeof(xattr_buf));
+    g_assert_cmpint(res, >=, 0);
+
+    res = llistxattr("/dev/sdf", xattr_buf, sizeof(xattr_buf));
+    g_assert_cmpint(res, >=, 0);
+
+    res = listxattr("/nonexisting", xattr_buf, sizeof(xattr_buf));
+    g_assert_cmpint(res, ==, -1);
+    g_assert_cmpint(errno, ==, ENOENT);
 }
 
 static void

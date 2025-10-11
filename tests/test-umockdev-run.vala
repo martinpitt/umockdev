@@ -216,6 +216,18 @@ A: size=1048576\n
     check_program_out("true", "-d " + umockdev_file + " -- stat -c %A /dev/loop23",
                       "brw-r--r--\n");
 
+    // ls end-to-end
+    assert (get_program_out (
+            "udevadm",
+            umockdev_run_command + "-d " + umockdev_file + " -- ls -l /dev/loop23",
+            out sout, out serr, out exit));
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert (sout.contains ("brw-r--r--"));
+    assert (sout.contains ("/dev/loop23"));
+    assert (sout.contains (" 7,"));
+    assert (sout.contains (" 23 "));
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+
 #if HAVE_SELINUX
     // we may run on a system without SELinux
     try {

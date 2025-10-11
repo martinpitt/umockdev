@@ -1565,6 +1565,9 @@ WRAP_3ARGS(ssize_t, -1, readlink, char *, size_t);
 WRAP_4ARGS(ssize_t, -1, getxattr, const char*, void*, size_t);
 WRAP_4ARGS(ssize_t, -1, lgetxattr, const char*, void*, size_t);
 
+WRAP_3ARGS(ssize_t, -1, listxattr, char*, size_t);
+WRAP_3ARGS(ssize_t, -1, llistxattr, char*, size_t);
+
 #ifdef __GLIBC__
 WRAP_VERSTAT(__x,);
 WRAP_VERSTAT(__x, 64);
