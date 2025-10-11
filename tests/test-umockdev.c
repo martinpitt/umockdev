@@ -812,7 +812,7 @@ t_testbed_uevent_error(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     fflush(stderr);
     rewind(stderr);
     g_assert(fgets(buf, sizeof(buf), stderr) != NULL);
-    g_assert_cmpstr(buf, ==, "ERROR: uevent_sender_send: No such device /devices/unknown\n");
+    g_assert_cmpstr(buf, ==, "ERROR: uevent_sender_send: Failed udev_device_new_from_syspath(/devices/unknown): Invalid argument\n");
     fclose(stderr);
     stderr = orig_stderr;
 #endif

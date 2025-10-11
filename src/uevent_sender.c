@@ -235,8 +235,15 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
 
     device = udev_device_new_from_syspath(sender->udev, devpath);
     if (device == NULL) {
-	fprintf(stderr, "ERROR: uevent_sender_send: No such device %s\n", devpath);
-	return;
+        fprintf(stderr, "ERROR: uevent_sender_send: Failed udev_device_new_from_syspath(%s): %m\n", devpath);
+        /* HACK: there's a race condition where libudev might not see the device immediately when multiple
+         * threads are accessing /sys, due to TRAP_PATH_LOCK contention. Retry once. */
+        usleep(100);
+        device = udev_device_new_from_syspath(sender->udev, devpath);
+        if (device == NULL) {
+            fprintf(stderr, "ERROR: uevent_sender_send: Failed udev_device_new_from_syspath(%s) after retry: %m\n", devpath);
+            return;
+        }
     }
 
     subsystem = udev_device_get_subsystem(device);
