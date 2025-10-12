@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <err.h>
 
 #include "debug.h"
 #include "utils.h"
@@ -28,10 +29,8 @@ init_debug(void)
 	    debug_categories |= DBG_IOCTL;
 	else if (strcmp (token, "ioctl-tree") == 0)
 	    debug_categories |= DBG_IOCTL_TREE;
-	else {
-	    fprintf(stderr, "Invalid UMOCKDEV_DEBUG category %s. Valid values are: path netlink ioctl ioctl-tree script all\n", token);
-	    abort();
-	}
+	else
+	    errx(EXIT_FAILURE, "Invalid UMOCKDEV_DEBUG category %s. Valid values are: path netlink ioctl ioctl-tree script all", token);
     }
     free(d_copy);
 }

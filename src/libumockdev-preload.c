@@ -48,6 +48,7 @@ extern int __REDIRECT_NTH (__ttyname_r_alias, (int __fd, char *__buf,
 
 #include <assert.h>
 #include <errno.h>
+#include <err.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <dlfcn.h>
@@ -130,10 +131,8 @@ get_libc_func(const char *f)
     static rettype (*_ ## name) (__VA_ARGS__) = NULL;	\
     if (_ ## name == NULL) {				\
         _ ## name = get_libc_func(#name);		\
-        if (_ ## name == NULL) {			\
-            fprintf(stderr, "umockdev: could not get libc function "#name"\n"); \
-            abort();					\
-        }						\
+        if (_ ## name == NULL)				\
+            errx(EXIT_FAILURE, "umockdev: could not get libc function "#name); \
     }
 
 /* return rdev of a file descriptor */
@@ -303,18 +302,16 @@ parse_dev_t(const char *value, const char *source, int error)
 	char *endptr;
 	major = strtoul(value, &endptr, 10);
 	if (endptr[0] != ':') {
-	    if (error) {
-		fprintf(stderr, "umockdev: $%s (%s) contains no ':'\n", source, value);
-		abort();
-	    } else
+	    if (error)
+		errx(EXIT_FAILURE, "umockdev: $%s (%s) contains no ':'", source, value);
+	    else
 		return (dev_t) -1;
 	}
 	minor = strtoul(endptr + 1, &endptr, 10);
 	if (endptr[0] != '\0') {
-	    if (error) {
-		fprintf(stderr, "umockdev: %s (%s) has invalid minor\n", source, value);
-		abort();
-	    } else
+	    if (error)
+		errx(EXIT_FAILURE, "umockdev: %s (%s) has invalid minor", source, value);
+	    else
 		return (dev_t) -1;
 	}
 	return makedev(major, minor);
@@ -452,8 +449,7 @@ fd_map_add(fd_map * map, int fd, const void *data)
 	}
     }
 
-    fprintf(stderr, "libumockdev-preload fd_map_add(): overflow");
-    abort();
+    errx(EXIT_FAILURE, "libumockdev-preload fd_map_add(): overflow");
 }
 
 static void
@@ -467,8 +463,7 @@ fd_map_remove(fd_map * map, int fd)
 	}
     }
 
-    fprintf(stderr, "libumockdev-preload fd_map_remove(): did not find fd %i", fd);
-    abort();
+    errx(EXIT_FAILURE, "libumockdev-preload fd_map_remove(): did not find fd %i", fd);
 }
 
 static int
@@ -829,27 +824,23 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
 	    }
 
 	    case IOCTL_RES_ABORT:
-		fprintf(stderr, "ERROR: libumockdev-preload: Server requested abort on device %s, exiting\n",
-			fdinfo->dev_path);
-		abort();
+		errx(EXIT_FAILURE, "ERROR: libumockdev-preload: Server requested abort on device %s, exiting",
+		     fdinfo->dev_path);
 
 	    default:
-		fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, unknown command: %ld (res: %d)\n",
-			req.cmd, res);
-		abort();
+		errx(EXIT_FAILURE, "ERROR: libumockdev-preload: Error communicating with ioctl socket, unknown command: %ld (res: %d)",
+		     req.cmd, res);
 	}
     }
 
 con_eof:
-    fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, received EOF\n");
     pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
-    abort();
+    errx(EXIT_FAILURE, "ERROR: libumockdev-preload: Error communicating with ioctl socket, received EOF");
 
 con_err:
-    fprintf(stderr, "ERROR: libumockdev-preload: Error communicating with ioctl socket, errno: %d\n",
-	    errno);
     pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
-    abort();
+    errx(EXIT_FAILURE, "ERROR: libumockdev-preload: Error communicating with ioctl socket, errno: %d",
+	 errno);
 }
 
 /********************************
@@ -896,26 +887,20 @@ init_script_dev_logfile_map(void)
 	    break;
 	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEV_%i", i);
 	devname = getenv(varname);
-	if (devname == NULL) {
-	    fprintf(stderr, "umockdev: $%s not set\n", varname);
-	    exit(1);
-	}
+	if (devname == NULL)
+	    errx(EXIT_FAILURE, "umockdev: $%s not set", varname);
 	snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_FORMAT_%i", i);
 	format = getenv(varname);
-	if (format == NULL) {
-	    fprintf(stderr, "umockdev: $%s not set\n", varname);
-	    exit(1);
-	}
+	if (format == NULL)
+	    errx(EXIT_FAILURE, "umockdev: $%s not set", varname);
 	dev = parse_dev_t(devname, NULL, 0);
 	if (dev != (dev_t) -1) {
 	    /* if it's a dev_t, we should record its path */
 	    const char *devpath;
 	    snprintf(varname, sizeof(varname), "UMOCKDEV_SCRIPT_RECORD_DEVICE_PATH_%i", i);
 	    devpath = getenv(varname);
-	    if (devpath == NULL) {
-		fprintf(stderr, "umockdev: $%s not set\n", varname);
-		exit(1);
-	    }
+	    if (devpath == NULL)
+		errx(EXIT_FAILURE, "umockdev: $%s not set", varname);
 	    DBG(DBG_SCRIPT, "init_script_dev_logfile_map: will record script of device %i:%i into %s\n", major(dev), minor(dev),
 	    logname);
 	    fd_map_add(&script_dev_logfile_map, dev, logname);
@@ -925,15 +910,11 @@ init_script_dev_logfile_map(void)
 		fd_map_add(&script_dev_format_map, dev, (void*) FMT_DEFAULT);
 	    else if (strcmp(format, "evemu") == 0)
 		fd_map_add(&script_dev_format_map, dev, (void*) FMT_EVEMU);
-	    else {
-		fprintf(stderr, "umockdev: unknown device script record format '%s'\n", format);
-		exit(1);
-	    }
+	    else
+		errx(EXIT_FAILURE, "umockdev: unknown device script record format '%s'", format);
 	} else {
-	    if (strcmp(format, "default") != 0) {
-		fprintf(stderr, "umockdev: unknown socket script record format '%s'\n", format);
-		exit(1);
-	    }
+	    if (strcmp(format, "default") != 0)
+		errx(EXIT_FAILURE, "umockdev: unknown socket script record format '%s'", format);
 
 	    /* if it's a path, then we record a socket */
 	    if (script_socket_logfile_len < MAX_SCRIPT_SOCKET_LOGFILE) {
@@ -941,10 +922,8 @@ init_script_dev_logfile_map(void)
 		script_socket_logfile[2*script_socket_logfile_len] = devname;
 		script_socket_logfile[2*script_socket_logfile_len+1] = logname;
 		script_socket_logfile_len++;
-	    } else {
-		fprintf(stderr, "too many script sockets to record\n");
-		abort();
-	    }
+	    } else
+		errx(EXIT_FAILURE, "too many script sockets to record");
 	}
     }
 }
@@ -956,10 +935,8 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
     libc_func(fopen, FILE*, const char *, const char*);
     struct script_record_info *srinfo;
 
-    if (fd_map_get(&script_recorded_fds, fd, NULL)) {
-	fprintf(stderr, "script_start_record: internal error: fd %i is already being recorded\n", fd);
-	abort();
-    }
+    if (fd_map_get(&script_recorded_fds, fd, NULL))
+	errx(EXIT_FAILURE, "script_start_record: internal error: fd %i is already being recorded", fd);
 
     log = _fopen(logname, "a+");
     if (log == NULL) {
@@ -989,10 +966,8 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
 			{
 			    DBG(DBG_SCRIPT, "script_start_record: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
 			    /* We have an existing "d /dev/something" directive, check it matches */
-			    if (strcmp(recording_path, existing_device_path) != 0) {
-				fprintf(stderr, "umockdev: attempt to record two different devices to the same script recording\n");
-				exit(1);
-			    }
+			    if (strcmp(recording_path, existing_device_path) != 0)
+				errx(EXIT_FAILURE, "umockdev: attempt to record two different devices to the same script recording");
 			    free(existing_device_path);
 			}
 			// device specification must be on the first non-comment line
@@ -1004,17 +979,14 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
 			if (sscanf(line, "# device %ms\n", &existing_device_path) == 1) {
 			    DBG(DBG_SCRIPT, "script_start_record evemu format: recording %s, existing device spec in record %s\n", recording_path, existing_device_path);
 			    /* We have an existing "/dev/something" directive, check it matches */
-			    if (strcmp(recording_path, existing_device_path) != 0) {
-				fprintf(stderr, "umockdev: attempt to record two different devices to the same evemu recording\n");
-				exit(1);
-			    }
+			    if (strcmp(recording_path, existing_device_path) != 0)
+				errx(EXIT_FAILURE, "umockdev: attempt to record two different devices to the same evemu recording");
 			    free(existing_device_path);
 			}
 			break;
 
 		    default:
-			fprintf(stderr, "umockdev: unknown script format %i\n", fmt);
-			abort();
+			errx(EXIT_FAILURE, "umockdev: unknown script format %i", fmt);
 		}
 	    }
 
@@ -1035,17 +1007,14 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
 		break;
 
 	    default:
-		fprintf(stderr, "umockdev: unknown script format %i\n", fmt);
-		abort();
+		errx(EXIT_FAILURE, "umockdev: unknown script format %i", fmt);
 	}
     }
 
     srinfo = mallocx(sizeof(struct script_record_info));
     srinfo->log = log;
-    if (clock_gettime(CLOCK_MONOTONIC, &srinfo->time) < 0) {
-	fprintf(stderr, "libumockdev-preload: failed to clock_gettime: %m\n");
-	abort();
-    }
+    if (clock_gettime(CLOCK_MONOTONIC, &srinfo->time) < 0)
+	err(EXIT_FAILURE, "libumockdev-preload: failed to clock_gettime");
     srinfo->op = 0;
     srinfo->fmt = fmt;
     fd_map_add(&script_recorded_fds, fd, srinfo);
@@ -1120,10 +1089,8 @@ update_msec(struct timespec *tm)
 {
     struct timespec now;
     long delta;
-    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
-	fprintf(stderr, "libumockdev-preload: failed to clock_gettime: %m\n");
-	abort();
-    }
+    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0)
+	err(EXIT_FAILURE, "libumockdev-preload: failed to clock_gettime");
     delta = (now.tv_sec - tm->tv_sec) * 1000 + now.tv_nsec / 1000000 - tm->tv_nsec / 1000000;
     assert(delta >= 0);
     *tm = now;
@@ -1180,14 +1147,10 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 	    break;
 
 	case FMT_EVEMU:
-	    if (op != 'r') {
-		fprintf(stderr, "libumockdev-preload: evemu format only supports reads from the device\n");
-		abort();
-	    }
-	    if (size % sizeof(struct input_event) != 0) {
-		fprintf(stderr, "libumockdev-preload: evemu format only supports reading input_event structs\n");
-		abort();
-	    }
+	    if (op != 'r')
+		errx(EXIT_FAILURE, "libumockdev-preload: evemu format only supports reads from the device");
+	    if (size % sizeof(struct input_event) != 0)
+		errx(EXIT_FAILURE, "libumockdev-preload: evemu format only supports reading input_event structs");
 	    const struct input_event *e = buf;
 	    while (size > 0) {
 		fprintf(srinfo->log, "E: %li.%06li %04"PRIX16" %04"PRIX16 " %"PRIi32"\n",
@@ -1198,8 +1161,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 	    break;
 
 	default:
-	    fprintf(stderr, "libumockdev-preload script_record_op(): unsupported format %i\n", srinfo->fmt);
-	    abort();
+	    errx(EXIT_FAILURE, "libumockdev-preload script_record_op(): unsupported format %i", srinfo->fmt);
     }
 
     fflush(srinfo->log);

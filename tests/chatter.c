@@ -24,16 +24,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <err.h>
 
 static void
 writestr (int fd, const char *s)
 {
     int r;
     r = write(fd, s, strlen(s));
-    if (r <= 0) {
-        perror ("write");
-        abort();
-    }
+    if (r <= 0)
+        err(EXIT_FAILURE, "write");
 }
 
 int

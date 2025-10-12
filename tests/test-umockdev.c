@@ -22,6 +22,7 @@
 /* for O_TMPFILE */
 #define _GNU_SOURCE
 
+#include <err.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
@@ -2068,10 +2069,8 @@ r 10 ^@response\n";
   g_assert_cmpint(fd, >=, 0);
   saddr.sun_family = AF_UNIX;
   snprintf(saddr.sun_path, sizeof(saddr.sun_path), "/dev/socket/chatter");
-  if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
-      perror("t_testbed_script_replay_socket_stream() connect");
-      abort();
-  }
+  if (connect(fd, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
+      err(EXIT_FAILURE, "t_testbed_script_replay_socket_stream() connect");
 
   /* should get initial greeting after 200 ms */
   ASSERT_EOF;

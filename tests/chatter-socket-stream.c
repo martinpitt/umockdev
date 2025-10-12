@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <err.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -33,10 +34,8 @@ writestr (int fd, const char *s)
 {
     int r;
     r = write(fd, s, strlen(s));
-    if (r <= 0) {
-        perror ("write");
-        abort();
-    }
+    if (r <= 0)
+        err(EXIT_FAILURE, "write");
 }
 
 int
@@ -47,24 +46,18 @@ main(int argc, char **argv)
     char buf[100];
     int len;
 
-    if (argc != 2) {
-	fprintf(stderr, "Usage: %s socket\n", argv[0]);
-	return 1;
-    }
+    if (argc != 2)
+        errx(EXIT_FAILURE, "Usage: %s socket\n", argv[0]);
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0) {
-        perror("socket");
-        return -1;
-    }
+    if (fd < 0)
+        err(EXIT_FAILURE, "socket");
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, argv[1], sizeof(addr.sun_path)-1);
-    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        perror("connect");
-        return 1;
-    }
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
+        err(EXIT_FAILURE, "connect");
 
     writestr(fd, "What is your name?\n");
     len = read(fd, buf, sizeof(buf) - 1);

@@ -1,22 +1,16 @@
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "utils.h"
 
-static void
-abort_errno (const char *msg)
-{
-  perror (msg);
-  abort ();
-}
-
 void *
 callocx (size_t nmemb, size_t size)
 {
   void *r = calloc (nmemb, size);
   if (r == NULL)
-      abort_errno ("failed to allocate memory");
+      err (EXIT_FAILURE, "callocx: failed to allocate memory");
   return r;
 }
 
@@ -25,7 +19,7 @@ mallocx (size_t size)
 {
   void *r = malloc (size);
   if (r == NULL)
-      abort_errno ("failed to allocate memory");
+      err (EXIT_FAILURE, "mallocx: failed to allocate memory");
   return r;
 }
 
@@ -35,6 +29,6 @@ strdupx (const char *s)
 {
   char *r = strdup (s);
   if (r == NULL)
-    abort_errno ("failed to allocate memory for strdup");
+      err (EXIT_FAILURE, "strdupx: failed to allocate memory");
   return r;
 }

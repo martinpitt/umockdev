@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <errno.h>
+#include <err.h>
 #include <linux/ioctl.h>
 #include <linux/usbdevice_fs.h>
 #include <linux/input.h>
@@ -165,11 +166,9 @@ ioctl_tree_insert(ioctl_tree * tree, ioctl_tree * node)
     }
 
     node->parent = node->type->insertion_parent(tree, node);
-    if (node->parent == NULL) {
-	fprintf(stderr, "ioctl_tree_insert: did not get insertion parent for node type %s ptr %p\n",
-		node->type->name, node);
-	abort();
-    }
+    if (node->parent == NULL)
+	errx(EXIT_FAILURE, "ioctl_tree_insert: did not get insertion parent for node type %s ptr %p",
+	     node->type->name, node);
 
     /* if the parent is the whole tree, then we put it as a sibling, not a
      * child */

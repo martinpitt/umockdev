@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <glob.h>
 #include <errno.h>
+#include <err.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <linux/un.h>
@@ -48,10 +49,8 @@ uevent_sender_open(const char *rootpath)
 
     assert(rootpath != NULL);
     s = calloc(1, sizeof(uevent_sender));
-    if (!s) {
-	perror("uevent_sender_open: cannot allocate struct");
-	abort();
-    }
+    if (!s)
+	err(EXIT_FAILURE, "uevent_sender_open: cannot allocate struct");
     s->rootpath = strdupx(rootpath);
     s->udev = udev_new();
     snprintf(s->socket_glob, sizeof(s->socket_glob), "%s/event[0-9]*", rootpath);
@@ -80,10 +79,8 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
 
     /* create uevent socket */
     fd = socket(AF_UNIX, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
-    if (fd < 0) {
-	perror("sendmsg_one: cannot create socket");
-	abort();
-    }
+    if (fd < 0)
+	err(EXIT_FAILURE, "sendmsg_one: cannot create socket");
 
     ret = connect(fd, (struct sockaddr *)&event_addr, sizeof(event_addr));
     if (ret < 0) {
@@ -93,8 +90,7 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
 	    close(fd);
 	    return;
 	}
-	perror("sendmsg_one: cannot connect to client's event socket");
-	abort();
+	err(EXIT_FAILURE, "sendmsg_one: cannot connect to client's event socket");
     }
 
     const struct msghdr msg = { .msg_name = &event_addr, .msg_iov = iov, .msg_iovlen = iov_len };
@@ -106,8 +102,7 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
 	    close(fd);
 	    return;
 	}
-	perror("uevent_sender sendmsg_one: sendmsg failed");
-	abort();
+	err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed");
     }
     /* printf("passed %zi bytes to event socket %s\n", count, path); */
     close(fd);
@@ -127,11 +122,8 @@ sendmsg_all(uevent_sender * sender, struct iovec *iov, size_t iov_len)
 	    sendmsg_one(iov, iov_len, gl.gl_pathv[i]);
     } else {
 	/* ensure that we only fail due to that, not due to bad globs */
-	if (res != GLOB_NOMATCH) {
-            fprintf(stderr, "ERROR: sendmsg_all: %s glob failed with %i\n",
-                    sender->socket_glob, res);
-	    abort();
-	}
+	if (res != GLOB_NOMATCH)
+	    errx(EXIT_FAILURE, "sendmsg_all: %s glob failed with %i", sender->socket_glob, res);
     }
 
     globfree(&gl);
@@ -217,14 +209,10 @@ append_property(char *array, size_t size, size_t offset, const char *name, const
     int r;
     assert(offset < size);
     r = snprintf(array + offset, size - offset, "%s%s", name, value);
-    if (r < 0) {
-        fprintf(stderr, "ERROR: snprintf failed");
-        abort();
-    }
-    if (r + offset >= size) {
-        fprintf(stderr, "ERROR: uevent_sender_send: Property buffer overflow\n");
-        abort();
-    }
+    if (r < 0)
+        errx(EXIT_FAILURE, "snprintf failed");
+    if (r + offset >= size)
+        errx(EXIT_FAILURE, "uevent_sender_send: Property buffer overflow");
 
     /* include the NUL terminator in the string length, as we need to keep it as a separator between keys */
     return r + 1;
