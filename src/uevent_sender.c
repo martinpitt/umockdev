@@ -94,16 +94,28 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
     }
 
     const struct msghdr msg = { .msg_name = &event_addr, .msg_iov = iov, .msg_iovlen = iov_len };
-    ssize_t count = sendmsg(fd, &msg, 0);
-    if (count < 0) {
+    ssize_t count;
+    int retries;
+    for (retries = 0; retries < 5; ++retries) {
+	count = sendmsg(fd, &msg, 0);
+	if (count >= 0)
+	    break;
 	if (errno == ECONNREFUSED) {
 	    /* client side closed its monitor underneath us, so clean up and ignore */
 	    unlink(event_addr.sun_path);
 	    close(fd);
 	    return;
 	}
+	if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    /* temporary resource shortage, retry after a brief pause */
+	    usleep(1000 * (retries + 1));  /* ms */
+	    continue;
+	}
+	/* other errors are fatal */
 	err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed");
     }
+    if (count < 0)
+	err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed after %d retries", retries);
     /* printf("passed %zi bytes to event socket %s\n", count, path); */
     close(fd);
 }
