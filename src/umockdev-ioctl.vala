@@ -1,5 +1,4 @@
 
-
 namespace UMockdev {
 
 /**
@@ -29,7 +28,6 @@ internal bool signal_accumulator_true_handled(GLib.SignalInvocationHint ihint,
 
     return continue_emission;
 }
-
 
 /**
  * UMockdevIoctlData:
@@ -568,6 +566,9 @@ public class IoctlClient : GLib.Object {
         }
 
         if (!handled && args[0] == 1) {
+            /* No specific handler for this ioctl. First try stateless ioctls
+             * (like USB ioctls), then fall back to executing on the real fd
+             * for terminal ioctls on PTY-backed devices. */
             IoctlTree.Tree tree = null;
             IoctlData? data = null;
             ulong size = IoctlTree.data_size_by_id(_request);
@@ -592,9 +593,16 @@ public class IoctlClient : GLib.Object {
             }
             tree.execute(null, _request, *(void**) _arg.data, out ret);
             my_errno = Posix.errno;
-            Posix.errno = 0;
 
-            if (ret != -1) {
+            /* For termios ioctls (TCGETS, etc.), try executing on the real fd (PTY). */
+            if (ret == -1 && my_errno == Posix.ENOTTY && IoctlTermios.is_termios_ioctl(_request)) {
+                try {
+                    ret = execute(out my_errno);
+                    /* execute() returns errno from real ioctl, which preserves errno on success */
+                } catch (IOError e) {
+                    /* If execute() throws, keep ENOTTY */
+                }
+            } else if (ret != -1) {
                 my_errno = 0;
             }
 

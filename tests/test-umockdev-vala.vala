@@ -279,6 +279,40 @@ E: SUBSYSTEM=usb
   Posix.close (fd);
   Posix.errno = 0;
 
+  // Test that termios ioctls work on an emulated TTY device (backed by a real PTY)
+  tb_add_from_string (tb, """P: /devices/serial/ttyTest
+N: ttyTest
+E: DEVNAME=/dev/ttyTest
+E: SUBSYSTEM=tty
+""");
+
+  fd = Posix.open ("/dev/ttyTest", Posix.O_RDWR | Posix.O_NONBLOCK, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+  Posix.errno = 0;
+  // Use TCGETS - a simple termios ioctl; struct termios is ~60 bytes
+  uint8 tio_data[128] = {0};
+  assert_cmpint (Posix.ioctl (fd, (int) IoctlTermios.get_tcgets_ioctl(), tio_data), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
+
+  // Verify errno is preserved on successful termios ioctl (POSIX behavior)
+  Posix.errno = Posix.EINVAL;  // Set a non-zero errno
+  assert_cmpint (Posix.ioctl (fd, (int) IoctlTermios.get_tcgets_ioctl(), tio_data), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.EINVAL);  // Should be preserved
+
+  // TCGETS with NULL argument fails with expected error
+  Posix.errno = 0;
+  assert_cmpint (Posix.ioctl (fd, (int) IoctlTermios.get_tcgets_ioctl(), null), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.EFAULT);
+
+  // Non-termios ioctl on TTY is not forwarded to underlying PTY
+  Posix.errno = 0;
+  int dummy_val = 0;
+  assert_cmpint (Posix.ioctl (fd, Ioctl.FIONREAD, out dummy_val), CompareOperator.EQ, -1);
+  assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOTTY);
+
+  Posix.close (fd);
+  Posix.errno = 0;
+
   // unknown ioctls do work on non-emulated devices
   fd = Posix.open ("/dev/stdout", Posix.O_WRONLY, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
