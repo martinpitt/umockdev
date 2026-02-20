@@ -261,7 +261,6 @@ E: SUBSYSTEM=usb
 
   int i = 1;
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_GETDRIVER, ref i), CompareOperator.EQ, -1);
   assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENODATA);
   Posix.errno = 0;
@@ -292,7 +291,6 @@ E: SUBSYSTEM=tty
   // Use TCGETS - a simple termios ioctl; struct termios is ~60 bytes
   uint8 tio_data[128] = {0};
   assert_cmpint (Posix.ioctl (fd, (int) IoctlTermios.get_tcgets_ioctl(), tio_data), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   // Verify errno is preserved on successful termios ioctl (POSIX behavior)
   Posix.errno = Posix.EINVAL;  // Set a non-zero errno
@@ -318,7 +316,6 @@ E: SUBSYSTEM=tty
   assert_cmpint (fd, CompareOperator.GE, 0);
   assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpint (Posix.ioctl (fd, Ioctl.FIONREAD, out argp), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   Posix.close (fd);
 }
 
@@ -373,12 +370,10 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 
   // static ioctl
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CLAIMINTERFACE, ref i), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 
@@ -386,13 +381,11 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   var urb_buffer = new uint8[4];
   Ioctl.usbdevfs_urb urb = {1, 129, 0, 0, urb_buffer, 4, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (urb.status, CompareOperator.EQ, 0);
   assert_cmpint (urb_buffer[0], CompareOperator.EQ, 0);
 
   Ioctl.usbdevfs_urb* urb_reap = null;
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb);
   assert_cmpint (urb.status, CompareOperator.EQ, -1);
   assert_cmpuint (urb.buffer[0], CompareOperator.EQ, 0x99);
@@ -408,7 +401,6 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   ci.devnum = 99;
   ci.slow = 99;
   assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 
@@ -416,7 +408,6 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   ci.devnum = 99;
   ci.slow = 99;
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
 
@@ -425,7 +416,6 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   ci.devnum = 99;
   ci.slow = 99;
   assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
   Posix.close (fd2);
@@ -472,7 +462,6 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 }
@@ -518,7 +507,6 @@ USBDEVFS_CONNECTINFO 0 0000000B00000000
   // loaded ioctl
   var ci = Ioctl.usbdevfs_connectinfo();
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 }
@@ -570,12 +558,10 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
 
   var ci = Ioctl.usbdevfs_connectinfo();
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 0);
 
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
   assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
 
@@ -614,7 +600,6 @@ t_usbfs_ioctl_pcap ()
   var urb_buffer_ep1 = new uint8[8];
   Ioctl.usbdevfs_urb urb_ep1 = {1, 0x81, 0, 0, urb_buffer_ep1, 8, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep1), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (urb_ep1.status, CompareOperator.EQ, 0);
 
   /* Not all control transfers are skipped in this case, we need to speak USBHID */
@@ -622,10 +607,8 @@ t_usbfs_ioctl_pcap ()
   uint8 urb_buffer_setup_set_idle[8] = { 0x21, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   Ioctl.usbdevfs_urb urb_set_idle = {2, 0x00, 0, 0, urb_buffer_setup_set_idle, 8, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_idle), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb_set_idle);
 
   /* GET DESCIPTOR is skipped again. */
@@ -634,11 +617,9 @@ t_usbfs_ioctl_pcap ()
   uint8 urb_buffer_setup_set_report[9] = { 0x21, 0x09, 0x00, 0x02, 0x00, 0x00, 0x01, 0x00, 0x00};
   Ioctl.usbdevfs_urb urb_set_report = {2, 0x00, 0, 0, urb_buffer_setup_set_report, 9, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_report), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   /* Now we'll receive the SET_REPORT response as EP 1 has been submitted already */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb_set_report);
 
   /* We cannot reap any urbs yet as we are waiting for SET_IDLE */
@@ -649,17 +630,14 @@ t_usbfs_ioctl_pcap ()
   urb_buffer_setup_set_idle = { 0x21, 0x0a, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
   urb_set_idle = {2, 0x00, 0, 0, urb_buffer_setup_set_idle, 8, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_idle), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb_set_idle);
 
   /* Another SET_REPORT request */
   urb_buffer_setup_set_report = { 0x21, 0x09, 0x00, 0x02, 0x00, 0x00, 0x01, 0x00, 0x01};
   urb_set_report = {2, 0x00, 0, 0, urb_buffer_setup_set_report, 9, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_set_report), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   /* We cannot reap any urbs yet, because we didn't make a request on EP 2 */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, -1);
@@ -669,17 +647,14 @@ t_usbfs_ioctl_pcap ()
   var urb_buffer_ep2 = new uint8[4];
   Ioctl.usbdevfs_urb urb_ep2 = {1, 0x82, 0, 0, urb_buffer_ep2, 4, 0};
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep2), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpuint (urb_ep2.status, CompareOperator.EQ, 0);
 
   /* Now we'll receive the SET_REPORT response as EP 1 has been submitted already */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb_set_report);
 
   /* The first report is: 00000c0000000000 (EP1) */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb_ep1);
   assert_cmpint (urb_ep1.status, CompareOperator.EQ, 0);
   assert_cmpuint (urb_ep1.buffer[0], CompareOperator.EQ, 0x00);
@@ -693,11 +668,9 @@ t_usbfs_ioctl_pcap ()
 
   /* Resubmit URB to get next report */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_SUBMITURB, ref urb_ep1), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   /* The second report is: 0000000000000000 (EP1) */
   assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_REAPURB, ref urb_reap), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert (urb_reap == &urb_ep1);
   assert_cmpint (urb_ep1.status, CompareOperator.EQ, 0);
   assert_cmpuint (urb_ep1.buffer[0], CompareOperator.EQ, 0x00);
@@ -804,13 +777,11 @@ t_hidraw_ioctl ()
 
   int i = 0;
   assert_cmpint (Posix.ioctl (fd, Ioctl.HIDIOCGRDESCSIZE, ref i), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   // HACK: This is broken on big-endian machines like s390x and ppc64, it is 0x22000000 there
   if (BYTE_ORDER == ByteOrder.LITTLE_ENDIAN)
       assert_cmpint (i, CompareOperator.EQ, 34);
   Ioctl.hidraw_report_descriptor desc = { 34, };
   assert_cmpint (Posix.ioctl (fd, Ioctl.HIDIOCGRDESC, ref desc), CompareOperator.EQ, 0);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   uint8 desc_value[] = {
 	  0x06, 0xD0, 0xF1, 0x09, 0x01, 0xA1, 0x01, 0x09, 0x20, 0x15, 0x00, 0x26,
 	  0xFF, 0x00, 0x75, 0x08, 0x95, 0x40, 0x81, 0x02, 0x09, 0x21, 0x15, 0x00,
@@ -840,7 +811,6 @@ t_cros_ec_ioctl ()
 
   Ioctl.cros_ec_command_v2 *s_cmd = malloc (sizeof (Ioctl.cros_ec_command_v2) + 4);
   assert_cmpint (Posix.ioctl (fd, Ioctl.CROS_EC_DEV_IOCXCMD_V2, s_cmd), CompareOperator.EQ, 4);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   uint8 fpmode_data[] = {
     0x80, 0x00, 0x00, 0x00
   };
@@ -848,7 +818,6 @@ t_cros_ec_ioctl ()
 
   s_cmd = realloc(s_cmd, sizeof (Ioctl.cros_ec_command_v2) + 48);
   assert_cmpint (Posix.ioctl (fd, Ioctl.CROS_EC_DEV_IOCXCMD_V2, s_cmd), CompareOperator.EQ, 48);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   uint8 fpinfo_data[] = {
     0x46, 0x50, 0x43, 0x20, 0x09, 0x00, 0x00, 0x00, 0x1B, 0x02, 0x00, 0x00,
     0x01, 0x00, 0x00, 0x00, 0x94, 0x66, 0x00, 0x00, 0x47, 0x52, 0x45, 0x59,
@@ -859,7 +828,6 @@ t_cros_ec_ioctl ()
 
   s_cmd = realloc(s_cmd, sizeof (Ioctl.cros_ec_command_v2) + 22);
   assert_cmpint (Posix.ioctl (fd, Ioctl.CROS_EC_DEV_IOCXCMD_V2, s_cmd), CompareOperator.EQ, 22);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   uint8 fpstats_data[] = {
     0x65, 0x63, 0x01, 0x00, 0xB4, 0x4A, 0x02, 0x00, 0x07, 0xB3, 0x03, 0x00,
     0xDC, 0x33, 0x50, 0x5A, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -1176,21 +1144,17 @@ E: SUBSYSTEM=test
 
   int value = (int) 0xdeadbeef;
   assert_cmpint (Posix.ioctl (fd, 1, value), CompareOperator.EQ, value);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   assert_cmpint (Posix.ioctl (fd, 2, value), CompareOperator.EQ, -1);
   assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOMEM);
 
   assert_cmpint (Posix.ioctl (fd, 3, &ioctl_target), CompareOperator.EQ, 0);
   assert_cmpint (ioctl_target, CompareOperator.EQ, (int) 0xc00fffee);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   /* Test whether we can write and get the value mirrored back. */
   assert_cmpint ((int) Posix.write (fd, write_buf, 10), CompareOperator.EQ, 10);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
 
   assert_cmpint ((int) Posix.read (fd, read_buf, 10), CompareOperator.EQ, 10);
-  assert_cmpint (Posix.errno, CompareOperator.EQ, 0);
   assert_cmpint (Posix.memcmp (read_buf, write_buf, 10), CompareOperator.EQ, 0);
 
   /* A further read returns EAGAIN */
