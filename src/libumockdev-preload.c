@@ -760,7 +760,9 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
 
 	switch (req.cmd) {
 	    case IOCTL_RES_DONE:
-		errno = req.arg2;
+		/* Only set errno on failure (POSIX behavior) */
+		if (req.arg1 == (unsigned long)-1)
+		    errno = req.arg2;
 
 		pthread_mutex_unlock (&fdinfo->sock_lock);
 		pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);

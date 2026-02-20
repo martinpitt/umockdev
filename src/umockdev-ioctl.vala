@@ -586,23 +586,30 @@ public class IoctlClient : GLib.Object {
                 return;
             }
 
+            /* Set default errno for tree.execute if it doesn't set one itself */
             if ((char) type == 'E') {
                 Posix.errno = Posix.ENOENT;
             } else {
                 Posix.errno = Posix.ENOTTY;
             }
-            tree.execute(null, _request, *(void**) _arg.data, out ret);
-            my_errno = Posix.errno;
 
-            /* For termios ioctls (TCGETS, etc.), try executing on the real fd (PTY). */
-            if (ret == -1 && my_errno == Posix.ENOTTY && IoctlTermios.is_termios_ioctl(_request)) {
-                try {
-                    ret = execute(out my_errno);
-                    /* execute() returns errno from real ioctl, which preserves errno on success */
-                } catch (IOError e) {
-                    /* If execute() throws, keep ENOTTY */
+            /* Try handling with ioctl tree (stateless ioctls like USB) */
+            tree.execute(null, _request, *(void**) _arg.data, out ret);
+            my_errno = Posix.errno;  /* Capture errno (may be set by tree.execute) */
+
+            if (ret == -1) {
+                /* tree.execute failed - check if we should forward to real PTY for termios */
+                if (my_errno == Posix.ENOTTY && IoctlTermios.is_termios_ioctl(_request)) {
+                    try {
+                        ret = execute(out my_errno);
+                        /* execute() returns errno from real ioctl on failure,
+                         * or preserved errno on success (POSIX behavior) */
+                    } catch (IOError e) {
+                        /* execute() threw exception - keep ENOTTY */
+                    }
                 }
-            } else if (ret != -1) {
+            } else {
+                /* tree.execute succeeded - errno not used (preload doesn't set it on success) */
                 my_errno = 0;
             }
 
