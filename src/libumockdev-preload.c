@@ -172,6 +172,25 @@ static sigset_t trap_path_sig_restore;
 /* multi-thread locking for ioctls */
 pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static void
+after_fork_in_child(void)
+{
+    ioctl_lock = trap_path_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+}
+
+__attribute__((constructor))
+static void
+on_load(void)
+{
+    int ret;
+
+    ret = pthread_atfork(NULL, NULL, after_fork_in_child);
+    if (ret != 0) {
+        errx(EXIT_FAILURE, "umockdev: pthread_atfork failed: %s",
+             strerror(ret));
+    }
+}
+
 #define TRAP_PATH_LOCK \
     do { \
         sigset_t sig_set; \
