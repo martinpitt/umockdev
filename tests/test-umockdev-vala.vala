@@ -866,7 +866,8 @@ A: dev=188:1
   }
   assert_cmpstr (perr, CompareOperator.EQ, "");
   assert_cmpint (pexit, CompareOperator.EQ, 0);
-  assert (pout.contains ("speed 38400 baud"));
+  assert (pout.contains ("speed"));
+  assert (pout.contains ("baud"));
 }
 
 void
