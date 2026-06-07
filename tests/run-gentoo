@@ -18,13 +18,20 @@ $RUNC run --interactive ${OPTS:-} \
   --volume `pwd`:/source:ro --volume gentooportage:/var/db/repos/gentoo \
   --cap-add=CAP_SYS_ADMIN --cap-add=CAP_NET_ADMIN --cap-add=CAP_SYS_PTRACE \
   docker.io/gentoo/stage3 /bin/sh -eux <<EOF
-echo 'FEATURES="\${FEATURES} binpkg-request-signature"' >> /etc/portage/make.conf
-# install build dependencies
-ACCEPT_KEYWORDS="~*" emerge dev-util/umockdev --with-test-deps --onlydeps --getbinpkg
-# HACK: for some reason not part of build deps any more
-emerge --getbinpkg dev-lang/vala
-# install git, "meson dist" dependency
-emerge --getbinpkg dev-vcs/git
+# noman/noinfo/nodoc: skip documentation, not needed for running tests
+echo 'FEATURES="\${FEATURES} binpkg-request-signature noman noinfo nodoc"' >> /etc/portage/make.conf
+
+# only allow unstable keywords for umockdev itself, to pick up dependency changes;
+# unstable keywords for the whole deptree would miss most binpkgs, which only exist for stable
+echo 'dev-util/umockdev ~*' >> /etc/portage/package.accept_keywords/umockdev
+
+# install build dependencies; umockdev itself is built from source below, but all
+# dependencies are binary packages, so don't pull in their transitive build dependencies
+# (--getbinpkg implies --with-bdeps=n)
+emerge --getbinpkg dev-util/umockdev --with-test-deps --onlydeps
+# --with-bdeps=n misses umockdev's own BDEPEND, so install those explicitly: vala and meson;
+# also git, "meson dist" dependency
+emerge --getbinpkg dev-lang/vala dev-build/meson dev-vcs/git
 
 git config --global safe.directory /source
 
