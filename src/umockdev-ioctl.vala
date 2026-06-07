@@ -189,8 +189,8 @@ public class IoctlData : GLib.Object {
     public bool reload() throws IOError {
         load_data();
 
-        children.resize(0);
-        children_offset.resize(0);
+        children = {};
+        children_offset = {};
 
         return true;
     }
