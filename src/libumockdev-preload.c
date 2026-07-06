@@ -119,8 +119,13 @@ get_libc_func(const char *f)
     void *fp;
     static void *nextlib;
 
-    if (nextlib == NULL)
+    if (nextlib == NULL) {
+#ifdef __alpha
+	nextlib = dlopen("libc.so.6.1", RTLD_LAZY);
+#else
 	nextlib = dlopen("libc.so.6", RTLD_LAZY);
+#endif
+    }
 
     fp = dlsym(nextlib, f);
 
