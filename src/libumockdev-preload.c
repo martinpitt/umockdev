@@ -125,6 +125,8 @@ get_libc_func(const char *f)
 #else
 	nextlib = dlopen("libc.so.6", RTLD_LAZY);
 #endif
+	if (nextlib == NULL)
+	    errx(EXIT_FAILURE, "umockdev: %s", dlerror());
     }
 
     fp = dlsym(nextlib, f);
