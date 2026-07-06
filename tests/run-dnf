@@ -49,7 +49,7 @@ dnf -y \${repos:-} install meson git gcc clang glib2-devel gtk-doc libgudev1-dev
 
 # run build as user
 useradd guest
-su -s /bin/sh - guest << EOG
+runuser -u guest bash << EOG
 set -eux
 git config --global safe.directory /source
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"

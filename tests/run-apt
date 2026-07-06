@@ -42,7 +42,7 @@ fi
 
 # run build as user
 useradd --create-home build
-su -s /bin/sh - build << EOG
+runuser -u build bash << EOG
 set -ex
 git config --global safe.directory /source
 export BRITTLE_TESTS="${BRITTLE_TESTS:-}"
@@ -76,7 +76,7 @@ EOG
 # install and run check-installed; make sure there is nothing on stderr (for Debian/Ubuntu autopkgtests)
 meson install -C /tmp/dbg
 ldconfig
-su -c 'meson test -C /tmp/dbg -v --num-processes=1 --setup installed 2>/tmp/installed-err' - build
+runuser -u build -- meson test -C /tmp/dbg -v --num-processes=1 --setup installed 2>/tmp/installed-err
 if [ -s /tmp/installed-err ]; then
     echo "installed tests have output on stderr:" >&2
     cat /tmp/installed-err >&2
@@ -84,7 +84,7 @@ if [ -s /tmp/installed-err ]; then
 fi
 
 # check build without assertions
-su - build <<EOG
+runuser -u build bash <<EOG
 set -ex
 cd /source
 meson setup /tmp/rel --buildtype release -Db_ndebug=true --prefix /usr -Dgtk_doc=true --werror
