@@ -25,10 +25,19 @@ public struct pkthdr {
     uint32 len;
 }
 
-/* Representing the of ; not a direct copy from the usb.h header */
-[CCode (cname="pcap_usb_header_mmapped", cheader_filename = "pcap/usb.h")]
+/* These come from our own pcap_usb.h rather than from <pcap/usb.h>; see there
+ * for which definition of the USB pseudo-header it picks, and why.
+ */
+[CCode (cname="pcap_4_byte_aligned_uint64", cheader_filename = "pcap_usb.h", has_type_id = false)]
+public struct aligned_uint64 {
+    /* libpcap only grew pcap_4_byte_aligned_uint64_val() in 1.11 */
+    [CCode (cname="umockdev_pcap_uint64_val")]
+    public uint64 val();
+}
+
+[CCode (cname="pcap_usb_header_mmapped", cheader_filename = "pcap_usb.h", has_type_id = false)]
 public struct usb_header_mmapped {
-    uint64 id;
+    aligned_uint64 id;
 
     uint8 event_type;
     uint8 transfer_type;
@@ -38,7 +47,7 @@ public struct usb_header_mmapped {
     uint8 setup_flag;
     uint8 data_flag;
 
-    uint64 ts_sec;
+    aligned_uint64 ts_sec;
 
     uint32 ts_usec;
     int32 status;
@@ -46,12 +55,12 @@ public struct usb_header_mmapped {
     uint32 urb_len;
     uint32 data_len;
 
-    uint64 s; /* Really a union of setup/iso information */
+    aligned_uint64 s; /* Really a union of setup/iso information */
 
     uint32 interval;
     uint32 start_frame;
-    uint32 transfer_flags;
-    uint32 iso_numdesc;
+    uint32 xfer_flags;
+    uint32 ndesc;
 }
 
 }

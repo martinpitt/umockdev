@@ -207,16 +207,16 @@ internal class IoctlUsbPcapHandler : IoctlBase {
             usb_header_mmapped *urb_hdr = (void*) cur_buf;
 
             cur_waiting_since = now;
-            last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+            last_pkt_time_ms = urb_hdr.ts_sec.val() * 1000 + urb_hdr.ts_usec / 1000;
             start_time_ms = last_pkt_time_ms;
         }
 
         for (; cur_buf != null; cur_buf = rec.next(ref cur_hdr), cur_waiting_since = now) {
-            assert(cur_hdr.caplen >= 64);
+            assert(cur_hdr.caplen >= sizeof(usb_header_mmapped));
 
             usb_header_mmapped *urb_hdr = (void*) cur_buf;
 
-            uint64 cur_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+            uint64 cur_pkt_time_ms = urb_hdr.ts_sec.val() * 1000 + urb_hdr.ts_usec / 1000;
 
             /* Discard anything from a different bus/device */
             if (urb_hdr.bus_id != bus || urb_hdr.device_address != device)
@@ -317,10 +317,10 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                     }
 
                     /* Everything matches, mark as submitted */
-                    urb_data.pcap_id = urb_hdr.id;
+                    urb_data.pcap_id = urb_hdr.id.val();
 
                     /* Packet was handled. */
-                    last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+                    last_pkt_time_ms = urb_hdr.ts_sec.val() * 1000 + urb_hdr.ts_usec / 1000;
                     break;
                 }
 
@@ -337,7 +337,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                 for (int i = 0; i < urbs.length; i++) {
                     urb_info = urbs.index(i);
 
-                    if (urb_info.pcap_id == urb_hdr.id) {
+                    if (urb_info.pcap_id == urb_hdr.id.val()) {
                         urb = (Ioctl.usbdevfs_urb*) urb_info.urb_data.data;
                         urbs.remove_index(i);
                         break;
@@ -375,7 +375,7 @@ internal class IoctlUsbPcapHandler : IoctlBase {
                 assert(urb_hdr.start_frame == 0);
                 urb.start_frame = (int) urb_hdr.start_frame;
 
-                last_pkt_time_ms = urb_hdr.ts_sec * 1000 + urb_hdr.ts_usec / 1000;
+                last_pkt_time_ms = urb_hdr.ts_sec.val() * 1000 + urb_hdr.ts_usec / 1000;
 
                 return urb_info;
             }

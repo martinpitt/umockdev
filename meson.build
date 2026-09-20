@@ -99,6 +99,7 @@ libudev = dependency('libudev')
 libpcap = dependency('libpcap')
 # 1.11 fixed 64 bit access alignment on USB headers
 if libpcap.version().version_compare('>= 1.11')
+  add_project_arguments('-DHAVE_PCAP_ALIGNED_USB_HEADER', language: 'c')
   optional_defines += ['--define=HAVE_PCAP_ALIGNED_USB_HEADER']
 endif
 pthread = cc.find_library('pthread', required: true)
