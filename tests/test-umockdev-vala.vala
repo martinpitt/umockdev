@@ -575,12 +575,18 @@ t_usbfs_ioctl_pcap ()
   string device;
   Ioctl.usbdevfs_urb* urb_reap = null;
 
+#if !HAVE_PCAP_ALIGNED_USB_HEADER
+  /* Our recording is little endian, so libpcap has to byte swap it here. Before
+   * 1.11 it did that with 64 bit loads on a record that it only aligns to 4
+   * bytes, which is a SIGBUS on architectures that do not do unaligned access.
+   */
   GLibc.Utsname utsbuf;
   GLibc.uname (out utsbuf);
   if (utsbuf.machine ==  "sparc64") {
-      stdout.printf ("[SKIP pre-recorded pcap does not work on sparc64]\n");
+      stdout.printf ("[SKIP libpcap < 1.11 crashes on big endian strict alignment machines]\n");
       return;
   }
+#endif
 
   /* NOTE: This test is a bit ugly. It wasn't the best idea to use a USB keyboard. */
 

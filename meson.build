@@ -97,6 +97,10 @@ gio = dependency('gio-2.0', version: '>= 2.32.0')
 gio_unix = dependency('gio-unix-2.0', version: '>= 2.32.0')
 libudev = dependency('libudev')
 libpcap = dependency('libpcap')
+# 1.11 fixed 64 bit access alignment on USB headers
+if libpcap.version().version_compare('>= 1.11')
+  optional_defines += ['--define=HAVE_PCAP_ALIGNED_USB_HEADER']
+endif
 pthread = cc.find_library('pthread', required: true)
 gudev = dependency('gudev-1.0', required: false)
 python = find_program('python3', 'python', required: false)
