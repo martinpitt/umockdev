@@ -1197,6 +1197,15 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 }
 
 
+/* Forget everything we track about fd, as it is being closed. */
+static void
+fd_untrack(int fd)
+{
+    netlink_close(fd);
+    ioctl_emulate_close(fd);
+    script_record_close(fd);
+}
+
 /********************************
  *
  * Overridden libc wrappers for pretending that the $UMOCKDEV_DIR test bed is
@@ -1971,9 +1980,7 @@ close(int fd)
 {
     libc_func(close, int, int);
 
-    netlink_close(fd);
-    ioctl_emulate_close(fd);
-    script_record_close(fd);
+    fd_untrack(fd);
 
     return _close(fd);
 }
@@ -1983,11 +1990,8 @@ fclose(FILE * stream)
 {
     libc_func(fclose, int, FILE *);
     int fd = fileno(stream);
-    if (fd >= 0) {
-	netlink_close(fd);
-	ioctl_emulate_close(fd);
-	script_record_close(fd);
-    }
+    if (fd >= 0)
+	fd_untrack(fd);
 
     return _fclose(stream);
 }
