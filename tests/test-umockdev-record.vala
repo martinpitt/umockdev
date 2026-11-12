@@ -456,6 +456,41 @@ t_system_script_log_simple_fopen ()
     checked_remove (log);
 }
 
+/*
+ * umockdev-record --script recording to a file, with "readbyte" reading through
+ * the original fd and a dup()ed copy that outlives it
+ */
+static void
+t_system_script_log_dup ()
+{
+    string sout;
+    string serr;
+    int exit;
+    string log;
+
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
+
+    spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero dup",
+           out sout, out serr, out exit);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    string[] loglines = file_contents (log).split("\n");
+    assert_cmpstr (loglines[0], CompareOperator.EQ, "d 0 /dev/zero");
+
+    // both reads get recorded into the same log; they are on one line unless
+    // they were more than 10 ms apart
+    string data = "";
+    foreach (unowned string line in loglines[1:loglines.length]) {
+        string[] logwords = line.split(" ");
+        assert_cmpuint (logwords.length, CompareOperator.EQ, 3);
+        assert_cmpstr (logwords[0], CompareOperator.EQ, "r");
+        data += logwords[2];
+    }
+    assert_cmpstr (data, CompareOperator.EQ, "^@^@");
+
+    checked_remove (log);
+}
+
 static void
 t_system_script_log_append_same_dev ()
 {
@@ -924,6 +959,7 @@ main (string[] args)
     Test.add_func ("/umockdev-record/ioctl-log-append-dev-mismatch", t_system_ioctl_log_append_dev_mismatch);
     Test.add_func ("/umockdev-record/script-log-simple", t_system_script_log_simple);
     Test.add_func ("/umockdev-record/script-log-simple-fopen", t_system_script_log_simple_fopen);
+    Test.add_func ("/umockdev-record/script-log-dup", t_system_script_log_dup);
     Test.add_func ("/umockdev-record/script-log-append-same-dev", t_system_script_log_append_same_dev);
     Test.add_func ("/umockdev-record/script-log-append-dev-mismatch", t_system_script_log_append_dev_mismatch);
     Test.add_func ("/umockdev-record/script-log-chatter", t_system_script_log_chatter);

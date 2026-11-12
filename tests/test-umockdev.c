@@ -1596,6 +1596,91 @@ t_testbed_fcntl_passthrough(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     close(pipefds[1]);
 }
 
+/* fd refers to the pty backed /dev/input/event0 from t_testbed_dup_emulated_dev */
+static void
+assert_emulated_evdev(int fd)
+{
+    struct stat st;
+    int grab = 1;
+
+    g_assert_cmpint(fd, >=, 0);
+    /* the real pty would fail this with ENOTTY/EINVAL */
+    g_assert_cmpint(ioctl(fd, EVIOCGRAB, &grab), ==, 0);
+    g_assert_cmpint(fstat(fd, &st), ==, 0);
+    g_assert(S_ISCHR(st.st_mode));
+    g_assert_cmpuint(major(st.st_rdev), ==, 13);
+    g_assert_cmpuint(minor(st.st_rdev), ==, 64);
+}
+
+static void
+t_testbed_dup_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    int fd, copy, copy2, target;
+    int pipefds[2];
+    int grab = 1;
+    struct stat st;
+
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+					      "P: /devices/event0\nN: input/event0\n"
+					      "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
+					      "A: dev=13:64\n", NULL));
+
+    fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+    assert_emulated_evdev(fd);
+
+    copy = dup(fd);
+    g_assert_cmpint(copy, !=, fd);
+    assert_emulated_evdev(copy);
+    close(copy);
+
+    copy = fcntl(fd, F_DUPFD, 0);
+    assert_emulated_evdev(copy);
+    g_assert_cmpint(fcntl(copy, F_GETFD), ==, 0);
+    close(copy);
+
+    copy = fcntl(fd, F_DUPFD_CLOEXEC, 100);
+    g_assert_cmpint(copy, >=, 100);
+    assert_emulated_evdev(copy);
+    g_assert_cmpint(fcntl(copy, F_GETFD), ==, FD_CLOEXEC);
+    g_assert_cmpint(fcntl(copy, F_GETFL) & O_NONBLOCK, ==, O_NONBLOCK);
+    close(copy);
+
+    target = g_open("/dev/null", O_RDONLY, 0);
+    g_assert_cmpint(target, >=, 0);
+    g_assert_cmpint(dup2(fd, target), ==, target);
+    assert_emulated_evdev(target);
+    g_assert_cmpint(dup3(fd, target, O_CLOEXEC), ==, target);
+    assert_emulated_evdev(target);
+    g_assert_cmpint(fcntl(target, F_GETFD), ==, FD_CLOEXEC);
+    /* dup2() onto itself must not drop the emulation */
+    g_assert_cmpint(dup2(target, target), ==, target);
+    assert_emulated_evdev(target);
+    /* dup3() onto itself fails, and must not drop the emulation either */
+    errno = 0;
+    g_assert_cmpint(dup3(target, target, O_CLOEXEC), ==, -1);
+    g_assert_cmpint(errno, ==, EINVAL);
+    assert_emulated_evdev(target);
+
+    /* dup2() over an emulated fd drops its emulation */
+    g_assert_cmpint(pipe(pipefds), ==, 0);
+    g_assert_cmpint(dup2(pipefds[0], target), ==, target);
+    g_assert_cmpint(ioctl(target, EVIOCGRAB, &grab), ==, -1);
+    g_assert_cmpint(fstat(target, &st), ==, 0);
+    g_assert(S_ISFIFO(st.st_mode));
+    close(target);
+
+    /* duplicating a duplicate works, and copies outlive the original */
+    copy = dup(fd);
+    copy2 = fcntl(copy, F_DUPFD_CLOEXEC, 3);
+    close(fd);
+    assert_emulated_evdev(copy);
+    close(copy);
+    assert_emulated_evdev(copy2);
+    close(copy2);
+    close(pipefds[0]);
+    close(pipefds[1]);
+}
+
 static void
 t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
@@ -2680,6 +2765,8 @@ main(int argc, char **argv)
 	       t_testbed_ioctl_lock_signal_safety, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/fcntl_passthrough", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/dup_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
