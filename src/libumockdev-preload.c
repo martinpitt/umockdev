@@ -497,18 +497,29 @@ fd_map_add(fd_map * map, int fd, const void *data)
     errx(EXIT_FAILURE, "libumockdev-preload fd_map_add(): overflow");
 }
 
-static void
+/* Several fds can share the same data, e.g. after dup(). Return true if fd was
+ * the last one referring to its data, so that the caller can free it. */
+static bool
 fd_map_remove(fd_map * map, int fd)
 {
+    const void *data = NULL;
     size_t i;
     for (i = 0; i < FD_MAP_MAX; ++i) {
 	if (map->set[i] && map->fd[i] == fd) {
 	    map->set[i] = 0;
-	    return;
+	    data = map->data[i];
+	    break;
 	}
     }
 
-    errx(EXIT_FAILURE, "libumockdev-preload fd_map_remove(): did not find fd %i", fd);
+    if (i == FD_MAP_MAX)
+	errx(EXIT_FAILURE, "libumockdev-preload fd_map_remove(): did not find fd %i", fd);
+
+    for (i = 0; i < FD_MAP_MAX; ++i) {
+	if (map->set[i] && map->data[i] == data)
+	    return false;
+    }
+    return true;
 }
 
 static int
@@ -725,17 +736,15 @@ ioctl_emulate_close(int fd)
 {
     libc_func(close, int, int);
     struct ioctl_fd_info *fdinfo;
-    bool found = false;
+    bool last_ref = false;
     sigset_t sig_restore;
 
     ioctl_lock_block_signals(&sig_restore);
-    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
-	fd_map_remove(&ioctl_wrapped_fds, fd);
-	found = true;
-    }
+    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo))
+	last_ref = fd_map_remove(&ioctl_wrapped_fds, fd);
     ioctl_unlock_restore_signals(&sig_restore);
 
-    if (found) {
+    if (last_ref) {
 	DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
 	if (fdinfo->ioctl_sock >= 0)
 	    _close(fdinfo->ioctl_sock);
@@ -1137,10 +1146,11 @@ script_record_close(int fd)
 
     if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
 	return;
+    if (!fd_map_remove(&script_recorded_fds, fd))
+	return;
     DBG(DBG_SCRIPT, "script_record_close: stop recording fd %i\n", fd);
     _fclose(srinfo->log);
     free(srinfo);
-    fd_map_remove(&script_recorded_fds, fd);
 }
 
 static unsigned long
