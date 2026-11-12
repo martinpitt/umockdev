@@ -1571,6 +1571,31 @@ t_testbed_ioctl_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA
     g_test_trap_assert_passed();
 }
 
+/* fcntl() on fds which are not emulated keeps its native behaviour */
+static void
+t_testbed_fcntl_passthrough(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    int pipefds[2];
+    int flags, copy;
+
+    g_assert_cmpint(pipe(pipefds), ==, 0);
+    flags = fcntl(pipefds[1], F_GETFL);
+    g_assert_cmpint(flags & O_NONBLOCK, ==, 0);
+    g_assert_cmpint(fcntl(pipefds[1], F_SETFL, flags | O_NONBLOCK), ==, 0);
+    g_assert_cmpint(fcntl(pipefds[1], F_GETFL) & O_NONBLOCK, ==, O_NONBLOCK);
+    g_assert_cmpint(fcntl(pipefds[1], F_GETFD), ==, 0);
+    g_assert_cmpint(fcntl(pipefds[1], F_SETFD, FD_CLOEXEC), ==, 0);
+    g_assert_cmpint(fcntl(pipefds[1], F_GETFD), ==, FD_CLOEXEC);
+    copy = fcntl(pipefds[1], F_DUPFD, 200);
+    g_assert_cmpint(copy, >=, 200);
+    g_assert_cmpint(fcntl(copy, F_GETFD), ==, 0);
+    g_assert_cmpint(fcntl(-1, F_GETFD), ==, -1);
+    g_assert_cmpint(errno, ==, EBADF);
+    close(copy);
+    close(pipefds[0]);
+    close(pipefds[1]);
+}
+
 static void
 t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
@@ -2653,6 +2678,8 @@ main(int argc, char **argv)
 	       t_testbed_dev_access, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/ioctl_lock_signal_safety", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_ioctl_lock_signal_safety, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/fcntl_passthrough", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
