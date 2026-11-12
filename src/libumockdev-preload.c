@@ -211,8 +211,27 @@ on_load(void)
         pthread_mutex_unlock (&trap_path_lock); \
     } while (0)
 
+/* Callers must block signals first, so that a signal handler doing I/O on the
+ * same thread cannot deadlock; see ioctl_lock_block_signals() */
 #define IOCTL_LOCK pthread_mutex_lock (&ioctl_lock)
 #define IOCTL_UNLOCK pthread_mutex_unlock (&ioctl_lock)
+
+static void
+ioctl_lock_block_signals(sigset_t *sig_restore)
+{
+    sigset_t sig_set;
+
+    sigfillset(&sig_set);
+    pthread_sigmask(SIG_SETMASK, &sig_set, sig_restore);
+    IOCTL_LOCK;
+}
+
+static void
+ioctl_unlock_restore_signals(const sigset_t *sig_restore)
+{
+    IOCTL_UNLOCK;
+    pthread_sigmask(SIG_SETMASK, sig_restore, NULL);
+}
 
 static size_t trap_path_prefix_len = 0;
 
@@ -655,6 +674,7 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     int ret;
     struct ioctl_fd_info *fdinfo;
     struct sockaddr_un addr;
+    sigset_t sig_restore;
 
     if (strncmp(dev_path, "/dev/", 5) != 0)
 	return;
@@ -693,7 +713,9 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     fdinfo->dev_path = strdupx(dev_path);
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
 
+    ioctl_lock_block_signals(&sig_restore);
     fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
+    ioctl_unlock_restore_signals(&sig_restore);
     DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl socket\n", fd, dev_path);
     errno = orig_errno;
 }
@@ -703,10 +725,18 @@ ioctl_emulate_close(int fd)
 {
     libc_func(close, int, int);
     struct ioctl_fd_info *fdinfo;
+    bool found = false;
+    sigset_t sig_restore;
 
+    ioctl_lock_block_signals(&sig_restore);
     if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
-	DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
 	fd_map_remove(&ioctl_wrapped_fds, fd);
+	found = true;
+    }
+    ioctl_unlock_restore_signals(&sig_restore);
+
+    if (found) {
+	DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
 	if (fdinfo->ioctl_sock >= 0)
 	    _close(fdinfo->ioctl_sock);
 	free(fdinfo->dev_path);
@@ -745,7 +775,8 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
     sigset_t sig_set, sig_restore;
     int res;
 
-    /* Block all signals while we are talking with the remote process. */
+    /* Block all signals while we are talking with the remote process, not just
+     * while holding the lock, so ioctl_lock_block_signals() does not fit. */
     sigfillset(&sig_set);
     pthread_sigmask(SIG_SETMASK, &sig_set, &sig_restore);
 

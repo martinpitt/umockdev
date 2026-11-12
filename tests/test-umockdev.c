@@ -29,7 +29,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
+#include <time.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/sysmacros.h>
@@ -1497,6 +1500,77 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     assert_dev_zero_fstat(fd2);
 }
 
+/* musl provides this, glibc only has the raw union member */
+#ifndef sigev_notify_thread_id
+#define sigev_notify_thread_id _sigev_un._tid
+#endif
+
+static int signal_safety_pipe_w = -1;
+static volatile sig_atomic_t signal_safety_hits;
+
+static void
+signal_safety_handler(int sig)
+{
+    int orig_errno = errno;
+
+    /* goes through remote_emulate(), which takes the preload's ioctl lock */
+    if (write(signal_safety_pipe_w, "x", 1) < 0) {}
+    signal_safety_hits = signal_safety_hits + 1;
+    errno = orig_errno;
+}
+
+/* A signal handler that does I/O must not deadlock when it interrupts
+ * open()/dup()/close() of an emulated device while the preload holds its lock */
+static void
+t_testbed_ioctl_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    if (g_test_subprocess()) {
+	struct sigaction sa = { .sa_handler = signal_safety_handler, .sa_flags = SA_RESTART };
+	struct sigevent sev = { .sigev_notify = SIGEV_THREAD_ID, .sigev_signo = SIGPROF };
+	struct itimerspec interval = { .it_interval = { 0, 50000 }, .it_value = { 0, 50000 } };
+	timer_t timer;
+	int pipefds[2];
+	int fd, copy, target;
+
+	g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+						  "P: /devices/event0\nN: input/event0\n"
+						  "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
+						  "A: dev=13:64\n", NULL));
+	g_assert_cmpint(pipe2(pipefds, O_NONBLOCK), ==, 0);
+	signal_safety_pipe_w = pipefds[1];
+	target = g_open("/dev/null", O_RDONLY, 0);
+	g_assert_cmpint(target, >=, 0);
+
+	/* not SIGALRM: g_test_trap_subprocess() uses that to kill the child on timeout */
+	sigemptyset(&sa.sa_mask);
+	g_assert_cmpint(sigaction(SIGPROF, &sa, NULL), ==, 0);
+	sev.sigev_notify_thread_id = gettid();
+	g_assert_cmpint(timer_create(CLOCK_MONOTONIC, &sev, &timer), ==, 0);
+	g_assert_cmpint(timer_settime(timer, 0, &interval, NULL), ==, 0);
+
+	while (signal_safety_hits < 200) {
+	    fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+	    g_assert_cmpint(fd, >=, 0);
+	    for (int j = 0; j < 100; ++j) {
+		copy = dup(fd);
+		g_assert_cmpint(copy, >=, 0);
+		g_assert_cmpint(dup2(fd, target), ==, target);
+		close(copy);
+	    }
+	    close(fd);
+	}
+
+	g_assert_cmpint(timer_delete(timer), ==, 0);
+	close(target);
+	close(pipefds[0]);
+	close(pipefds[1]);
+	return;
+    }
+
+    g_test_trap_subprocess(NULL, 10 * G_USEC_PER_SEC, 0);
+    g_test_trap_assert_passed();
+}
+
 static void
 t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
@@ -2577,6 +2651,8 @@ main(int argc, char **argv)
     /* tests for mocking /dev */
     g_test_add("/umockdev-testbed/dev_access", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_dev_access, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/ioctl_lock_signal_safety", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+	       t_testbed_ioctl_lock_signal_safety, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
 	       t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
