@@ -539,6 +539,18 @@ fd_map_get(fd_map * map, int fd, const void **data_out)
     return 0;
 }
 
+/* Let newfd share oldfd's data (if any), e.g. after dup(). Return whether oldfd is in the map. */
+static int
+fd_map_dup(fd_map * map, int oldfd, int newfd)
+{
+    const void *data;
+
+    if (!fd_map_get(map, oldfd, &data))
+	return 0;
+    fd_map_add(map, newfd, data);
+    return 1;
+}
+
 /********************************
  *
  * Wrappers for accessing netlink socket
@@ -1245,6 +1257,31 @@ fd_untrack(int fd)
     netlink_close(fd);
     ioctl_emulate_close(fd);
     script_record_close(fd);
+}
+
+/* newfd was duplicated from oldfd (dup() & friends). Both share the same open
+ * file description, so newfd also shares oldfd's emulation state. */
+static void
+fd_track_dup(int oldfd, int newfd)
+{
+    sigset_t sig_restore;
+    int is_ioctl;
+
+    if (newfd < 0)
+	return;
+    assert(newfd != oldfd);
+
+    ioctl_lock_block_signals(&sig_restore);
+    is_ioctl = fd_map_dup(&ioctl_wrapped_fds, oldfd, newfd);
+    ioctl_unlock_restore_signals(&sig_restore);
+    if (is_ioctl)
+	DBG(DBG_IOCTL, "fd_track_dup: fd %i duplicated to %i, sharing ioctl socket\n", oldfd, newfd);
+
+    if (fd_map_dup(&script_recorded_fds, oldfd, newfd))
+	DBG(DBG_SCRIPT, "fd_track_dup: recorded fd %i duplicated to %i\n", oldfd, newfd);
+
+    if (fd_map_dup(&wrapped_netlink_sockets, oldfd, newfd))
+	DBG(DBG_NETLINK, "fd_track_dup: netlink socket fd %i duplicated to %i\n", oldfd, newfd);
 }
 
 /********************************
@@ -2037,6 +2074,44 @@ fclose(FILE * stream)
     return _fclose(stream);
 }
 
+int
+dup(int oldfd)
+{
+    libc_func(dup, int, int);
+    int ret = _dup(oldfd);
+
+    fd_track_dup(oldfd, ret);
+    return ret;
+}
+
+int
+dup2(int oldfd, int newfd)
+{
+    libc_func(dup2, int, int, int);
+    int ret = _dup2(oldfd, newfd);
+
+    /* newfd got closed implicitly, unless it is the same as oldfd */
+    if (ret >= 0 && oldfd != newfd) {
+	fd_untrack(newfd);
+	fd_track_dup(oldfd, ret);
+    }
+    return ret;
+}
+
+int
+dup3(int oldfd, int newfd, int flags)
+{
+    libc_func(dup3, int, int, int, int);
+    int ret = _dup3(oldfd, newfd, flags);
+
+    /* like dup2(); dup3() already fails with EINVAL if newfd is oldfd */
+    if (ret >= 0 && oldfd != newfd) {
+	fd_untrack(newfd);
+	fd_track_dup(oldfd, ret);
+    }
+    return ret;
+}
+
 /* Every fcntl command takes at most one int or pointer argument. Like glibc
  * and musl themselves, always fetch it as one machine word and pass it on. */
 #define WRAP_FCNTL(name) \
@@ -2045,10 +2120,14 @@ int name(int fd, int cmd, ...) \
     libc_func(name, int, int, int, ...); \
     va_list ap; \
     void *arg; \
+    int ret; \
     va_start(ap, cmd); \
     arg = va_arg(ap, void *); \
     va_end(ap); \
-    return _ ## name(fd, cmd, arg); \
+    ret = _ ## name(fd, cmd, arg); \
+    if (cmd == F_DUPFD || cmd == F_DUPFD_CLOEXEC) \
+	fd_track_dup(fd, ret); \
+    return ret; \
 }
 
 WRAP_FCNTL(fcntl);

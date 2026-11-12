@@ -308,6 +308,20 @@ E: SUBSYSTEM=tty
   assert_cmpint (Posix.ioctl (fd, Ioctl.FIONREAD, out dummy_val), CompareOperator.EQ, -1);
   assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOTTY);
 
+  // dups (GNU stty: open, dup2(3, 0), close(3)) behave like the original fd
+  int fd2 = Posix.dup (fd);
+  assert_cmpint (fd2, CompareOperator.GE, 0);
+  int target = Posix.open ("/dev/null", Posix.O_RDONLY, 0);
+  assert_cmpint (Posix.dup2 (fd2, target), CompareOperator.EQ, target);
+  Posix.close (fd2);
+  foreach (int f in new int[] { fd, target }) {
+      Posix.errno = 0;
+      assert_cmpint (Posix.ioctl (f, (int) IoctlTermios.get_tcgets_ioctl (), tio_data), CompareOperator.EQ, 0);
+      assert_cmpint (Posix.ioctl (f, Ioctl.FIONREAD, out dummy_val), CompareOperator.EQ, -1);
+      assert_cmpint (Posix.errno, CompareOperator.EQ, Posix.ENOTTY);
+  }
+  Posix.close (target);
+
   Posix.close (fd);
   Posix.errno = 0;
 
@@ -412,6 +426,22 @@ USBDEVFS_CONNECTINFO 42 0000000C01000000
   assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
 
   // should work after closing first fd, advancing position
+  Posix.close (fd);
+  ci.devnum = 99;
+  ci.slow = 99;
+  assert_cmpint (Posix.ioctl (fd2, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 42);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 12);
+  assert_cmpuint (ci.slow, CompareOperator.EQ, 1);
+  Posix.close (fd2);
+
+  // a dup shares the open file description, and thus the tree position,
+  // also after closing the original fd
+  fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+  assert_cmpint (Posix.ioctl (fd, Ioctl.USBDEVFS_CONNECTINFO, ref ci), CompareOperator.EQ, 0);
+  assert_cmpuint (ci.devnum, CompareOperator.EQ, 11);
+  fd2 = Posix.dup (fd);
+  assert_cmpint (fd2, CompareOperator.GE, 0);
   Posix.close (fd);
   ci.devnum = 99;
   ci.slow = 99;
