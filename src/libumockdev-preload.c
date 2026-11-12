@@ -2027,6 +2027,29 @@ fclose(FILE * stream)
     return _fclose(stream);
 }
 
+/* Every fcntl command takes at most one int or pointer argument. Like glibc
+ * and musl themselves, always fetch it as one machine word and pass it on. */
+#define WRAP_FCNTL(name) \
+int name(int fd, int cmd, ...) \
+{ \
+    libc_func(name, int, int, int, ...); \
+    va_list ap; \
+    void *arg; \
+    va_start(ap, cmd); \
+    arg = va_arg(ap, void *); \
+    va_end(ap); \
+    return _ ## name(fd, cmd, arg); \
+}
+
+WRAP_FCNTL(fcntl);
+
+#ifdef __GLIBC__
+WRAP_FCNTL(fcntl64);
+
+extern int __fcntl_time64 (int __fd, int __request, ...);
+WRAP_FCNTL(__fcntl_time64);
+#endif
+
 int
 ioctl(int d, IOCTL_REQUEST_TYPE request, ...)
 {
