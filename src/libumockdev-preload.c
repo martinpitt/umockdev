@@ -1083,6 +1083,8 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
                 errx(EXIT_FAILURE, "umockdev: unknown script format %i", fmt);
         }
     }
+    /* the process may exec() or _exit() before its first I/O on the device */
+    fflush(log);
 
     srinfo = mallocx(sizeof(struct script_record_info));
     srinfo->log = log;
