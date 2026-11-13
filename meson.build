@@ -286,6 +286,7 @@ test_readbyte_exe = executable('readbyte', 'tests/readbyte.c')
 if gudev.found()
   test('umockdev', executable('test-umockdev',
     'tests/test-umockdev.c',
+    include_directories: include_directories('src'),
     dependencies: [glib, libudev, gudev],
     link_with: [umockdev_lib]),
   depends: [preload_lib])
