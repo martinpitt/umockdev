@@ -710,7 +710,7 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     }
 
     int orig_errno = errno;
-    sock = _socket(AF_UNIX, SOCK_STREAM, 0);
+    sock = _socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (sock == -1) {
         DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): not emulated\n", fd, dev_path);
         errno = orig_errno;
@@ -1017,7 +1017,7 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
     if (fd_map_get(&script_recorded_fds, fd, NULL))
         errx(EXIT_FAILURE, "script_start_record: internal error: fd %i is already being recorded", fd);
 
-    log = _fopen(logname, "a+");
+    log = _fopen(logname, "a+e");
     if (log == NULL) {
         perror("umockdev: failed to open script record file");
         exit(1);
