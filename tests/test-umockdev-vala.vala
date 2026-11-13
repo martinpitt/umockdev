@@ -246,6 +246,39 @@ E: __DEVCONTEXT=blah
 }
 #endif
 
+/* opening an emulated device must not leak the preload's ioctl socket into exec()ed children */
+void
+t_ioctl_socket_cloexec ()
+{
+  var tb = new UMockdev.Testbed ();
+
+  tb_add_from_string (tb, """P: /devices/mycam
+N: 001
+E: SUBSYSTEM=usb
+""");
+
+  int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+  // the preload connects the socket right after the real open()
+  Posix.Stat st;
+  assert_cmpint (Posix.fstat (fd + 1, out st), CompareOperator.EQ, 0);
+  assert (Posix.S_ISSOCK (st.st_mode));
+  string[] argv = { "test", "-e", "/proc/self/fd/%i".printf (fd + 1) };
+
+  Posix.pid_t pid = Posix.fork ();
+  assert_cmpint (pid, CompareOperator.NE, -1);
+  if (pid == 0) {
+    Posix.execvp (argv[0], argv);
+    Posix._exit (127);
+  }
+
+  int status;
+  assert_cmpint (Posix.waitpid (pid, out status, 0), CompareOperator.EQ, pid);
+  assert (Process.if_exited (status));
+  assert_cmpint (Process.exit_status (status), CompareOperator.EQ, 1);
+  Posix.close (fd);
+}
+
 void
 t_usbfs_ioctl_static ()
 {
@@ -1232,6 +1265,7 @@ main (string[] args)
 #endif
 
   /* tests for mocking ioctls */
+  Test.add_func ("/umockdev-testbed-vala/ioctl_socket_cloexec", t_ioctl_socket_cloexec);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_static", t_usbfs_ioctl_static);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree", t_usbfs_ioctl_tree);
   Test.add_func ("/umockdev-testbed-vala/usbfs_ioctl_tree_with_default_device", t_usbfs_ioctl_tree_with_default_device);
