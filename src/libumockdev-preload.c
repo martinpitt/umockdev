@@ -211,11 +211,8 @@ on_load(void)
         pthread_mutex_unlock (&trap_path_lock); \
     } while (0)
 
-/* Callers must block signals first, so that a signal handler doing I/O on the
- * same thread cannot deadlock; see ioctl_lock_block_signals() */
-#define IOCTL_LOCK pthread_mutex_lock (&ioctl_lock)
-#define IOCTL_UNLOCK pthread_mutex_unlock (&ioctl_lock)
-
+/* The only way to take ioctl_lock: block signals first, so that a signal
+ * handler doing I/O on the same thread cannot deadlock on it */
 static void
 ioctl_lock_block_signals(sigset_t *sig_restore)
 {
@@ -223,13 +220,13 @@ ioctl_lock_block_signals(sigset_t *sig_restore)
 
     sigfillset(&sig_set);
     pthread_sigmask(SIG_SETMASK, &sig_set, sig_restore);
-    IOCTL_LOCK;
+    pthread_mutex_lock(&ioctl_lock);
 }
 
 static void
 ioctl_unlock_restore_signals(const sigset_t *sig_restore)
 {
-    IOCTL_UNLOCK;
+    pthread_mutex_unlock(&ioctl_lock);
     pthread_sigmask(SIG_SETMASK, sig_restore, NULL);
 }
 
@@ -792,23 +789,16 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
     libc_func(write, ssize_t, int, void *, size_t);
     struct ioctl_fd_info *fdinfo;
     struct ioctl_request req;
-    sigset_t sig_set, sig_restore;
+    sigset_t sig_restore;
     int res;
 
-    /* Block all signals while we are talking with the remote process, not just
-     * while holding the lock, so ioctl_lock_block_signals() does not fit. */
-    sigfillset(&sig_set);
-    pthread_sigmask(SIG_SETMASK, &sig_set, &sig_restore);
-
-    IOCTL_LOCK;
-
+    ioctl_lock_block_signals(&sig_restore);
     if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
-        IOCTL_UNLOCK;
-
-        pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
+        ioctl_unlock_restore_signals(&sig_restore);
         return UNHANDLED;
     }
-    IOCTL_UNLOCK;
+    /* keep signals blocked while talking with the remote process */
+    pthread_mutex_unlock(&ioctl_lock);
 
     /* Only pass on ioctl requests for emulated devices */
     if (!fdinfo->is_emulated) {
