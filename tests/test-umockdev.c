@@ -1555,15 +1555,14 @@ t_testbed_ioctl_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA
         g_assert_cmpint(timer_create(CLOCK_MONOTONIC, &sev, &timer), ==, 0);
         g_assert_cmpint(timer_settime(timer, 0, &interval, NULL), ==, 0);
 
-        while (signal_safety_hits < 200) {
+        /* The lock sections are tiny, so this needs many signals to hit each. */
+        while (signal_safety_hits < 5000) {
             fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
             g_assert_cmpint(fd, >=, 0);
-            for (int j = 0; j < 100; ++j) {
-                copy = dup(fd);
-                g_assert_cmpint(copy, >=, 0);
-                g_assert_cmpint(dup2(fd, target), ==, target);
-                close(copy);
-            }
+            copy = dup(fd);
+            g_assert_cmpint(copy, >=, 0);
+            g_assert_cmpint(dup2(fd, target), ==, target);
+            close(copy);
             close(fd);
         }
 
