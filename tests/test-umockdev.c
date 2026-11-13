@@ -1522,14 +1522,16 @@ signal_safety_handler(int sig)
 
     /* goes through remote_emulate(), which takes the preload's ioctl lock */
     if (write(signal_safety_pipe_w, "x", 1) < 0) {}
+    /* goes through trap_path(), which takes the preload's path lock */
+    if (access("/dev/null", F_OK) < 0) {}
     signal_safety_hits = signal_safety_hits + 1;
     errno = orig_errno;
 }
 
 /* A signal handler that does I/O must not deadlock when it interrupts
- * open()/dup()/close() of an emulated device while the preload holds its lock */
+ * open()/dup()/close() of an emulated device while the preload holds a lock */
 static void
-t_testbed_ioctl_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+t_testbed_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     if (g_test_subprocess()) {
         struct sigaction sa = { .sa_handler = signal_safety_handler, .sa_flags = SA_RESTART };
@@ -1575,6 +1577,36 @@ t_testbed_ioctl_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA
 
     g_test_trap_subprocess(NULL, 10 * G_USEC_PER_SEC, 0);
     g_test_trap_assert_passed();
+}
+
+/* blocks the given signal, and checks that path calls in parallel threads keep that mask */
+static gpointer
+signal_mask_thread(gpointer data)
+{
+    int sig = GPOINTER_TO_INT(data);
+    sigset_t set;
+
+    sigemptyset(&set);
+    sigaddset(&set, sig);
+    g_assert_cmpint(pthread_sigmask(SIG_SETMASK, &set, NULL), ==, 0);
+    for (int i = 0; i < 10000; ++i) {
+        if (access("/dev/null", F_OK) < 0) {}
+        g_assert_cmpint(pthread_sigmask(SIG_SETMASK, NULL, &set), ==, 0);
+        if (!sigismember(&set, sig) || sigismember(&set, sig == SIGUSR1 ? SIGUSR2 : SIGUSR1))
+            return GINT_TO_POINTER(FALSE);
+    }
+    return GINT_TO_POINTER(TRUE);
+}
+
+/* the preload's locks must not mix up the signal masks of different threads */
+static void
+t_testbed_lock_signal_mask_threads(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    GThread *t1 = g_thread_new("usr1", signal_mask_thread, GINT_TO_POINTER(SIGUSR1));
+    GThread *t2 = g_thread_new("usr2", signal_mask_thread, GINT_TO_POINTER(SIGUSR2));
+
+    g_assert(g_thread_join(t1));
+    g_assert(g_thread_join(t2));
 }
 
 /* fcntl() on fds which are not emulated keeps its native behaviour */
@@ -2767,8 +2799,10 @@ main(int argc, char **argv)
     /* tests for mocking /dev */
     g_test_add("/umockdev-testbed/dev_access", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_dev_access, t_testbed_fixture_teardown);
-    g_test_add("/umockdev-testbed/ioctl_lock_signal_safety", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-               t_testbed_ioctl_lock_signal_safety, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/lock_signal_safety", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_lock_signal_safety, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/lock_signal_mask_threads", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_lock_signal_mask_threads, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/fcntl_passthrough", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dup_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
