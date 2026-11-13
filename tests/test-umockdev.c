@@ -47,6 +47,7 @@
 #include <gudev/gudev.h>
 
 #include "umockdev.h"
+#include "utils.h"
 
 /* fix missing O_TMPFILE on some systems */
 #ifndef O_TMPFILE
@@ -1397,6 +1398,12 @@ t_testbed_dev_access(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     /* now /dev/zero should be the mocked one */
     g_assert_cmpint(g_open("/dev/wishyouwerehere", O_RDONLY, 0), ==, -1);
     g_assert_cmpint(errno, ==, ENOENT);
+
+    /* failed opens must not leave anything behind in the preload, or they would overflow its fd map */
+    for (int i = 0; i < FD_MAP_MAX + 2; ++i) {
+        g_assert_cmpint(g_open("/dev/wishyouwerehere", O_RDONLY, 0), ==, -1);
+        g_assert_cmpint(errno, ==, ENOENT);
+    }
 
     g_assert_cmpint(g_stat("/dev/zero", &st), ==, 0);
     assert_dev_zero_stat(&st);

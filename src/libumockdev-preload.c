@@ -474,7 +474,6 @@ adjust_emulated_device_mode_rdev(const char *dev_path, mode_t *st_mode, dev_t *s
  *
  ********************************/
 
-#define FD_MAP_MAX 50
 typedef struct {
     int set[FD_MAP_MAX];
     int fd[FD_MAP_MAX];
@@ -1557,9 +1556,11 @@ int prefix ## open ## suffix (const char *path, int flags, ...)            \
     } else                                                            \
         ret =  _ ## prefix ## open ## suffix(p, flags);                    \
     TRAP_PATH_UNLOCK;                                                    \
-    ioctl_emulate_open(ret, path, path != p);                            \
-    if (path == p)                                                    \
-        script_record_open(ret);                                    \
+    if (ret >= 0) {                                                    \
+        ioctl_emulate_open(ret, path, path != p);                    \
+        if (path == p)                                                    \
+            script_record_open(ret);                                    \
+    }                                                                    \
     return ret;                                                            \
 }
 
@@ -1578,9 +1579,11 @@ int prefix ## open ## suffix (const char *path, int flags)            \
     DBG(DBG_PATH, "testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
     ret =  _ ## prefix ## open ## suffix(p, flags);                    \
     TRAP_PATH_UNLOCK;                                                    \
-    ioctl_emulate_open(ret, path, path != p);                            \
-    if (path == p)                                                    \
-        script_record_open(ret);                                    \
+    if (ret >= 0) {                                                    \
+        ioctl_emulate_open(ret, path, path != p);                    \
+        if (path == p)                                                    \
+            script_record_open(ret);                                    \
+    }                                                                    \
     return ret;                                                                \
 }
 
