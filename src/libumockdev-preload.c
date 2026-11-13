@@ -174,11 +174,11 @@ path_exists(const char *path)
 
 /* multi-thread locking for trap_path users; the saved signal mask is per
  * thread, as each thread blocks signals before waiting for the lock */
-pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
 static __thread sigset_t trap_path_sig_restore;
 
 /* multi-thread locking for ioctls */
-pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void
 after_fork_in_child(void)
@@ -930,8 +930,8 @@ static fd_map script_dev_logfile_map;        /* maps a st_rdev to a log file nam
 static fd_map script_dev_devpath_map;   /* maps a st_rdev to a device path */
 static fd_map script_dev_format_map;   /* maps a st_rdev to a script_record_format */
 static int script_dev_logfile_map_inited = 0;
-const char* script_socket_logfile[2*MAX_SCRIPT_SOCKET_LOGFILE]; /* list of socket name, log file name */
-size_t script_socket_logfile_len = 0;
+static const char* script_socket_logfile[2*MAX_SCRIPT_SOCKET_LOGFILE]; /* list of socket name, log file name */
+static size_t script_socket_logfile_len = 0;
 static fd_map script_recorded_fds;
 
 struct script_record_info {
