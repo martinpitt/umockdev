@@ -265,26 +265,26 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     gchar *path;
 
     dev = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL,
-				      /* attributes */
-				      "idVendor", "0815", "idProduct", "AFFE", NULL,
-				      /* properties */
-				      "INTERFACES", ":3/1/1:", NULL);
+                                      /* attributes */
+                                      "idVendor", "0815", "idProduct", "AFFE", NULL,
+                                      /* properties */
+                                      "INTERFACES", ":3/1/1:", NULL);
     g_assert(dev);
     g_assert_cmpstr(dev, ==, "/sys/devices/usb1");
 
     iface = umockdev_testbed_add_device(fixture->testbed, "usb", "1-1", dev,
-					/* attributes */
-					"iClass", "2", NULL,
-					/* properties */
-					"INTERFACE", "3/1/1", NULL);
+                                        /* attributes */
+                                        "iClass", "2", NULL,
+                                        /* properties */
+                                        "INTERFACE", "3/1/1", NULL);
     g_assert(iface);
     g_assert_cmpstr(iface, ==, "/sys/devices/usb1/1-1");
 
     input = umockdev_testbed_add_device(fixture->testbed, "input", "kb1", iface,
-					/* attributes */
-					"name", "HID 123", NULL,
-					/* properties */
-					"ID_INPUT", "1", NULL);
+                                        /* attributes */
+                                        "name", "HID 123", NULL,
+                                        /* properties */
+                                        "ID_INPUT", "1", NULL);
     g_assert(input);
     g_assert_cmpstr(input, ==, "/sys/devices/usb1/1-1/kb1");
 
@@ -320,7 +320,7 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
     path = g_build_filename(fixture->sys_dir,
-			    "bus", "usb", "devices", "usb1", "idVendor", NULL);
+                            "bus", "usb", "devices", "usb1", "idVendor", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
 
@@ -356,7 +356,7 @@ t_testbed_child_device(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(g_file_test(path, G_FILE_TEST_IS_SYMLINK));
     g_free(path);
     path = g_build_filename(fixture->sys_dir,
-			    "bus", "usb", "devices", "1-1", "iClass", NULL);
+                            "bus", "usb", "devices", "1-1", "iClass", NULL);
     g_assert(g_file_test(path, G_FILE_TEST_IS_REGULAR));
     g_free(path);
 
@@ -464,8 +464,8 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     /* key/values do not pair up */
     log_handler = g_log_set_handler(NULL, G_LOG_LEVEL_WARNING | G_LOG_FLAG_FATAL, ignore_log_handler, NULL);
     syspath = umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL,
-					  /* attributes */
-					  "idVendor", "0815", "idProduct", NULL, NULL);
+                                          /* attributes */
+                                          "idVendor", "0815", "idProduct", NULL, NULL);
     g_assert(syspath);
     g_free(syspath);
     g_assert_cmpint(errors.counter, ==, 2);
@@ -474,14 +474,14 @@ t_testbed_add_device_errors(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* duplicate symlinks are a bug in the device description, but should not crash */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/target\nN: target\nS: link\n"
-					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/target\n"
-					      "A: dev=1:4\n", NULL));
+                                              "P: /devices/target\nN: target\nS: link\n"
+                                              "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/target\n"
+                                              "A: dev=1:4\n", NULL));
 
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/other\nN: other\nS: link\n"
-					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/other\n"
-					      "A: dev=1:5\n", NULL));
+                                              "P: /devices/other\nN: other\nS: link\n"
+                                              "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/other\n"
+                                              "A: dev=1:5\n", NULL));
     g_assert_cmpint(errors.counter, ==, 3);
     g_assert_cmpint(errors.last_level & G_LOG_LEVEL_WARNING, !=, 0);
     g_assert(strstr(errors.last_message, "File exists") != NULL);
@@ -511,7 +511,7 @@ t_testbed_set_attribute(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     umockdev_testbed_set_attribute(fixture->testbed, syspath, "color", "yellow");
     /* add a binary attribute */
     umockdev_testbed_set_attribute_binary(fixture->testbed, syspath, "descriptor",
-					  (guint8 *) "\x01\x00\xFF\x00\x05\x40\xA0", 7);
+                                          (guint8 *) "\x01\x00\xFF\x00\x05\x40\xA0", 7);
     /* add a link attribute */
     umockdev_testbed_set_attribute_link(fixture->testbed, syspath, "driver", "../drivers/hub");
     /* int attributes */
@@ -713,13 +713,13 @@ on_uevent(UNUSED GUdevClient *client, const gchar *action, GUdevDevice *device, 
     g_debug("on_uevent action %s device %s", action, g_udev_device_get_sysfs_path(device));
 
     if (strcmp(action, "add") == 0)
-	counter->add++;
+        counter->add++;
     else if (strcmp(action, "remove") == 0)
-	counter->remove++;
+        counter->remove++;
     else if (strcmp(action, "change") == 0)
-	counter->change++;
+        counter->change++;
     else
-	g_assert_not_reached();
+        g_assert_not_reached();
 
     strncpy(counter->last_device, g_udev_device_get_sysfs_path(device), sizeof(counter->last_device) - 1);
 }
@@ -889,14 +889,14 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* start with adding one device */
     success = umockdev_testbed_add_from_string(fixture->testbed,
-					       "P: /devices/dev1\n"
-					       "E: SIMPLE_PROP=1\n"
-					       "E: SUBSYSTEM=pci\n"
-					       "H: binary_attr=41A9FF0005FF00\n"
-					       "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
-					       "A: simple_attr=1\n"
-					       "A: knobs/red=off\n"
-					       "L: driver=../../foo", &error);
+                                               "P: /devices/dev1\n"
+                                               "E: SIMPLE_PROP=1\n"
+                                               "E: SUBSYSTEM=pci\n"
+                                               "H: binary_attr=41A9FF0005FF00\n"
+                                               "A: multiline_attr=a\\\\b\\nc\\\\d\\nlast\n"
+                                               "A: simple_attr=1\n"
+                                               "A: knobs/red=off\n"
+                                               "L: driver=../../foo", &error);
     g_assert_no_error(error);
     g_assert(success);
 
@@ -936,13 +936,13 @@ t_testbed_add_from_string(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* now add two more */
     umockdev_testbed_add_from_string(fixture->testbed,
-				     "P: /devices/dev2/subdev1\n"
-				     "E: SUBDEV1COLOR=YELLOW\n"
-				     "E: SUBSYSTEM=input\n"
-				     "A: subdev1color=yellow\n"
-				     "\n"
-				     "P: /devices/dev2\n"
-				     "E: DEV2COLOR=GREEN\n" "E: SUBSYSTEM=hid\n" "A: dev2color=green\n", &error);
+                                     "P: /devices/dev2/subdev1\n"
+                                     "E: SUBDEV1COLOR=YELLOW\n"
+                                     "E: SUBSYSTEM=input\n"
+                                     "A: subdev1color=yellow\n"
+                                     "\n"
+                                     "P: /devices/dev2\n"
+                                     "E: DEV2COLOR=GREEN\n" "E: SUBSYSTEM=hid\n" "A: dev2color=green\n", &error);
     g_assert_no_error(error);
 
     /* should have three devices now */
@@ -1002,8 +1002,8 @@ t_testbed_add_from_string_errors(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* uneven hex string */
     g_assert(!umockdev_testbed_add_from_string(fixture->testbed,
-					       "P: /devices/dev1\n"
-					       "E: SUBSYSTEM=usb\n" "H: binary_attr=41F\n", &error));
+                                               "P: /devices/dev1\n"
+                                               "E: SUBSYSTEM=usb\n" "H: binary_attr=41F\n", &error));
     g_assert_error(error, UMOCKDEV_ERROR, UMOCKDEV_ERROR_PARSE);
     g_clear_error(&error);
 
@@ -1074,11 +1074,11 @@ t_testbed_libc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* start with adding one device */
     success = umockdev_testbed_add_from_string(fixture->testbed,
-					       "P: /devices/dev1\n"
-					       "N: pd1\n"
-					       "E: SUBSYSTEM=pci\n"
-					       "E: DEVNAME=/dev/pd1\n"
-					       "A: simple_attr=1", &error);
+                                               "P: /devices/dev1\n"
+                                               "N: pd1\n"
+                                               "E: SUBSYSTEM=pci\n"
+                                               "E: DEVNAME=/dev/pd1\n"
+                                               "A: simple_attr=1", &error);
     g_assert_no_error(error);
     g_assert(success);
 
@@ -1306,8 +1306,8 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     gchar *argv[] = { lsusb_path, "-v", NULL };
 
     if (lsusb_path == NULL) {
-	g_printf("SKIP: lsusb not installed. ");
-	return;
+        g_printf("SKIP: lsusb not installed. ");
+        return;
     }
 
     g_autofree gchar *syspath = umockdev_testbed_add_device(
@@ -1320,10 +1320,10 @@ t_testbed_usb_lsusb(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(syspath);
     /* descriptor from a Canon PowerShot SX200 */
     umockdev_testbed_set_attribute_binary(fixture->testbed, syspath, "descriptors", (guint8 *)
-					  "\x12\x01\x00\x02\x00\x00\x00\x40\xa9\x04\xc0\x31\x02\x00\x01\x02"
-					  "\x03\x01\x09\x02\x27\x00\x01\x01\x00\xc0\x01\x09\x04\x00\x00\x03"
-					  "\x06\x01\x01\x00\x07\x05\x81\x02\x00\x02\x00\x07\x05\x02\x02\x00"
-					  "\x02\x00\x07\x05\x83\x03\x08\x00\x09", 57);
+                                          "\x12\x01\x00\x02\x00\x00\x00\x40\xa9\x04\xc0\x31\x02\x00\x01\x02"
+                                          "\x03\x01\x09\x02\x27\x00\x01\x01\x00\xc0\x01\x09\x04\x00\x00\x03"
+                                          "\x06\x01\x01\x00\x07\x05\x81\x02\x00\x02\x00\x07\x05\x02\x02\x00"
+                                          "\x02\x00\x07\x05\x83\x03\x08\x00\x09", 57);
 
     /* ensure that /dev/bus/usb/ exists, lsusb insists on it */
     g_autofree gchar *dir = g_build_filename(fixture->root_dir, "dev", "bus", "usb", "002", NULL);
@@ -1525,46 +1525,46 @@ static void
 t_testbed_ioctl_lock_signal_safety(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     if (g_test_subprocess()) {
-	struct sigaction sa = { .sa_handler = signal_safety_handler, .sa_flags = SA_RESTART };
-	struct sigevent sev = { .sigev_notify = SIGEV_THREAD_ID, .sigev_signo = SIGPROF };
-	struct itimerspec interval = { .it_interval = { 0, 50000 }, .it_value = { 0, 50000 } };
-	timer_t timer;
-	int pipefds[2];
-	int fd, copy, target;
+        struct sigaction sa = { .sa_handler = signal_safety_handler, .sa_flags = SA_RESTART };
+        struct sigevent sev = { .sigev_notify = SIGEV_THREAD_ID, .sigev_signo = SIGPROF };
+        struct itimerspec interval = { .it_interval = { 0, 50000 }, .it_value = { 0, 50000 } };
+        timer_t timer;
+        int pipefds[2];
+        int fd, copy, target;
 
-	g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-						  "P: /devices/event0\nN: input/event0\n"
-						  "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
-						  "A: dev=13:64\n", NULL));
-	g_assert_cmpint(pipe2(pipefds, O_NONBLOCK), ==, 0);
-	signal_safety_pipe_w = pipefds[1];
-	target = g_open("/dev/null", O_RDONLY, 0);
-	g_assert_cmpint(target, >=, 0);
+        g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+                                                  "P: /devices/event0\nN: input/event0\n"
+                                                  "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
+                                                  "A: dev=13:64\n", NULL));
+        g_assert_cmpint(pipe2(pipefds, O_NONBLOCK), ==, 0);
+        signal_safety_pipe_w = pipefds[1];
+        target = g_open("/dev/null", O_RDONLY, 0);
+        g_assert_cmpint(target, >=, 0);
 
-	/* not SIGALRM: g_test_trap_subprocess() uses that to kill the child on timeout */
-	sigemptyset(&sa.sa_mask);
-	g_assert_cmpint(sigaction(SIGPROF, &sa, NULL), ==, 0);
-	sev.sigev_notify_thread_id = gettid();
-	g_assert_cmpint(timer_create(CLOCK_MONOTONIC, &sev, &timer), ==, 0);
-	g_assert_cmpint(timer_settime(timer, 0, &interval, NULL), ==, 0);
+        /* not SIGALRM: g_test_trap_subprocess() uses that to kill the child on timeout */
+        sigemptyset(&sa.sa_mask);
+        g_assert_cmpint(sigaction(SIGPROF, &sa, NULL), ==, 0);
+        sev.sigev_notify_thread_id = gettid();
+        g_assert_cmpint(timer_create(CLOCK_MONOTONIC, &sev, &timer), ==, 0);
+        g_assert_cmpint(timer_settime(timer, 0, &interval, NULL), ==, 0);
 
-	while (signal_safety_hits < 200) {
-	    fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
-	    g_assert_cmpint(fd, >=, 0);
-	    for (int j = 0; j < 100; ++j) {
-		copy = dup(fd);
-		g_assert_cmpint(copy, >=, 0);
-		g_assert_cmpint(dup2(fd, target), ==, target);
-		close(copy);
-	    }
-	    close(fd);
-	}
+        while (signal_safety_hits < 200) {
+            fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+            g_assert_cmpint(fd, >=, 0);
+            for (int j = 0; j < 100; ++j) {
+                copy = dup(fd);
+                g_assert_cmpint(copy, >=, 0);
+                g_assert_cmpint(dup2(fd, target), ==, target);
+                close(copy);
+            }
+            close(fd);
+        }
 
-	g_assert_cmpint(timer_delete(timer), ==, 0);
-	close(target);
-	close(pipefds[0]);
-	close(pipefds[1]);
-	return;
+        g_assert_cmpint(timer_delete(timer), ==, 0);
+        close(target);
+        close(pipefds[0]);
+        close(pipefds[1]);
+        return;
     }
 
     g_test_trap_subprocess(NULL, 10 * G_USEC_PER_SEC, 0);
@@ -1621,9 +1621,9 @@ t_testbed_dup_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     struct stat st;
 
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/event0\nN: input/event0\n"
-					      "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
-					      "A: dev=13:64\n", NULL));
+                                              "P: /devices/event0\nN: input/event0\n"
+                                              "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
+                                              "A: dev=13:64\n", NULL));
 
     fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
     assert_emulated_evdev(fd);
@@ -1691,9 +1691,9 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA
 
     /* N: without value should create an empty dev */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/empty\nN: empty\n"
-					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/empty\n"
-					      "A: dev=1:3\n", &error));
+                                              "P: /devices/empty\nN: empty\n"
+                                              "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/empty\n"
+                                              "A: dev=1:3\n", &error));
     g_assert_no_error(error);
 
     g_assert_cmpint(umockdev_testbed_get_dev_fd(fixture->testbed, "/dev/empty"), >, 0);
@@ -1711,9 +1711,9 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA
 
     /* N: with S: should create a symlink to DEVNAME */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/target\nN: target\nS: link\n"
-					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/target\n"
-					      "A: dev=1:4\n", &error));
+                                              "P: /devices/target\nN: target\nS: link\n"
+                                              "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/target\n"
+                                              "A: dev=1:4\n", &error));
     g_assert_no_error(error);
 
     contents = g_file_read_link("/dev/link", &error);
@@ -1725,18 +1725,18 @@ t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA
 
     /* N: another N without value whose name looks like hex */
     umockdev_testbed_add_from_string(fixture->testbed,
-				     "P: /devices/001\nN: bus/usb/001\n"
-				     "E: BUSNUM=001\nE: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/001\n"
-				     "A: dev=189:1\n", &error);
+                                     "P: /devices/001\nN: bus/usb/001\n"
+                                     "E: BUSNUM=001\nE: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/001\n"
+                                     "A: dev=189:1\n", &error);
     g_assert_no_error(error);
 
     g_assert_cmpint(umockdev_testbed_get_dev_fd(fixture->testbed, "/dev/bus/usb/001"), >, 0);
 
     /* N: with value should set that contents */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/preset\nN: bus/usb/preset=00FF614100\n"
-					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/preset\n"
-					      "A: dev=189:2\n", &error));
+                                              "P: /devices/preset\nN: bus/usb/preset=00FF614100\n"
+                                              "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/preset\n"
+                                              "A: dev=189:2\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/bus/usb/preset", &contents, &length, &error));
@@ -1759,11 +1759,11 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
 
     /* N: without value should create an empty dev */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/empty\n"
-					      "A: dev=5:4\n"
-					      "N: empty\n"
-					      "E: SUBSYSTEM=block\n"
-					      "E: DEVNAME=/dev/empty\n", &error));
+                                              "P: /devices/empty\n"
+                                              "A: dev=5:4\n"
+                                              "N: empty\n"
+                                              "E: SUBSYSTEM=block\n"
+                                              "E: DEVNAME=/dev/empty\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/empty", &contents, &length, &error));
@@ -1796,9 +1796,9 @@ t_testbed_add_from_string_dev_block(UMockdevTestbedFixture * fixture, UNUSED_DAT
 
     /* N: with value should set that contents */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/block/filled\n"
-					      "N: sdf=00FF614100\n"
-					      "E: SUBSYSTEM=block\n" "E: DEVNAME=/dev/sdf\n", &error));
+                                              "P: /devices/block/filled\n"
+                                              "N: sdf=00FF614100\n"
+                                              "E: SUBSYSTEM=block\n" "E: DEVNAME=/dev/sdf\n", &error));
     g_assert_no_error(error);
 
     g_assert(g_file_get_contents("/dev/sdf", &contents, &length, &error));
@@ -1848,17 +1848,17 @@ t_testbed_dev_query_gudev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* add fake char and block device */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/stream\nN: stream\n"
-					      "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/stream\n"
-					      "E: MAJOR=4\nE: MINOR=1\n"
-					      "A: dev=4:1\n", &error));
+                                              "P: /devices/stream\nN: stream\n"
+                                              "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/stream\n"
+                                              "E: MAJOR=4\nE: MINOR=1\n"
+                                              "A: dev=4:1\n", &error));
     g_assert_no_error(error);
 
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/block/disk\nN: disk\n"
-					      "E: SUBSYSTEM=block\nE: DEVNAME=/dev/disk\n"
-					      "E: MAJOR=8\nE: MINOR=1\n"
-					      "A: dev=8:1\n", &error));
+                                              "P: /devices/block/disk\nN: disk\n"
+                                              "E: SUBSYSTEM=block\nE: DEVNAME=/dev/disk\n"
+                                              "E: MAJOR=8\nE: MINOR=1\n"
+                                              "A: dev=8:1\n", &error));
     g_assert_no_error(error);
 
     g_assert(client);
@@ -2347,7 +2347,7 @@ t_testbed_replay_evemu_events(UMockdevTestbedFixture * fixture, UNUSED_DATA)
                                  "E: 1234.650000 0002 0000 5  # comment\n"   /* REL X */
                                  "# some comment\n"
                                  /* slightly go back in time here */
-                                 "E: 1234.649000 0002 0001 -11	# comment #2\n" /* REL Y */
+                                 "E: 1234.649000 0002 0001 -11        # comment #2\n" /* REL Y */
                                  "E: 1235.200000 0001 0174 1\n";  /* KEY_ZOOM */
 
   umockdev_testbed_add_from_string(fixture->testbed,
@@ -2483,9 +2483,9 @@ t_testbed_clear(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* create a /dev and a /sys entry */
     umockdev_testbed_add_from_string(fixture->testbed,
-				     "P: /devices/moo\n"
-				     "N: bus/usb/moo=00FF00\n"
-				     "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/moo\n", &error);
+                                     "P: /devices/moo\n"
+                                     "N: bus/usb/moo=00FF00\n"
+                                     "E: SUBSYSTEM=foo\nE: DEVNAME=/dev/bus/usb/moo\n", &error);
     g_assert_no_error(error);
 
     g_assert(g_file_test(fixture->sys_dir, G_FILE_TEST_EXISTS));
@@ -2510,8 +2510,8 @@ static void
 t_testbed_disable(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     if (!has_real_sysfs) {
-	g_printf("SKIP: no real /sys on this system. ");
-	return;
+        g_printf("SKIP: no real /sys on this system. ");
+        return;
     }
 
     g_free (umockdev_testbed_add_device(fixture->testbed, "usb", "usb1", NULL, NULL, NULL));
@@ -2555,24 +2555,24 @@ t_testbed_remove(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 
     /* create two /dev and /sys entries */
     umockdev_testbed_add_from_string(fixture->testbed,
-				     "P: /devices/moo\n"
-				     "N: bus/usb/moo\n"
-				     "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/bus/usb/moo\n"
+                                     "P: /devices/moo\n"
+                                     "N: bus/usb/moo\n"
+                                     "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/bus/usb/moo\n"
                                      "A: dev=1:2\n", &error);
     g_assert_no_error(error);
 
     umockdev_testbed_add_from_string(fixture->testbed,
-				     "P: /devices/precious\n"
-				     "N: bus/tty/precious\n"
-				     "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/bus/tty/precious\n"
+                                     "P: /devices/precious\n"
+                                     "N: bus/tty/precious\n"
+                                     "E: SUBSYSTEM=tty\nE: DEVNAME=/dev/bus/tty/precious\n"
                                      "A: dev=1:3\n", &error);
     g_assert_no_error(error);
 
     /* static device node */
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
-					      "P: /devices/static\nN: static=00FF614100\n"
-					      "E: SUBSYSTEM=usb\nE: DEVNAME=/dev/static\n"
-					      "A: dev=189:2\n", &error));
+                                              "P: /devices/static\nN: static=00FF614100\n"
+                                              "E: SUBSYSTEM=usb\nE: DEVNAME=/dev/static\n"
+                                              "A: dev=189:2\n", &error));
     g_assert_no_error(error);
 
     /* simplest possible device */
@@ -2643,10 +2643,10 @@ t_testbed_proc(UMockdevTestbedFixture * fixture, UNUSED_DATA)
     g_assert(dir != NULL);
     found = FALSE;
     while ((f = g_dir_read_name(dir)) != NULL) {
-	if (strcmp(f, "exe") == 0) {
-	    found = TRUE;
-	    break;
-	}
+        if (strcmp(f, "exe") == 0) {
+            found = TRUE;
+            break;
+        }
     }
     g_dir_close(dir);
     g_assert(found);
@@ -2711,97 +2711,97 @@ main(int argc, char **argv)
 
     /* tests for mocking /sys */
     g_test_add("/umockdev-testbed/empty", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_empty, t_testbed_fixture_teardown);
+               t_testbed_empty, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_devicev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_devicev, t_testbed_fixture_teardown);
+               t_testbed_add_devicev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_device, t_testbed_fixture_teardown);
+               t_testbed_add_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_block_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_block_device, t_testbed_fixture_teardown);
+               t_testbed_add_block_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_device_errors", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_device_errors, t_testbed_fixture_teardown);
+               t_testbed_add_device_errors, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/child_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_child_device, t_testbed_fixture_teardown);
+               t_testbed_child_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/set_attribute", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_set_attribute, t_testbed_fixture_teardown);
+               t_testbed_set_attribute, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/set_property", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_set_property, t_testbed_fixture_teardown);
+               t_testbed_set_property, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_from_string, t_testbed_fixture_teardown);
+               t_testbed_add_from_string, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_errors",
-	       UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
+               UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_add_from_string_errors, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_file", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_from_file, t_testbed_fixture_teardown);
+               t_testbed_add_from_file, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/libc", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_libc, t_testbed_fixture_teardown);
+               t_testbed_libc, t_testbed_fixture_teardown);
 
     /* tests for mocking uevents */
     g_test_add("/umockdev-testbed/uevent/libudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_libudev, t_testbed_fixture_teardown);
+               t_testbed_uevent_libudev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/libudev-filter", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_libudev_filter, t_testbed_fixture_teardown);
+               t_testbed_uevent_libudev_filter, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_gudev, t_testbed_fixture_teardown);
+               t_testbed_uevent_gudev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/no_listener", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_no_listener, t_testbed_fixture_teardown);
+               t_testbed_uevent_no_listener, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/error", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_error, t_testbed_fixture_teardown);
+               t_testbed_uevent_error, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/null_action", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_null_action, t_testbed_fixture_teardown);
+               t_testbed_uevent_null_action, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/action_overflow", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_action_overflow, t_testbed_fixture_teardown);
+               t_testbed_uevent_action_overflow, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/uevent/property_overflow", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_uevent_property_overflow, t_testbed_fixture_teardown);
+               t_testbed_uevent_property_overflow, t_testbed_fixture_teardown);
 
     /* tests for mocking USB devices */
     g_test_add("/umockdev-testbed-usb/lsusb", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_usb_lsusb, t_testbed_fixture_teardown);
+               t_testbed_usb_lsusb, t_testbed_fixture_teardown);
 
     /* tests for mocking /dev */
     g_test_add("/umockdev-testbed/dev_access", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_dev_access, t_testbed_fixture_teardown);
+               t_testbed_dev_access, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/ioctl_lock_signal_safety", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_ioctl_lock_signal_safety, t_testbed_fixture_teardown);
+               t_testbed_ioctl_lock_signal_safety, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/fcntl_passthrough", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
+               t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dup_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
+               t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
+               t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_add_from_string_dev_block, t_testbed_fixture_teardown);
+               t_testbed_add_from_string_dev_block, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dev_query_gudev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_dev_query_gudev, t_testbed_fixture_teardown);
+               t_testbed_dev_query_gudev, t_testbed_fixture_teardown);
 
     /* tests for script replay */
     g_test_add("/umockdev-testbed/script_replay_simple", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_script_replay_simple, t_testbed_fixture_teardown);
+               t_testbed_script_replay_simple, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_default_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_script_replay_default_device, t_testbed_fixture_teardown);
+               t_testbed_script_replay_default_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_override_default_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_script_replay_override_default_device, t_testbed_fixture_teardown);
+               t_testbed_script_replay_override_default_device, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_wait", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_script_replay_wait, t_testbed_fixture_teardown);
+               t_testbed_script_replay_wait, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_evdev_event_framing", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_script_replay_evdev_event_framing, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_socket_stream", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_script_replay_socket_stream, t_testbed_fixture_teardown);
+               t_testbed_script_replay_socket_stream, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/script_replay_fuzz", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_script_replay_fuzz, t_testbed_fixture_teardown);
+               t_testbed_script_replay_fuzz, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/replay_evemu_events", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_replay_evemu_events, t_testbed_fixture_teardown);
+               t_testbed_replay_evemu_events, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/replay_evemu_events_default_device", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_replay_evemu_events_default_device, t_testbed_fixture_teardown);
+               t_testbed_replay_evemu_events_default_device, t_testbed_fixture_teardown);
 
     /* misc */
     g_test_add("/umockdev-testbed/clear", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_clear, t_testbed_fixture_teardown);
+               t_testbed_clear, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/disable", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_disable, t_testbed_fixture_teardown);
+               t_testbed_disable, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/remove", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_remove, t_testbed_fixture_teardown);
+               t_testbed_remove, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/proc", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
-	       t_testbed_proc, t_testbed_fixture_teardown);
+               t_testbed_proc, t_testbed_fixture_teardown);
     return g_test_run();
 }

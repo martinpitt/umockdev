@@ -57,26 +57,26 @@ namespace Ioctl {
 
     [CCode (cname="struct usbdevfs_connectinfo", cheader_filename = "linux/usbdevice_fs.h")]
     public struct usbdevfs_connectinfo {
-	public uint devnum;
-	public uint slow;
+        public uint devnum;
+        public uint slow;
     }
 
     [CCode (cname="struct usbdevfs_urb", cheader_filename = "linux/usbdevice_fs.h",
             destroy_function="")]
     public struct usbdevfs_urb {
-	uint8 type;
-	uint8 endpoint;
-	int status;
-	uint flags;
+        uint8 type;
+        uint8 endpoint;
+        int status;
+        uint flags;
         [CCode (array_length=false)]
-	uint8[] buffer;
-	int buffer_length;
-	int actual_length;
-	int start_frame;
-	int number_of_packets;
-	int error_count;
-	uint signr;
-	void *usercontext;
+        uint8[] buffer;
+        int buffer_length;
+        int actual_length;
+        int start_frame;
+        int number_of_packets;
+        int error_count;
+        uint signr;
+        void *usercontext;
     }
 
     [CCode (cheader_filename = "linux/spi/spidev.h")]
@@ -120,17 +120,17 @@ namespace Ioctl {
         uint8   pad;
     }
 
-	[CCode (cheader_filename = "linux/hidraw.h")]
-	public const int HIDIOCGRDESCSIZE;
-	[CCode (cheader_filename = "linux/hidraw.h")]
-	public const int HIDIOCGRDESC;
-	[CCode (cheader_filename = "linux/hid.h")]
-	public const int HID_MAX_DESCRIPTOR_SIZE;
-	[CCode (cname = "struct hidraw_report_descriptor", cheader_filename = "linux/hidraw.h")]
-	public struct hidraw_report_descriptor {
-		uint32 size;
-		uint8 value[HID_MAX_DESCRIPTOR_SIZE];
-	}
+        [CCode (cheader_filename = "linux/hidraw.h")]
+        public const int HIDIOCGRDESCSIZE;
+        [CCode (cheader_filename = "linux/hidraw.h")]
+        public const int HIDIOCGRDESC;
+        [CCode (cheader_filename = "linux/hid.h")]
+        public const int HID_MAX_DESCRIPTOR_SIZE;
+        [CCode (cname = "struct hidraw_report_descriptor", cheader_filename = "linux/hidraw.h")]
+        public struct hidraw_report_descriptor {
+                uint32 size;
+                uint8 value[HID_MAX_DESCRIPTOR_SIZE];
+        }
 
   [CCode (cheader_filename = "cros_ec.h")]
   public const int CROS_EC_DEV_IOCXCMD_V2;

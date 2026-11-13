@@ -166,13 +166,13 @@ t_create_from_bin(void)
     /* add ci */
     tree = n_ci = ioctl_tree_new_from_bin(USBDEVFS_CONNECTINFO, &ci, 0);
     g_assert(ioctl_tree_insert(NULL, n_ci) == n_ci);
-    g_assert(n_ci->data != &ci);	/* data should get copied */
+    g_assert(n_ci->data != &ci);        /* data should get copied */
     assert_node(n_ci, NULL, NULL, NULL);
 
     /* add out1, in1a, in1b */
     n_out1 = ioctl_tree_new_from_bin(USBDEVFS_REAPURB, &out1, 0);
     g_assert(ioctl_tree_insert(tree, n_out1) == tree);
-    g_assert(n_out1->data != &out1);	/* data should get copied */
+    g_assert(n_out1->data != &out1);        /* data should get copied */
     assert_node(n_out1, tree, NULL, NULL);
     g_assert(n_ci->next == n_out1);
 
@@ -348,13 +348,13 @@ init_urb(struct usbdevfs_urb *urb, const struct usbdevfs_urb *orig)
     urb->buffer_length = orig->buffer_length;
 
     if (urb->endpoint & 0x80) {
-	/* clear buffer for input EPs */
-	urb->actual_length = 0;
-	memset(urb->buffer, 0, urb->buffer_length);
+        /* clear buffer for input EPs */
+        urb->actual_length = 0;
+        memset(urb->buffer, 0, urb->buffer_length);
     } else {
-	/* copy for output */
-	urb->actual_length = orig->buffer_length;
-	memcpy(urb->buffer, orig->buffer, orig->buffer_length);
+        /* copy for output */
+        urb->actual_length = orig->buffer_length;
+        memcpy(urb->buffer, orig->buffer, orig->buffer_length);
     }
 }
 
@@ -493,11 +493,11 @@ t_evdev(void)
     g_assert(ioctl_tree_insert(tree, t) == tree);
 
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_SYN, sizeof(synbits)), synbits, 0x81)) ==
-	     tree);
+             tree);
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits, 0x82)) ==
-	     tree);
+             tree);
     g_assert(ioctl_tree_insert(tree, ioctl_tree_new_from_bin(EVIOCGBIT(EV_PWR, sizeof(pwrbits)), pwrbits, 0x83)) ==
-	     tree);
+             tree);
 
     /* write it into file */
     f = tmpfile();
@@ -510,15 +510,15 @@ t_evdev(void)
     g_assert_cmpint(fread(contents, 1, sizeof(contents), f), >, 10);
     g_assert_cmpstr(contents, ==,
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-		    "EVIOCGABS 0 640000003200000096000000020000000500000001000000\n"
-		    "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n"
+                    "EVIOCGABS 0 640000003200000096000000020000000500000001000000\n"
+                    "EVIOCGABS(32) 8 1E000000000000006400000000000000090000000A000000\n"
 #else
-		    "EVIOCGABS 0 000000640000003200000096000000020000000500000001\n"
-		    "EVIOCGABS(32) 8 0000001E000000000000006400000000000000090000000A\n"
+                    "EVIOCGABS 0 000000640000003200000096000000020000000500000001\n"
+                    "EVIOCGABS(32) 8 0000001E000000000000006400000000000000090000000A\n"
 #endif
-		    "EVIOCGBIT(0) 129 01020304\n"
-		    "EVIOCGBIT(1) 130 616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161\n"
-		    "EVIOCGBIT(22) 131 00000000\n");
+                    "EVIOCGBIT(0) 129 01020304\n"
+                    "EVIOCGBIT(1) 130 616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161\n"
+                    "EVIOCGBIT(22) 131 00000000\n");
     rewind(f);
 
     /* read it back */

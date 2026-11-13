@@ -44,11 +44,11 @@
  * Everything else in this file is pcap/usb.h from the libpcap-1.11.0 tag.
  */
 typedef struct {
-	uint32_t halves[2];
+        uint32_t halves[2];
 } pcap_4_byte_aligned_uint64;
 
 typedef struct {
-	uint32_t halves[2];
+        uint32_t halves[2];
 } pcap_4_byte_aligned_int64;
 
 /*
@@ -72,19 +72,19 @@ typedef struct {
  * Appears at the front of each Control S-type packet in DLT_USB captures.
  */
 typedef struct _usb_setup {
-	uint8_t bmRequestType;
-	uint8_t bRequest;
-	uint16_t wValue;
-	uint16_t wIndex;
-	uint16_t wLength;
+        uint8_t bmRequestType;
+        uint8_t bRequest;
+        uint16_t wValue;
+        uint16_t wIndex;
+        uint16_t wLength;
 } pcap_usb_setup;
 
 /*
  * Information from the URB for Isochronous transfers.
  */
 typedef struct _iso_rec {
-	int32_t	error_count;
-	int32_t	numdesc;
+        int32_t        error_count;
+        int32_t        numdesc;
 } iso_rec;
 
 /*
@@ -92,20 +92,20 @@ typedef struct _iso_rec {
  * Appears at the front of each packet in DLT_USB_LINUX captures.
  */
 typedef struct _usb_header {
-	pcap_4_byte_aligned_uint64 id;
-	uint8_t event_type;
-	uint8_t transfer_type;
-	uint8_t endpoint_number;
-	uint8_t device_address;
-	uint16_t bus_id;
-	char setup_flag;/*if !=0 the urb setup header is not present*/
-	char data_flag; /*if !=0 no urb data is present*/
-	pcap_4_byte_aligned_int64 ts_sec;
-	int32_t ts_usec;
-	int32_t status;
-	uint32_t urb_len;
-	uint32_t data_len; /* amount of urb data really present in this event*/
-	pcap_usb_setup setup;
+        pcap_4_byte_aligned_uint64 id;
+        uint8_t event_type;
+        uint8_t transfer_type;
+        uint8_t endpoint_number;
+        uint8_t device_address;
+        uint16_t bus_id;
+        char setup_flag;/*if !=0 the urb setup header is not present*/
+        char data_flag; /*if !=0 no urb data is present*/
+        pcap_4_byte_aligned_int64 ts_sec;
+        int32_t ts_usec;
+        int32_t status;
+        uint32_t urb_len;
+        uint32_t data_len; /* amount of urb data really present in this event*/
+        pcap_usb_setup setup;
 } pcap_usb_header;
 
 /*
@@ -117,34 +117,34 @@ typedef struct _usb_header {
  * Appears at the front of each packet in DLT_USB_LINUX_MMAPPED captures.
  */
 typedef struct _usb_header_mmapped {
-	pcap_4_byte_aligned_uint64 id;
-	uint8_t event_type;
-	uint8_t transfer_type;
-	uint8_t endpoint_number;
-	uint8_t device_address;
-	uint16_t bus_id;
-	char setup_flag;/*if !=0 the urb setup header is not present*/
-	char data_flag; /*if !=0 no urb data is present*/
-	pcap_4_byte_aligned_int64 ts_sec;
-	int32_t ts_usec;
-	int32_t status;
-	uint32_t urb_len;
-	uint32_t data_len; /* amount of urb data really present in this event*/
-	union {
-		pcap_usb_setup setup;
-		iso_rec iso;
-	} s;
-	int32_t	interval;	/* for Interrupt and Isochronous events */
-	int32_t start_frame;	/* for Isochronous events */
-	uint32_t xfer_flags;	/* copy of URB's transfer flags */
-	uint32_t ndesc;	/* number of isochronous descriptors */
+        pcap_4_byte_aligned_uint64 id;
+        uint8_t event_type;
+        uint8_t transfer_type;
+        uint8_t endpoint_number;
+        uint8_t device_address;
+        uint16_t bus_id;
+        char setup_flag;/*if !=0 the urb setup header is not present*/
+        char data_flag; /*if !=0 no urb data is present*/
+        pcap_4_byte_aligned_int64 ts_sec;
+        int32_t ts_usec;
+        int32_t status;
+        uint32_t urb_len;
+        uint32_t data_len; /* amount of urb data really present in this event*/
+        union {
+                pcap_usb_setup setup;
+                iso_rec iso;
+        } s;
+        int32_t        interval;        /* for Interrupt and Isochronous events */
+        int32_t start_frame;        /* for Isochronous events */
+        uint32_t xfer_flags;        /* copy of URB's transfer flags */
+        uint32_t ndesc;        /* number of isochronous descriptors */
 } pcap_usb_header_mmapped;
 
 /*
  * Maximum number of descriptors supported.
  * It's currently 128 in the Linux binary USB monitoring code.
  */
-#define USB_MAXDESC	128
+#define USB_MAXDESC        128
 
 /*
  * Isochronous descriptors; for isochronous transfers there might be
@@ -155,10 +155,10 @@ typedef struct _usb_header_mmapped {
  * can be trusted even in captures from older kernels.
  */
 typedef struct _usb_isodesc {
-	int32_t		status;
-	uint32_t	offset;
-	uint32_t	len;
-	uint8_t	pad[4];
+        int32_t                status;
+        uint32_t        offset;
+        uint32_t        len;
+        uint8_t        pad[4];
 } usb_isodesc;
 
 #endif

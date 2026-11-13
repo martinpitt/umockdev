@@ -25,4 +25,4 @@ uevent_sender *uevent_sender_open(const char *rootpath);
 void uevent_sender_close(uevent_sender * sender);
 void uevent_sender_send(uevent_sender * sender, const char *devpath, const char *action, const char *properties);
 
-#endif				/* __UEVENT_SENDER_H */
+#endif                                /* __UEVENT_SENDER_H */

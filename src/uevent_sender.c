@@ -50,7 +50,7 @@ uevent_sender_open(const char *rootpath)
     assert(rootpath != NULL);
     s = calloc(1, sizeof(uevent_sender));
     if (!s)
-	err(EXIT_FAILURE, "uevent_sender_open: cannot allocate struct");
+        err(EXIT_FAILURE, "uevent_sender_open: cannot allocate struct");
     s->rootpath = strdupx(rootpath);
     s->udev = udev_new();
     snprintf(s->socket_glob, sizeof(s->socket_glob), "%s/event[0-9]*", rootpath);
@@ -80,42 +80,42 @@ sendmsg_one(struct iovec *iov, size_t iov_len, const char *path)
     /* create uevent socket */
     fd = socket(AF_UNIX, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
     if (fd < 0)
-	err(EXIT_FAILURE, "sendmsg_one: cannot create socket");
+        err(EXIT_FAILURE, "sendmsg_one: cannot create socket");
 
     ret = connect(fd, (struct sockaddr *)&event_addr, sizeof(event_addr));
     if (ret < 0) {
-	if (errno == ECONNREFUSED) {
-	    /* client side closed its monitor underneath us, so clean up and ignore */
-	    unlink(event_addr.sun_path);
-	    close(fd);
-	    return;
-	}
-	err(EXIT_FAILURE, "sendmsg_one: cannot connect to client's event socket");
+        if (errno == ECONNREFUSED) {
+            /* client side closed its monitor underneath us, so clean up and ignore */
+            unlink(event_addr.sun_path);
+            close(fd);
+            return;
+        }
+        err(EXIT_FAILURE, "sendmsg_one: cannot connect to client's event socket");
     }
 
     const struct msghdr msg = { .msg_name = &event_addr, .msg_iov = iov, .msg_iovlen = iov_len };
     ssize_t count;
     int retries;
     for (retries = 0; retries < 5; ++retries) {
-	count = sendmsg(fd, &msg, 0);
-	if (count >= 0)
-	    break;
-	if (errno == ECONNREFUSED) {
-	    /* client side closed its monitor underneath us, so clean up and ignore */
-	    unlink(event_addr.sun_path);
-	    close(fd);
-	    return;
-	}
-	if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    /* temporary resource shortage, retry after a brief pause */
-	    usleep(1000 * (retries + 1));  /* ms */
-	    continue;
-	}
-	/* other errors are fatal */
-	err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed");
+        count = sendmsg(fd, &msg, 0);
+        if (count >= 0)
+            break;
+        if (errno == ECONNREFUSED) {
+            /* client side closed its monitor underneath us, so clean up and ignore */
+            unlink(event_addr.sun_path);
+            close(fd);
+            return;
+        }
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            /* temporary resource shortage, retry after a brief pause */
+            usleep(1000 * (retries + 1));  /* ms */
+            continue;
+        }
+        /* other errors are fatal */
+        err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed");
     }
     if (count < 0)
-	err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed after %d retries", retries);
+        err(EXIT_FAILURE, "uevent_sender sendmsg_one: sendmsg failed after %d retries", retries);
     /* printf("passed %zi bytes to event socket %s\n", count, path); */
     close(fd);
 }
@@ -129,13 +129,13 @@ sendmsg_all(uevent_sender * sender, struct iovec *iov, size_t iov_len)
     /* find current listeners */
     res = glob(sender->socket_glob, GLOB_NOSORT, NULL, &gl);
     if (res == 0) {
-	size_t i;
-	for (i = 0; i < gl.gl_pathc; ++i)
-	    sendmsg_one(iov, iov_len, gl.gl_pathv[i]);
+        size_t i;
+        for (i = 0; i < gl.gl_pathc; ++i)
+            sendmsg_one(iov, iov_len, gl.gl_pathv[i]);
     } else {
-	/* ensure that we only fail due to that, not due to bad globs */
-	if (res != GLOB_NOMATCH)
-	    errx(EXIT_FAILURE, "sendmsg_all: %s glob failed with %i", sender->socket_glob, res);
+        /* ensure that we only fail due to that, not due to bad globs */
+        if (res != GLOB_NOMATCH)
+            errx(EXIT_FAILURE, "sendmsg_all: %s glob failed with %i", sender->socket_glob, res);
     }
 
     globfree(&gl);
@@ -184,27 +184,27 @@ string_hash32(const char *str)
     const unsigned char *data = (const unsigned char *)str;
 
     while (len >= 4) {
-	uint32_t k = 0;
+        uint32_t k = 0;
         memcpy(&k, data, sizeof(uint32_t));
-	k *= m;
-	k ^= k >> r;
-	k *= m;
-	h *= m;
-	h ^= k;
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+        h *= m;
+        h ^= k;
 
-	data += 4;
-	len -= 4;
+        data += 4;
+        len -= 4;
     }
 
     /* handle the last few bytes of the input array */
     switch (len) {
     case 3:
-	h ^= data[2] << 16;
+        h ^= data[2] << 16;
     case 2:
-	h ^= data[1] << 8;
+        h ^= data[1] << 8;
     case 1:
-	h ^= data[0];
-	h *= m;
+        h ^= data[0];
+        h *= m;
     };
 
     /* do a few final mixes of the hash to ensure the last few bytes are well-incorporated */
@@ -292,7 +292,7 @@ uevent_sender_send(uevent_sender * sender, const char *devpath, const char *acti
 
     nlh.filter_subsystem_hash = htonl(string_hash32(subsystem));
     if (devtype != NULL)
-	nlh.filter_devtype_hash = htonl(string_hash32(devtype));
+        nlh.filter_devtype_hash = htonl(string_hash32(devtype));
     iov[0].iov_base = &nlh;
     iov[0].iov_len = sizeof(struct udev_monitor_netlink_header);
 

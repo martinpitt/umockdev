@@ -768,12 +768,12 @@ t_input_evtest_evemu ()
     string evemu_file;
     Posix.close (checked_open_tmp ("evemu.XXXXXX.events", out evemu_file));
     checked_file_set_contents (evemu_file,
-"""E: 0.000000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
-E: 0.200000 0004 0004 458756	# EV_MSC / MSC_SCAN             458756
-E: 0.200000 0001 001e 0001	# EV_KEY / KEY_A                1
-E: 0.200000 0000 0000 0000	# ------------ SYN_REPORT (0) ----------
-E: 0.500000 0004 0004 458756	# EV_MSC / MSC_SCAN             458756
-E: 0.500000 0001 001e 0000	# EV_KEY / KEY_A                0
+"""E: 0.000000 0000 0000 0000        # ------------ SYN_REPORT (0) ----------
+E: 0.200000 0004 0004 458756        # EV_MSC / MSC_SCAN             458756
+E: 0.200000 0001 001e 0001        # EV_KEY / KEY_A                1
+E: 0.200000 0000 0000 0000        # ------------ SYN_REPORT (0) ----------
+E: 0.500000 0004 0004 458756        # EV_MSC / MSC_SCAN             458756
+E: 0.500000 0001 001e 0000        # EV_KEY / KEY_A                0
 """);
 
     try {

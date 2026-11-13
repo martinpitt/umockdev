@@ -43,14 +43,14 @@ main(int argc, char **argv)
     int len;
 
     if (argc != 2) {
-	fprintf(stderr, "Usage: %s device\n", argv[0]);
-	return 1;
+        fprintf(stderr, "Usage: %s device\n", argv[0]);
+        return 1;
     }
 
     fd = open(argv[1], O_RDWR);
     if (fd < 0) {
-	perror("open:");
-	return 1;
+        perror("open:");
+        return 1;
     }
     writestr(fd, "Hello world!\n");
     writestr(fd, "What is your name?\n");

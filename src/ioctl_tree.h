@@ -27,7 +27,7 @@ typedef struct ioctl_tree ioctl_tree;
 
 typedef struct {
     IOCTL_REQUEST_TYPE id;
-    ssize_t real_size;		/* for legacy ioctls with _IOC_SIZE == 0, or zero if packed into argument */
+    ssize_t real_size;                /* for legacy ioctls with _IOC_SIZE == 0, or zero if packed into argument */
     IOCTL_REQUEST_TYPE nr_range;
     const char name[100];
     void (*init_from_bin) (ioctl_tree *, const void *);
@@ -55,9 +55,9 @@ struct ioctl_tree {
     int depth;
     void *data;
     int ret;
-    IOCTL_REQUEST_TYPE id;		/* usually type->id, but needed for patterns like EVIOCGABS(abs) */
+    IOCTL_REQUEST_TYPE id;                /* usually type->id, but needed for patterns like EVIOCGABS(abs) */
     ioctl_tree *child;
-    ioctl_tree *next;		/* sibling */
+    ioctl_tree *next;                /* sibling */
     ioctl_tree *parent;
 
     /* below are internal private fields */
@@ -91,7 +91,7 @@ static inline ioctl_tree *
 ioctl_tree_next_wrap(ioctl_tree * tree, ioctl_tree * node)
 {
     if (node == NULL)
-	return tree;
+        return tree;
     ioctl_tree *t = ioctl_tree_next(node);
     return (t != NULL) ? t : tree;
 }
@@ -102,4 +102,4 @@ int ioctl_data_size_by_id(IOCTL_REQUEST_TYPE id);
 const ioctl_type *ioctl_type_get_by_id(IOCTL_REQUEST_TYPE id);
 const ioctl_type *ioctl_type_get_by_name(const char *name, IOCTL_REQUEST_TYPE *out_id);
 
-#endif				/* __IOCTL_TREE_H */
+#endif                                /* __IOCTL_TREE_H */
