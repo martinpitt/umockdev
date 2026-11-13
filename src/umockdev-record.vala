@@ -208,7 +208,7 @@ print_device_attributes(string devpath, string subdir)
                 write_attr(attr_name, contents);
             } catch (FileError e) {} // some attributes are EACCES, or "no such device", etc.
         } else if (FileUtils.test(attr_path, FileTest.IS_DIR)) {
-            print_device_attributes(devpath, attr);
+            print_device_attributes(devpath, attr_name);
         }
     }
 }

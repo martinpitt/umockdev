@@ -102,7 +102,9 @@ t_testbed_one ()
     var syspath = tb.add_devicev ("pci", "dev1", null,
                                   {"simple_attr", "1",
                                    "multiline_attr", "a\\b\nc\\d\nlast",
-                                   "knobs/red", "off"},
+                                   "knobs/red", "off",
+                                   // like /sys/devices/system/machinecheck/machinecheck0/decode_unit/decode_unit/
+                                   "knobs/knobs/blue", "on"},
                                   {"SIMPLE_PROP", "1"});
     tb.set_attribute_binary (syspath, "binary_attr", {0x41, 0xFF, 0, 5, 0xFF, 0});
     tb.set_attribute_link (syspath, "driver", "../../drivers/foo");
@@ -118,6 +120,7 @@ E: SIMPLE_PROP=1
 E: SUBSYSTEM=pci
 H: binary_attr=41FF0005FF00
 L: driver=../../drivers/foo
+A: knobs/knobs/blue=on
 A: knobs/red=off
 A: multiline_attr=a\\b\nc\\d\nlast
 L: power/fiddle=../some/where
