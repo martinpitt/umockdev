@@ -1241,6 +1241,37 @@ E: SUBSYSTEM=test
   }
 }
 
+/* a handler attached to a host device gets its ioctls; that's what umockdev-record --ioctl does */
+void
+t_ioctl_custom_host_device()
+{
+  var tb = new UMockdev.Testbed ();
+  var handler = new UMockdev.IoctlBase();
+  var buf = new uint8[3] { 1, 2, 3 };
+
+  handler.connect("signal::handle-ioctl", ioctl_custom_handle_ioctl_cb, null);
+  try {
+      tb.attach_ioctl("/dev/zero", handler);
+  } catch (Error e) {
+      error ("Failed to attach ioctl: %s", e.message);
+  }
+
+  int fd = Posix.open ("/dev/zero", Posix.O_RDONLY, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+  int value = (int) 0xdeadbeef;
+  assert_cmpint (Posix.ioctl (fd, 1, value), CompareOperator.EQ, value);
+  /* unhandled requests go to the real device */
+  assert_cmpint ((int) Posix.read (fd, buf, 3), CompareOperator.EQ, 3);
+  assert_cmpint (buf[0] + buf[1] + buf[2], CompareOperator.EQ, 0);
+  Posix.close(fd);
+
+  try {
+      tb.detach_ioctl("/dev/zero");
+  } catch (Error e) {
+      error ("Failed to detach ioctl: %s", e.message);
+  }
+}
+
 int
 main (string[] args)
 {
@@ -1294,6 +1325,7 @@ main (string[] args)
 
   /* test IoctlBase attachment and signals */
   Test.add_func ("/umockdev-testbed-vala/ioctl_custom", t_ioctl_custom);
+  Test.add_func ("/umockdev-testbed-vala/ioctl_custom_host_device", t_ioctl_custom_host_device);
 
   return Test.run();
 }

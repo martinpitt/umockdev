@@ -647,6 +647,7 @@ struct ioctl_fd_info {
     char *dev_path;
     int ioctl_sock;
     bool is_emulated;
+    bool is_default;    /* no handler for this device, just the testbed's default one */
     pthread_mutex_t sock_lock;
 };
 
@@ -729,6 +730,7 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
 
     fdinfo = mallocx(sizeof(struct ioctl_fd_info));
     fdinfo->is_emulated = is_emulated;
+    fdinfo->is_default = is_default;
     fdinfo->ioctl_sock = sock;
     fdinfo->dev_path = strdupx(dev_path);
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
@@ -801,8 +803,9 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
     /* keep signals blocked while talking with the remote process */
     pthread_mutex_unlock(&ioctl_lock);
 
-    /* Only pass on ioctl requests for emulated devices */
-    if (!fdinfo->is_emulated) {
+    /* Host devices keep their real behaviour, unless they have their own
+     * handler, like the recorder of umockdev-record */
+    if (!fdinfo->is_emulated && fdinfo->is_default) {
         pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
         return UNHANDLED;
     }
