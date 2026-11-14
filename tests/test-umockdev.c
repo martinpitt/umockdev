@@ -1765,6 +1765,60 @@ t_testbed_emulated_dev_closed_unwrapped(UMockdevTestbedFixture * fixture, UNUSED
     close(null);
 }
 
+/* t_testbed_close_during_ioctl: the handler keeps the ioctl pending until the test completes it */
+static GMutex pending_ioctl_mutex;
+static GCond pending_ioctl_cond;
+static UMockdevIoctlClient *pending_ioctl_client;
+
+static gboolean
+hold_ioctl_cb(UMockdevIoctlBase *handler, UMockdevIoctlClient *client, gpointer data)
+{
+    g_mutex_lock(&pending_ioctl_mutex);
+    pending_ioctl_client = g_object_ref(client);
+    g_cond_signal(&pending_ioctl_cond);
+    g_mutex_unlock(&pending_ioctl_mutex);
+    return TRUE;
+}
+
+static gpointer
+ioctl_thread(gpointer data)
+{
+    return GINT_TO_POINTER(ioctl(GPOINTER_TO_INT(data), 1, 0));
+}
+
+/* closing an fd while another thread waits for an ioctl answer on it must
+ * keep the emulation state alive until that answer */
+static void
+t_testbed_close_during_ioctl(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    UMockdevIoctlBase *handler = umockdev_ioctl_base_new();
+    GError *error = NULL;
+    GThread *thread;
+    int fd;
+
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed, "P: /devices/test\nN: test\nE: SUBSYSTEM=test\n", NULL));
+    g_signal_connect(handler, "handle-ioctl", G_CALLBACK(hold_ioctl_cb), NULL);
+    g_assert(umockdev_testbed_attach_ioctl(fixture->testbed, "/dev/test", handler, &error));
+    g_assert_no_error(error);
+    fd = g_open("/dev/test", O_RDWR, 0);
+    g_assert_cmpint(fd, >=, 0);
+
+    thread = g_thread_new("ioctl", ioctl_thread, GINT_TO_POINTER(fd));
+    g_mutex_lock(&pending_ioctl_mutex);
+    while (pending_ioctl_client == NULL)
+        g_cond_wait(&pending_ioctl_cond, &pending_ioctl_mutex);
+    g_mutex_unlock(&pending_ioctl_mutex);
+
+    close(fd);
+    umockdev_ioctl_client_complete(pending_ioctl_client, 42, 0);
+    g_assert_cmpint(GPOINTER_TO_INT(g_thread_join(thread)), ==, 42);
+
+    g_clear_object(&pending_ioctl_client);
+    g_assert(umockdev_testbed_detach_ioctl(fixture->testbed, "/dev/test", &error));
+    g_assert_no_error(error);
+    g_object_unref(handler);
+}
+
 static void
 t_testbed_openat_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
@@ -2884,6 +2938,8 @@ main(int argc, char **argv)
                t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/emulated_dev_closed_unwrapped", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_emulated_dev_closed_unwrapped, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/close_during_ioctl", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_close_during_ioctl, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/openat_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_openat_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

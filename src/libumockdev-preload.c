@@ -628,6 +628,12 @@ struct ioctl_fd_info {
     bool is_emulated;
     bool is_default;    /* no handler for this device, just the testbed's default one */
     pthread_mutex_t sock_lock;
+    /* A close() in another thread must not free this while remote_emulate()
+     * uses it. Under fd_maps_lock: the number of running remote_emulate()
+     * calls, and whether no fd refers to it any more. The last of them frees
+     * it. */
+    unsigned users;
+    bool closed;
 };
 
 /* Helper to adjust fstat results for emulated devices */
@@ -636,9 +642,19 @@ fstat_adjust_emulated_device(int fd, mode_t *st_mode, dev_t *st_rdev)
 {
     /* Check if this fd is for an emulated device using the ioctl tracking system */
     struct ioctl_fd_info *fdinfo;
-    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo) && fdinfo->is_emulated) {
-        DBG(DBG_PATH, "fstat(%i): adjusting emulated device %s\n", fd, fdinfo->dev_path);
-        adjust_emulated_device_mode_rdev(fdinfo->dev_path, st_mode, st_rdev);
+    char dev_path[PATH_MAX];
+    sigset_t sig_restore;
+    bool is_emulated;
+
+    fd_maps_lock_block_signals(&sig_restore);
+    is_emulated = fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo) && fdinfo->is_emulated;
+    if (is_emulated)
+        snprintf(dev_path, sizeof dev_path, "%s", fdinfo->dev_path);
+    fd_maps_unlock_restore_signals(&sig_restore);
+
+    if (is_emulated) {
+        DBG(DBG_PATH, "fstat(%i): adjusting emulated device %s\n", fd, dev_path);
+        adjust_emulated_device_mode_rdev(dev_path, st_mode, st_rdev);
         return;
     }
 
@@ -713,6 +729,8 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     fdinfo->ioctl_sock = sock;
     fdinfo->dev_path = strdupx(dev_path);
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
+    fdinfo->users = 0;
+    fdinfo->closed = false;
 
     fd_maps_lock_block_signals(&sig_restore);
     fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
@@ -721,13 +739,13 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     errno = orig_errno;
 }
 
-/* fd was the last one referring to fdinfo, and got removed from ioctl_wrapped_fds */
+/* No fd and no remote_emulate() call uses fdinfo any more */
 static void
-ioctl_emulate_close(int fd, struct ioctl_fd_info *fdinfo)
+ioctl_emulate_close(struct ioctl_fd_info *fdinfo)
 {
     libc_func(close, int, int);
 
-    DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
+    DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket of %s\n", fdinfo->dev_path);
     if (fdinfo->ioctl_sock >= 0)
         _close(fdinfo->ioctl_sock);
     free(fdinfo->dev_path);
@@ -747,6 +765,7 @@ after_fork_in_child(void)
         if (ioctl_wrapped_fds.set[i]) {
             struct ioctl_fd_info *fdinfo = (struct ioctl_fd_info *) ioctl_wrapped_fds.data[i];
             fdinfo->sock_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+            fdinfo->users = 0;
         }
     }
 }
@@ -781,6 +800,21 @@ struct ioctl_request {
     unsigned long arg2;
 };
 
+/* End of a remote_emulate() call using fdinfo; signals are still blocked */
+static void
+ioctl_fd_info_release(struct ioctl_fd_info *fdinfo)
+{
+    int orig_errno = errno;
+    bool unused;
+
+    pthread_mutex_lock(&fd_maps_lock);
+    unused = --fdinfo->users == 0 && fdinfo->closed;
+    pthread_mutex_unlock(&fd_maps_lock);
+    if (unused)
+        ioctl_emulate_close(fdinfo);
+    errno = orig_errno;
+}
+
 static int
 remote_emulate(int fd, int cmd, long arg1, long arg2)
 {
@@ -795,19 +829,16 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
     int res;
 
     fd_maps_lock_block_signals(&sig_restore);
-    if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
+    /* Host devices keep their real behaviour, unless they have their own
+     * handler, like the recorder of umockdev-record */
+    if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo) ||
+        (!fdinfo->is_emulated && fdinfo->is_default)) {
         fd_maps_unlock_restore_signals(&sig_restore);
         return UNHANDLED;
     }
+    fdinfo->users++;
     /* keep signals blocked while talking with the remote process */
     pthread_mutex_unlock(&fd_maps_lock);
-
-    /* Host devices keep their real behaviour, unless they have their own
-     * handler, like the recorder of umockdev-record */
-    if (!fdinfo->is_emulated && fdinfo->is_default) {
-        pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
-        return UNHANDLED;
-    }
 
     pthread_mutex_lock (&fdinfo->sock_lock);
 
@@ -835,6 +866,7 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
                     errno = req.arg2;
 
                 pthread_mutex_unlock (&fdinfo->sock_lock);
+                ioctl_fd_info_release(fdinfo);
                 pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
                 /* Force a context switch so that other threads can take the lock */
                 usleep(0);
@@ -1260,13 +1292,19 @@ fd_untrack(int fd)
     fd_maps_lock_block_signals(&sig_restore);
     is_netlink = fd_map_take(&wrapped_netlink_sockets, fd, &unused);
     fd_map_take(&ioctl_wrapped_fds, fd, (const void **)&fdinfo);
+    if (fdinfo != NULL) {
+        fdinfo->closed = true;
+        /* then the last remote_emulate() call frees it */
+        if (fdinfo->users > 0)
+            fdinfo = NULL;
+    }
     fd_map_take(&script_recorded_fds, fd, (const void **)&srinfo);
     fd_maps_unlock_restore_signals(&sig_restore);
 
     if (is_netlink)
         DBG(DBG_NETLINK, "fd_untrack: closing netlink socket fd %i\n", fd);
     if (fdinfo != NULL)
-        ioctl_emulate_close(fd, fdinfo);
+        ioctl_emulate_close(fdinfo);
     if (srinfo != NULL)
         script_record_close(fd, srinfo);
 }
