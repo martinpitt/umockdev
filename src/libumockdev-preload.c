@@ -81,7 +81,6 @@ extern int __REDIRECT_NTH (__ttyname_r_alias, (int __fd, char *__buf,
 #include "config.h"
 #include "debug.h"
 #include "utils.h"
-#include "ioctl_tree.h"
 
 #ifdef __GLIBC__
 
