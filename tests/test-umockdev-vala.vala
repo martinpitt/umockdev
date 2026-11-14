@@ -1183,6 +1183,88 @@ ioctl_custom_handle_read_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient cli
     return true;
 }
 
+/* t_ioctl_fork: request 1 stays pending until the test completes it */
+static Mutex fork_pending_mutex;
+static Cond fork_pending_cond;
+static UMockdev.IoctlClient? fork_pending_client;
+
+static bool
+ioctl_fork_handle_ioctl_cb(UMockdev.IoctlBase handler, UMockdev.IoctlClient client)
+{
+    if (client.request == 1) {
+        fork_pending_mutex.lock ();
+        fork_pending_client = client;
+        fork_pending_cond.signal ();
+        fork_pending_mutex.unlock ();
+    } else {
+        client.complete(42, 0);
+    }
+    return true;
+}
+
+/* forking while another thread waits for an ioctl answer must not deadlock the child on the same fd */
+void
+t_ioctl_fork()
+{
+  var tb = new UMockdev.Testbed ();
+
+  tb_add_from_string (tb, """P: /devices/test
+N: test
+E: SUBSYSTEM=test
+""");
+
+  var handler = new UMockdev.IoctlBase();
+  handler.connect("signal::handle-ioctl", ioctl_fork_handle_ioctl_cb, null);
+  try {
+      tb.attach_ioctl("/dev/test", handler);
+  } catch (Error e) {
+      error ("Failed to attach ioctl: %s", e.message);
+  }
+
+  int fd = Posix.open ("/dev/test", Posix.O_RDWR, 0);
+  assert_cmpint (fd, CompareOperator.GE, 0);
+
+  var pending_ioctl = new Thread<int> ("pending_ioctl", () => { return Posix.ioctl (fd, 1, 0); });
+  fork_pending_mutex.lock ();
+  while (fork_pending_client == null)
+    fork_pending_cond.wait (fork_pending_mutex);
+  fork_pending_mutex.unlock ();
+
+  int go[2];
+  assert_cmpint (Posix.pipe (go), CompareOperator.EQ, 0);
+  Posix.pid_t pid = Posix.fork ();
+  assert_cmpint (pid, CompareOperator.NE, -1);
+  if (pid == 0) {
+    char c;
+    if (Posix.read (go[0], &c, 1) != 1)
+      Posix._exit (2);
+    Posix._exit (Posix.ioctl (fd, 2, 0) == 42 ? 0 : 1);
+  }
+
+  /* finish the parent's request first, so that the child's answer cannot go to it */
+  fork_pending_client.complete (1, 0);
+  assert_cmpint (pending_ioctl.join (), CompareOperator.EQ, 1);
+  assert_cmpint ((int) Posix.write (go[1], "x", 1), CompareOperator.EQ, 1);
+
+  /* the child blocks signals while waiting for the lock, so it cannot time out by itself */
+  int status = 0;
+  int i;
+  for (i = 0; i < 500 && Posix.waitpid (pid, out status, Posix.WNOHANG) == 0; ++i)
+    Thread.usleep (10000);
+  if (i == 500) {
+    Posix.kill (pid, Posix.Signal.KILL);
+    Posix.waitpid (pid, out status, 0);
+    error ("child process hangs on the ioctl");
+  }
+  assert (Process.if_exited (status));
+  assert_cmpint (Process.exit_status (status), CompareOperator.EQ, 0);
+
+  Posix.close (go[0]);
+  Posix.close (go[1]);
+  Posix.close (fd);
+  fork_pending_client = null;
+}
+
 void
 t_ioctl_custom()
 {
@@ -1326,6 +1408,7 @@ main (string[] args)
   /* test IoctlBase attachment and signals */
   Test.add_func ("/umockdev-testbed-vala/ioctl_custom", t_ioctl_custom);
   Test.add_func ("/umockdev-testbed-vala/ioctl_custom_host_device", t_ioctl_custom_host_device);
+  Test.add_func ("/umockdev-testbed-vala/ioctl_fork", t_ioctl_fork);
 
   return Test.run();
 }

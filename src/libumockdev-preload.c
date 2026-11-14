@@ -180,25 +180,6 @@ static __thread sigset_t trap_path_sig_restore;
 /* multi-thread locking for ioctls */
 static pthread_mutex_t ioctl_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static void
-after_fork_in_child(void)
-{
-    ioctl_lock = trap_path_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
-}
-
-__attribute__((constructor))
-static void
-on_load(void)
-{
-    int ret;
-
-    ret = pthread_atfork(NULL, NULL, after_fork_in_child);
-    if (ret != 0) {
-        errx(EXIT_FAILURE, "umockdev: pthread_atfork failed: %s",
-             strerror(ret));
-    }
-}
-
 #define TRAP_PATH_LOCK \
     do { \
         sigset_t sig_set; \
@@ -762,6 +743,35 @@ ioctl_emulate_close(int fd)
         free(fdinfo->dev_path);
         pthread_mutex_destroy(&fdinfo->sock_lock);
         free(fdinfo);
+    }
+}
+
+/* Other threads of the parent may have held the locks while forking; only
+ * the forking thread exists in the child, so nobody would ever release them */
+static void
+after_fork_in_child(void)
+{
+    size_t i;
+
+    ioctl_lock = trap_path_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    for (i = 0; i < FD_MAP_MAX; ++i) {
+        if (ioctl_wrapped_fds.set[i]) {
+            struct ioctl_fd_info *fdinfo = (struct ioctl_fd_info *) ioctl_wrapped_fds.data[i];
+            fdinfo->sock_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+        }
+    }
+}
+
+__attribute__((constructor))
+static void
+on_load(void)
+{
+    int ret;
+
+    ret = pthread_atfork(NULL, NULL, after_fork_in_child);
+    if (ret != 0) {
+        errx(EXIT_FAILURE, "umockdev: pthread_atfork failed: %s",
+             strerror(ret));
     }
 }
 
