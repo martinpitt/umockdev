@@ -563,6 +563,18 @@ netlink_socket(int domain, int type, int protocol)
     return UNHANDLED;
 }
 
+static bool
+is_netlink_socket(int fd)
+{
+    sigset_t sig_restore;
+    bool ret;
+
+    fd_maps_lock_block_signals(&sig_restore);
+    ret = fd_map_get(&wrapped_netlink_sockets, fd, NULL);
+    fd_maps_unlock_restore_signals(&sig_restore);
+    return ret;
+}
+
 static int
 netlink_bind(int sockfd)
 {
@@ -571,7 +583,7 @@ netlink_bind(int sockfd)
     struct sockaddr_un sa;
     const char *path = getenv("UMOCKDEV_DIR");
 
-    if (fd_map_get(&wrapped_netlink_sockets, sockfd, NULL) && path != NULL) {
+    if (path != NULL && is_netlink_socket(sockfd)) {
         DBG(DBG_NETLINK, "testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd);
 
         /* we create one socket per fd, and send emulated uevents to all of
@@ -593,7 +605,7 @@ netlink_recvmsg(int sockfd, struct msghdr * msg, ssize_t ret)
     struct cmsghdr *cmsg;
     struct sockaddr_nl *sender;
 
-    if (fd_map_get(&wrapped_netlink_sockets, sockfd, NULL) && ret > 0) {
+    if (ret > 0 && is_netlink_socket(sockfd)) {
         DBG(DBG_NETLINK, "testbed wrapped recvmsg: netlink socket fd %i, got %zi bytes\n", sockfd, ret);
 
         /* fake sender to be netlink */
@@ -1211,11 +1223,19 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
     unsigned long delta;
     libc_func(fwrite, size_t, const void *, size_t, size_t, FILE *);
     static char header[100];
+    sigset_t sig_restore;
 
-    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
-        return;
     if (size <= 0)
         return;
+    /* hold the lock while writing, so that a close() in another thread does
+     * not free srinfo, and copies of fd in other threads do not interleave;
+     * the log is written with the real libc functions, so this does not
+     * recurse */
+    fd_maps_lock_block_signals(&sig_restore);
+    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo)) {
+        fd_maps_unlock_restore_signals(&sig_restore);
+        return;
+    }
     DBG(DBG_SCRIPT, "script_record_op %c: got %zi bytes on fd %i (format %i)\n", op, size, fd, srinfo->fmt);
 
     switch (srinfo->fmt) {
@@ -1272,6 +1292,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 
     fflush(srinfo->log);
     srinfo->op = op;
+    fd_maps_unlock_restore_signals(&sig_restore);
 }
 
 
