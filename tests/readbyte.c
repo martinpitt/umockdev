@@ -1,5 +1,5 @@
 /*
- * readbyte.c -- read a byte from a given file, using open()/read(), fopen()/fread(),
+ * readbyte.c -- read a byte from a given file, using open()/read(), openat()/read(), fopen()/fread(),
  * or open()/read() followed by read() on a dup()ed copy
  *
  * Copyright (C) 2018 Martin Pitt <martin@piware.de>
@@ -31,14 +31,17 @@ main(int argc, char **argv)
     char buf;
 
     if (argc < 2 || argc > 3) {
-        fprintf(stderr, "Usage: %s file [open|fopen|dup]\n", argv[0]);
+        fprintf(stderr, "Usage: %s file [open|openat|fopen|dup]\n", argv[0]);
         return 1;
     }
 
-    if (argc == 2 || strcmp(argv[2], "open") == 0) {
+    if (argc == 2 || strcmp(argv[2], "open") == 0 || strcmp(argv[2], "openat") == 0) {
         int fd;
         ssize_t len;
-        fd = open(argv[1], O_RDWR);
+        if (argc == 3 && strcmp(argv[2], "openat") == 0)
+            fd = openat(AT_FDCWD, argv[1], O_RDWR);
+        else
+            fd = open(argv[1], O_RDWR);
         if (fd < 0) {
             perror("open");
             return 1;
