@@ -1245,7 +1245,10 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 }
 
 
-/* Forget everything we track about fd, as it is being closed. */
+/* Forget everything we track about fd, as it is being closed, or as a wrapper
+ * just created it: then anything still tracked for its number belongs to an
+ * earlier fd that got closed behind the wrappers' back, e.g. with
+ * close_range() or by libc internally. */
 static void
 fd_untrack(int fd)
 {
@@ -1258,6 +1261,7 @@ fd_untrack(int fd)
 static void
 fd_track_open(int fd, const char *path, const char *p)
 {
+    fd_untrack(fd);
     ioctl_emulate_open(fd, path, path != p);
     if (path == p)
         script_record_open(fd);
@@ -1274,6 +1278,8 @@ fd_track_dup(int oldfd, int newfd)
     if (newfd < 0)
         return;
     assert(newfd != oldfd);
+    /* also drops newfd's state from before an implicit close by dup2() */
+    fd_untrack(newfd);
 
     ioctl_lock_block_signals(&sig_restore);
     is_ioctl = fd_map_dup(&ioctl_wrapped_fds, oldfd, newfd);
@@ -2090,11 +2096,9 @@ dup2(int oldfd, int newfd)
     libc_func(dup2, int, int, int);
     int ret = _dup2(oldfd, newfd);
 
-    /* newfd got closed implicitly, unless it is the same as oldfd */
-    if (ret >= 0 && oldfd != newfd) {
-        fd_untrack(newfd);
+    /* dup2() onto itself does nothing */
+    if (oldfd != newfd)
         fd_track_dup(oldfd, ret);
-    }
     return ret;
 }
 
@@ -2104,11 +2108,9 @@ dup3(int oldfd, int newfd, int flags)
     libc_func(dup3, int, int, int, int);
     int ret = _dup3(oldfd, newfd, flags);
 
-    /* like dup2(); dup3() already fails with EINVAL if newfd is oldfd */
-    if (ret >= 0 && oldfd != newfd) {
-        fd_untrack(newfd);
+    /* dup3() fails with EINVAL if newfd is oldfd */
+    if (oldfd != newfd)
         fd_track_dup(oldfd, ret);
-    }
     return ret;
 }
 

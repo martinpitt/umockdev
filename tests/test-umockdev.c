@@ -35,6 +35,7 @@
 #include <sys/time.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <sys/un.h>
 #include <sys/vfs.h>
@@ -1720,6 +1721,51 @@ t_testbed_dup_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 }
 
 static void
+assert_not_emulated_null(int fd)
+{
+    int grab = 1;
+
+    errno = 0;
+    g_assert_cmpint(ioctl(fd, EVIOCGRAB, &grab), ==, -1);
+    g_assert_cmpint(errno, ==, ENOTTY);
+}
+
+/* an emulated fd closed behind the preload's back must not haunt the next fd with its number */
+static void
+t_testbed_emulated_dev_closed_unwrapped(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    int fd, null;
+
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+                                              "P: /devices/event0\nN: input/event0\n"
+                                              "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
+                                              "A: dev=13:64\n", NULL));
+    null = g_open("/dev/null", O_RDONLY, 0);
+    g_assert_cmpint(null, >=, 0);
+
+    /* reused by open() */
+    fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+    assert_emulated_evdev(fd);
+    if (syscall(__NR_close_range, fd, fd, 0) < 0 && errno == ENOSYS) {
+        g_test_skip("close_range() not supported by the kernel");
+        return;
+    }
+    g_assert_cmpint(g_open("/dev/null", O_RDONLY, 0), ==, fd);
+    assert_not_emulated_null(fd);
+    close(fd);
+
+    /* reused by dup() */
+    fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+    assert_emulated_evdev(fd);
+    g_assert_cmpint(syscall(__NR_close_range, fd, fd, 0), ==, 0);
+    g_assert_cmpint(dup(null), ==, fd);
+    assert_not_emulated_null(fd);
+    close(fd);
+
+    close(null);
+}
+
+static void
 t_testbed_openat_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     int fd, dirfd;
@@ -2836,6 +2882,8 @@ main(int argc, char **argv)
                t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dup_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/emulated_dev_closed_unwrapped", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_emulated_dev_closed_unwrapped, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/openat_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_openat_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
