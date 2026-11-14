@@ -1521,7 +1521,7 @@ signal_safety_handler(int sig)
 {
     int orig_errno = errno;
 
-    /* goes through remote_emulate(), which takes the preload's ioctl lock */
+    /* goes through remote_emulate(), which takes the preload's fd maps lock */
     if (write(signal_safety_pipe_w, "x", 1) < 0) {}
     /* goes through trap_path(), which takes the preload's path lock */
     if (access("/dev/null", F_OK) < 0) {}
