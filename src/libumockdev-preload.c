@@ -1755,7 +1755,13 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
     } else                                                                                        \
         ret =  _ ## prefix ## openat ## suffix(dirfd, p, flags);                                \
     TRAP_PATH_UNLOCK;                                                                                \
-    return ret;                                                                                        \
+    /* like open(); a relative pathname does not tell the device path */                        \
+    if (ret >= 0 && pathname[0] == '/') {                                                       \
+        ioctl_emulate_open(ret, pathname, pathname != p);                                       \
+        if (pathname == p)                                                                      \
+            script_record_open(ret);                                                            \
+    }                                                                                           \
+    return ret;                                                                                 \
 }
 
 WRAP_OPENAT(,);

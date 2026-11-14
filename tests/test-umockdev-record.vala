@@ -457,6 +457,33 @@ t_system_script_log_simple_fopen ()
 }
 
 /*
+ * umockdev-record --script recording to a file, with "readbyte" opening the device with openat()
+ */
+static void
+t_system_script_log_openat ()
+{
+    string sout;
+    string serr;
+    int exit;
+    string log;
+
+    FileUtils.close(checked_open_tmp ("test_script_log.XXXXXX", out log));
+
+    spawn ("umockdev-record" + " --script=/dev/zero=" + log + " -- " + readbyte_path + " /dev/zero openat",
+           out sout, out serr, out exit);
+    assert_cmpstr (serr, CompareOperator.EQ, "");
+    assert_cmpint (exit, CompareOperator.EQ, 0);
+    assert_cmpstr (sout, CompareOperator.EQ, "\0");
+    string[] loglines = file_contents (log).split("\n");
+    assert_cmpuint (loglines.length, CompareOperator.EQ, 2);
+    assert_cmpstr (loglines[0], CompareOperator.EQ, "d 0 /dev/zero");
+    assert (loglines[1].has_prefix ("r "));
+    assert (loglines[1].has_suffix (" ^@"));
+
+    checked_remove (log);
+}
+
+/*
  * umockdev-record --script recording to a file, with "readbyte" reading through
  * the original fd and a dup()ed copy that outlives it
  */
@@ -982,6 +1009,7 @@ main (string[] args)
     Test.add_func ("/umockdev-record/ioctl-log-append-dev-mismatch", t_system_ioctl_log_append_dev_mismatch);
     Test.add_func ("/umockdev-record/script-log-simple", t_system_script_log_simple);
     Test.add_func ("/umockdev-record/script-log-simple-fopen", t_system_script_log_simple_fopen);
+    Test.add_func ("/umockdev-record/script-log-openat", t_system_script_log_openat);
     Test.add_func ("/umockdev-record/script-log-dup", t_system_script_log_dup);
     Test.add_func ("/umockdev-record/script-log-cloexec", t_system_script_log_cloexec);
     Test.add_func ("/umockdev-record/script-log-append-same-dev", t_system_script_log_append_same_dev);

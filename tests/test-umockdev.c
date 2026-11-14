@@ -1720,6 +1720,35 @@ t_testbed_dup_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 }
 
 static void
+t_testbed_openat_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    int fd, dirfd;
+
+    g_assert(umockdev_testbed_add_from_string(fixture->testbed,
+                                              "P: /devices/event0\nN: input/event0\n"
+                                              "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
+                                              "A: dev=13:64\n", NULL));
+
+    fd = openat(AT_FDCWD, "/dev/input/event0", O_RDWR | O_NONBLOCK);
+    assert_emulated_evdev(fd);
+    close(fd);
+
+    /* dirfd does not matter for absolute paths */
+    dirfd = g_open("/tmp", O_RDONLY | O_DIRECTORY, 0);
+    g_assert_cmpint(dirfd, >=, 0);
+    fd = openat(dirfd, "/dev/input/event0", O_RDWR | O_NONBLOCK);
+    assert_emulated_evdev(fd);
+    close(fd);
+    close(dirfd);
+
+    /* failed opens must not leave anything behind in the preload, or they would overflow its fd map */
+    for (int i = 0; i < FD_MAP_MAX + 2; ++i) {
+        g_assert_cmpint(openat(AT_FDCWD, "/dev/wishyouwerehere", O_RDONLY), ==, -1);
+        g_assert_cmpint(errno, ==, ENOENT);
+    }
+}
+
+static void
 t_testbed_add_from_string_dev_char(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     GError *error = NULL;
@@ -2807,6 +2836,8 @@ main(int argc, char **argv)
                t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dup_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/openat_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_openat_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_add_from_string_dev_char, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_block", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
