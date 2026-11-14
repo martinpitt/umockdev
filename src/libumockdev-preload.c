@@ -1254,6 +1254,15 @@ fd_untrack(int fd)
     script_record_close(fd);
 }
 
+/* fd was just opened for path, which trap_path() redirected to p */
+static void
+fd_track_open(int fd, const char *path, const char *p)
+{
+    ioctl_emulate_open(fd, path, path != p);
+    if (path == p)
+        script_record_open(fd);
+}
+
 /* newfd was duplicated from oldfd (dup() & friends). Both share the same open
  * file description, so newfd also shares oldfd's emulation state. */
 static void
@@ -1552,11 +1561,8 @@ int prefix ## open ## suffix (const char *path, int flags, ...)            \
     } else                                                            \
         ret =  _ ## prefix ## open ## suffix(p, flags);                    \
     TRAP_PATH_UNLOCK;                                                    \
-    if (ret >= 0) {                                                    \
-        ioctl_emulate_open(ret, path, path != p);                    \
-        if (path == p)                                                    \
-            script_record_open(ret);                                    \
-    }                                                                    \
+    if (ret >= 0)                                                    \
+        fd_track_open(ret, path, p);                                    \
     return ret;                                                            \
 }
 
@@ -1575,11 +1581,8 @@ int prefix ## open ## suffix (const char *path, int flags)            \
     DBG(DBG_PATH, "testbed wrapped " #prefix "open" #suffix "(%s) -> %s\n", path, p); \
     ret =  _ ## prefix ## open ## suffix(p, flags);                    \
     TRAP_PATH_UNLOCK;                                                    \
-    if (ret >= 0) {                                                    \
-        ioctl_emulate_open(ret, path, path != p);                    \
-        if (path == p)                                                    \
-            script_record_open(ret);                                    \
-    }                                                                    \
+    if (ret >= 0)                                                    \
+        fd_track_open(ret, path, p);                                    \
     return ret;                                                                \
 }
 
@@ -1599,13 +1602,8 @@ FILE* prefix ## fopen ## suffix (const char *path, const char *mode)  \
     DBG(DBG_PATH, "testbed wrapped " #prefix "fopen" #suffix "(%s) -> %s\n", path, p); \
     ret =  _ ## prefix ## fopen ## suffix(p, mode);                    \
     TRAP_PATH_UNLOCK;                                                    \
-    if (ret != NULL) {                                                    \
-        int fd = fileno(ret);                                            \
-        ioctl_emulate_open(fd, path, path != p);                    \
-        if (path == p) {                                            \
-            script_record_open(fd);                                    \
-        }                                                            \
-    }                                                                    \
+    if (ret != NULL)                                                    \
+        fd_track_open(fileno(ret), path, p);                            \
     return ret;                                                            \
 }
 
@@ -1761,11 +1759,8 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
         ret =  _ ## prefix ## openat ## suffix(dirfd, p, flags);                                \
     TRAP_PATH_UNLOCK;                                                                                \
     /* like open(); a relative pathname does not tell the device path */                        \
-    if (ret >= 0 && pathname[0] == '/') {                                                       \
-        ioctl_emulate_open(ret, pathname, pathname != p);                                       \
-        if (pathname == p)                                                                      \
-            script_record_open(ret);                                                            \
-    }                                                                                           \
+    if (ret >= 0 && pathname[0] == '/')                                                         \
+        fd_track_open(ret, pathname, p);                                                        \
     return ret;                                                                                 \
 }
 
