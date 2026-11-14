@@ -195,7 +195,7 @@ static __thread sigset_t trap_path_sig_restore;
 
 /* multi-thread locking for the fd maps of netlink sockets, ioctl emulation,
  * and script recording; also guards the reference count of the ioctl
- * emulation state */
+ * emulation state, and serializes writing script logs */
 static pthread_mutex_t fd_maps_lock = PTHREAD_MUTEX_INITIALIZER;
 static __thread sigset_t fd_maps_sig_restore;
 static __thread int fd_maps_cancel_restore;
@@ -604,6 +604,17 @@ netlink_socket(int domain, int type, int protocol)
     return UNHANDLED;
 }
 
+static bool
+is_netlink_socket(int fd)
+{
+    bool ret;
+
+    fd_maps_lock_block_signals();
+    ret = fd_map_get(&wrapped_netlink_sockets, fd, NULL);
+    fd_maps_unlock_restore_signals();
+    return ret;
+}
+
 static int
 netlink_bind(int sockfd)
 {
@@ -612,7 +623,7 @@ netlink_bind(int sockfd)
     struct sockaddr_un sa;
     const char *path = getenv("UMOCKDEV_DIR");
 
-    if (fd_map_get(&wrapped_netlink_sockets, sockfd, NULL) && path != NULL) {
+    if (path != NULL && is_netlink_socket(sockfd)) {
         DBG(DBG_NETLINK, "testbed wrapped bind: intercepting netlink socket fd %i\n", sockfd);
 
         /* we create one socket per fd, and send emulated uevents to all of
@@ -634,7 +645,7 @@ netlink_recvmsg(int sockfd, struct msghdr * msg, ssize_t ret)
     struct cmsghdr *cmsg;
     struct sockaddr_nl *sender;
 
-    if (fd_map_get(&wrapped_netlink_sockets, sockfd, NULL) && ret > 0) {
+    if (ret > 0 && is_netlink_socket(sockfd)) {
         DBG(DBG_NETLINK, "testbed wrapped recvmsg: netlink socket fd %i, got %zi bytes\n", sockfd, ret);
 
         /* fake sender to be netlink */
@@ -681,9 +692,18 @@ fstat_adjust_emulated_device(int fd, mode_t *st_mode, dev_t *st_rdev)
 {
     /* Check if this fd is for an emulated device using the ioctl tracking system */
     struct ioctl_fd_info *fdinfo;
-    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo) && fdinfo->is_emulated) {
-        DBG(DBG_PATH, "fstat(%i): adjusting emulated device %s\n", fd, fdinfo->dev_path);
-        adjust_emulated_device_mode_rdev(fdinfo->dev_path, st_mode, st_rdev);
+    char dev_path[PATH_MAX];
+    bool is_emulated;
+
+    fd_maps_lock_block_signals();
+    is_emulated = fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo) && fdinfo->is_emulated;
+    if (is_emulated)
+        snprintf(dev_path, sizeof dev_path, "%s", fdinfo->dev_path);
+    fd_maps_unlock_restore_signals();
+
+    if (is_emulated) {
+        DBG(DBG_PATH, "fstat(%i): adjusting emulated device %s\n", fd, dev_path);
+        adjust_emulated_device_mode_rdev(dev_path, st_mode, st_rdev);
         return;
     }
 
@@ -1231,8 +1251,10 @@ update_msec(struct timespec *tm)
 {
     struct timespec now;
     long delta;
-    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0)
+    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
+        fd_maps_unlock_for_exit();
         err(EXIT_FAILURE, "libumockdev-preload: failed to clock_gettime");
+    }
     delta = (now.tv_sec - tm->tv_sec) * 1000 + now.tv_nsec / 1000000 - tm->tv_nsec / 1000000;
     assert(delta >= 0);
     *tm = now;
@@ -1248,10 +1270,17 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
     libc_func(fwrite, size_t, const void *, size_t, size_t, FILE *);
     static char header[100];
 
-    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
-        return;
     if (size <= 0)
         return;
+    /* hold the lock while writing, so that a close() in another thread does
+     * not free srinfo, and copies of fd in other threads do not interleave;
+     * the log is written with the real libc functions, so this does not
+     * recurse */
+    fd_maps_lock_block_signals();
+    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo)) {
+        fd_maps_unlock_restore_signals();
+        return;
+    }
     DBG(DBG_SCRIPT, "script_record_op %c: got %zi bytes on fd %i (format %i)\n", op, size, fd, srinfo->fmt);
 
     switch (srinfo->fmt) {
@@ -1289,10 +1318,14 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
             break;
 
         case FMT_EVEMU:
-            if (op != 'r')
+            if (op != 'r') {
+                fd_maps_unlock_for_exit();
                 errx(EXIT_FAILURE, "libumockdev-preload: evemu format only supports reads from the device");
-            if (size % sizeof(struct input_event) != 0)
+            }
+            if (size % sizeof(struct input_event) != 0) {
+                fd_maps_unlock_for_exit();
                 errx(EXIT_FAILURE, "libumockdev-preload: evemu format only supports reading input_event structs");
+            }
             const struct input_event *e = buf;
             while (size > 0) {
                 fprintf(srinfo->log, "E: %li.%06li %04"PRIX16" %04"PRIX16 " %"PRIi32"\n",
@@ -1303,11 +1336,13 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
             break;
 
         default:
+            fd_maps_unlock_for_exit();
             errx(EXIT_FAILURE, "libumockdev-preload script_record_op(): unsupported format %i", srinfo->fmt);
     }
 
     fflush(srinfo->log);
     srinfo->op = op;
+    fd_maps_unlock_restore_signals();
 }
 
 
