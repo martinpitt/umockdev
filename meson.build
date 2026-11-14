@@ -138,12 +138,17 @@ endif
 # preload library
 #
 
-preload_lib = shared_library('umockdev-preload',
-  ['src/libumockdev-preload.c',
-   'src/debug.c',
+# the preload must only export the wrapped libc functions; anything else might collide with the program's symbols
+preload_helpers_lib = static_library('umockdev-preload-helpers',
+  ['src/debug.c',
    'src/utils.c',
    'src/ioctl_tree.c'],
+  gnu_symbol_visibility: 'hidden')
+
+preload_lib = shared_library('umockdev-preload',
+  ['src/libumockdev-preload.c'],
   c_args: ['-fvisibility=default'],
+  link_with: preload_helpers_lib,
   version: '0.0.0',
   dependencies: [dl, pthread],
   install: true)
