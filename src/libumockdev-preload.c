@@ -159,22 +159,7 @@ dev_of_fd(int fd)
     return 0;
 }
 
-/* The program may close the preload's own fds behind its back, e.g. with
- * close_range(), and reuse their numbers; a later close or I/O would then
- * hit the program's fd. So move them to numbers which programs do not use by
- * themselves, unless RLIMIT_NOFILE is that low. */
-static int
-private_fd(int fd)
-{
-    libc_func(fcntl, int, int, int, ...);
-    libc_func(close, int, int);
-    int high = _fcntl(fd, F_DUPFD_CLOEXEC, PRIVATE_FD_MIN);
-
-    if (high < 0)
-        return fd;
-    _close(fd);
-    return high;
-}
+static int private_fd(int fd);
 
 static inline int
 path_exists(const char *path)
@@ -1084,6 +1069,42 @@ init_script_dev_logfile_map(void)
     }
 }
 
+/* The program may close the preload's own fds behind its back, e.g. with
+ * close_range(), and reuse their numbers; a later close or I/O would then
+ * hit the program's fd. So move them to numbers which programs do not use by
+ * themselves, unless RLIMIT_NOFILE is that low. The preload itself does
+ * reuse these numbers: the new fd got a free one, so forget all state which
+ * still refers to it. */
+static int
+private_fd(int fd)
+{
+    libc_func(fcntl, int, int, int, ...);
+    libc_func(close, int, int);
+    int high;
+
+    fd_maps_lock_block_signals();
+    high = _fcntl(fd, F_DUPFD_CLOEXEC, PRIVATE_FD_MIN);
+    if (high >= 0) {
+        _close(fd);
+        fd = high;
+    }
+    for (size_t i = 0; i < FD_MAP_MAX; ++i) {
+        if (ioctl_wrapped_fds.set[i]) {
+            struct ioctl_fd_info *fdinfo = (struct ioctl_fd_info *) ioctl_wrapped_fds.data[i];
+            if (fdinfo->ioctl_sock == fd)
+                fdinfo->ioctl_sock = -1;
+        }
+        if (script_recorded_fds.set[i]) {
+            struct script_record_info *srinfo = (struct script_record_info *) script_recorded_fds.data[i];
+            /* leaks the FILE, as fclose() would close the new fd */
+            if (srinfo->log != NULL && fileno(srinfo->log) == fd)
+                srinfo->log = NULL;
+        }
+    }
+    fd_maps_unlock_restore_signals();
+    return fd;
+}
+
 static void
 script_start_record(int fd, const char *logname, const char *recording_path, enum script_record_format fmt)
 {
@@ -1242,7 +1263,8 @@ script_record_close(int fd, struct script_record_info *srinfo)
     libc_func(fclose, int, FILE *);
 
     DBG(DBG_SCRIPT, "script_record_close: stop recording fd %i\n", fd);
-    _fclose(srinfo->log);
+    if (srinfo->log != NULL)
+        _fclose(srinfo->log);
     free(srinfo);
 }
 
@@ -1277,7 +1299,7 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
      * the log is written with the real libc functions, so this does not
      * recurse */
     fd_maps_lock_block_signals();
-    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo)) {
+    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo) || srinfo->log == NULL) {
         fd_maps_unlock_restore_signals();
         return;
     }

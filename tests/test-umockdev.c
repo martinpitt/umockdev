@@ -1745,11 +1745,26 @@ assert_not_emulated_null(int fd)
     g_assert_cmpint(errno, ==, ENOTTY);
 }
 
+/* Get the free number fd from open() or dup(); the ioctl handler thread of
+ * the testbed may free lower numbers at any time */
+static void
+reuse_fd(int fd, int null, gboolean with_dup)
+{
+    int got = with_dup ? dup(null) : g_open("/dev/null", O_RDONLY, 0);
+
+    if (got < fd) {
+        reuse_fd(fd, null, with_dup);
+        close(got);
+    } else {
+        g_assert_cmpint(got, ==, fd);
+    }
+}
+
 /* an emulated fd closed behind the preload's back must not haunt the next fd with its number */
 static void
 t_testbed_emulated_dev_closed_unwrapped(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
-    int fd, null;
+    int fd, null, stale, sock;
 
     g_assert(umockdev_testbed_add_from_string(fixture->testbed,
                                               "P: /devices/event0\nN: input/event0\n"
@@ -1762,7 +1777,7 @@ t_testbed_emulated_dev_closed_unwrapped(UMockdevTestbedFixture * fixture, UNUSED
     fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
     assert_emulated_evdev(fd);
     g_assert_cmpint(syscall(__NR_close, fd), ==, 0);
-    g_assert_cmpint(g_open("/dev/null", O_RDONLY, 0), ==, fd);
+    reuse_fd(fd, null, FALSE);
     assert_not_emulated_null(fd);
     close(fd);
 
@@ -1770,8 +1785,23 @@ t_testbed_emulated_dev_closed_unwrapped(UMockdevTestbedFixture * fixture, UNUSED
     fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
     assert_emulated_evdev(fd);
     g_assert_cmpint(syscall(__NR_close, fd), ==, 0);
-    g_assert_cmpint(dup(null), ==, fd);
+    reuse_fd(fd, null, TRUE);
     assert_not_emulated_null(fd);
+    close(fd);
+
+    /* closed along with the preload's ioctl socket, whose number the next ioctl socket reuses */
+    for (sock = PRIVATE_FD_MIN; fcntl(sock, F_GETFD) >= 0; sock++)
+        ;
+    stale = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+    assert_emulated_evdev(stale);
+    g_assert_cmpint(syscall(__NR_close, sock), ==, 0);
+    /* the raw syscall keeps the stale state of this fd number */
+    g_assert_cmpint(syscall(__NR_dup3, null, stale, 0), ==, stale);
+    fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
+    g_assert_cmpint(fcntl(sock, F_GETFD), >=, 0);
+    /* forgetting the stale state must not close the ioctl socket of fd */
+    close(stale);
+    assert_emulated_evdev(fd);
     close(fd);
 
     close(null);
