@@ -257,13 +257,21 @@ N: 001
 E: SUBSYSTEM=usb
 """);
 
+  var was_open = new bool[1024];
+  for (int i = 0; i < was_open.length; i++)
+      was_open[i] = Posix.fcntl (i, Posix.F_GETFD) != -1;
   int fd = Posix.open ("/dev/001", Posix.O_RDWR, 0);
   assert_cmpint (fd, CompareOperator.GE, 0);
-  // the preload connects the socket right after the real open()
+  // the preload connects the socket during open()
+  int sock = -1;
+  for (int i = 0; i < was_open.length; i++) {
+      if (i != fd && !was_open[i] && Posix.fcntl (i, Posix.F_GETFD) != -1)
+          sock = i;
+  }
   Posix.Stat st;
-  assert_cmpint (Posix.fstat (fd + 1, out st), CompareOperator.EQ, 0);
+  assert_cmpint (Posix.fstat (sock, out st), CompareOperator.EQ, 0);
   assert (Posix.S_ISSOCK (st.st_mode));
-  string[] argv = { "test", "-e", "/proc/self/fd/%i".printf (fd + 1) };
+  string[] argv = { "test", "-e", "/proc/self/fd/%i".printf (sock) };
 
   Posix.pid_t pid = Posix.fork ();
   assert_cmpint (pid, CompareOperator.NE, -1);

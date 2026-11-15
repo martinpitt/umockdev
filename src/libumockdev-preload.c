@@ -159,6 +159,23 @@ dev_of_fd(int fd)
     return 0;
 }
 
+/* The program may close the preload's own fds behind its back, e.g. with
+ * close_range(), and reuse their numbers; a later close or I/O would then
+ * hit the program's fd. So move them to numbers which programs do not use by
+ * themselves, unless RLIMIT_NOFILE is that low. */
+static int
+private_fd(int fd)
+{
+    libc_func(fcntl, int, int, int, ...);
+    libc_func(close, int, int);
+    int high = _fcntl(fd, F_DUPFD_CLOEXEC, PRIVATE_FD_MIN);
+
+    if (high < 0)
+        return fd;
+    _close(fd);
+    return high;
+}
+
 static inline int
 path_exists(const char *path)
 {
@@ -730,7 +747,7 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     fdinfo = mallocx(sizeof(struct ioctl_fd_info));
     fdinfo->is_emulated = is_emulated;
     fdinfo->is_default = is_default;
-    fdinfo->ioctl_sock = sock;
+    fdinfo->ioctl_sock = private_fd(sock);
     fdinfo->dev_path = strdupx(dev_path);
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
 
@@ -1003,14 +1020,17 @@ init_script_dev_logfile_map(void)
 static void
 script_start_record(int fd, const char *logname, const char *recording_path, enum script_record_format fmt)
 {
-    FILE *log;
-    libc_func(fopen, FILE*, const char *, const char*);
+    FILE *log = NULL;
+    libc_func(open, int, const char *, int, ...);
     struct script_record_info *srinfo;
+    int log_fd;
 
     if (fd_map_get(&script_recorded_fds, fd, NULL))
         errx(EXIT_FAILURE, "script_start_record: internal error: fd %i is already being recorded", fd);
 
-    log = _fopen(logname, "a+e");
+    log_fd = _open(logname, O_RDWR | O_CREAT | O_APPEND | O_CLOEXEC, 0666);
+    if (log_fd >= 0)
+        log = fdopen(private_fd(log_fd), "a+");
     if (log == NULL) {
         perror("umockdev: failed to open script record file");
         exit(1);
