@@ -195,6 +195,8 @@ static __thread sigset_t trap_path_sig_restore;
 
 /* multi-thread locking for ioctls */
 static pthread_mutex_t fd_maps_lock = PTHREAD_MUTEX_INITIALIZER;
+static __thread sigset_t fd_maps_sig_restore;
+static __thread bool fd_maps_lock_held;
 
 #define TRAP_PATH_LOCK \
     do { \
@@ -212,20 +214,31 @@ static pthread_mutex_t fd_maps_lock = PTHREAD_MUTEX_INITIALIZER;
 /* The only way to take fd_maps_lock: block signals first, so that a signal
  * handler doing I/O on the same thread cannot deadlock on it */
 static void
-fd_maps_lock_block_signals(sigset_t *sig_restore)
+fd_maps_lock_block_signals(void)
 {
     sigset_t sig_set;
 
     sigfillset(&sig_set);
-    pthread_sigmask(SIG_SETMASK, &sig_set, sig_restore);
+    pthread_sigmask(SIG_SETMASK, &sig_set, &fd_maps_sig_restore);
     pthread_mutex_lock(&fd_maps_lock);
+    fd_maps_lock_held = true;
 }
 
 static void
-fd_maps_unlock_restore_signals(const sigset_t *sig_restore)
+fd_maps_unlock_restore_signals(void)
 {
+    fd_maps_lock_held = false;
     pthread_mutex_unlock(&fd_maps_lock);
-    pthread_sigmask(SIG_SETMASK, sig_restore, NULL);
+    pthread_sigmask(SIG_SETMASK, &fd_maps_sig_restore, NULL);
+}
+
+/* Call before a fatal error in code which may hold fd_maps_lock: exit() runs
+ * the program's atexit() handlers, which may call wrappers that take it */
+static void
+fd_maps_unlock_for_exit(void)
+{
+    if (fd_maps_lock_held)
+        fd_maps_unlock_restore_signals();
 }
 
 static size_t trap_path_prefix_len = 0;
@@ -490,6 +503,7 @@ fd_map_add(fd_map * map, int fd, const void *data)
         }
     }
 
+    fd_maps_unlock_for_exit();
     errx(EXIT_FAILURE, "libumockdev-preload fd_map_add(): overflow");
 }
 
@@ -697,7 +711,6 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     int ret;
     struct ioctl_fd_info *fdinfo;
     struct sockaddr_un addr;
-    sigset_t sig_restore;
 
     if (strncmp(dev_path, "/dev/", 5) != 0)
         return;
@@ -737,9 +750,9 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     fdinfo->dev_path = strdupx(dev_path);
     pthread_mutex_init(&fdinfo->sock_lock, NULL);
 
-    fd_maps_lock_block_signals(&sig_restore);
+    fd_maps_lock_block_signals();
     fd_map_add(&ioctl_wrapped_fds, fd, fdinfo);
-    fd_maps_unlock_restore_signals(&sig_restore);
+    fd_maps_unlock_restore_signals();
     DBG(DBG_IOCTL, "ioctl_emulate_open fd %i (%s): connected ioctl socket\n", fd, dev_path);
     errno = orig_errno;
 }
@@ -750,12 +763,11 @@ ioctl_emulate_close(int fd)
     libc_func(close, int, int);
     struct ioctl_fd_info *fdinfo;
     bool last_ref = false;
-    sigset_t sig_restore;
 
-    fd_maps_lock_block_signals(&sig_restore);
+    fd_maps_lock_block_signals();
     if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo))
         last_ref = fd_map_remove(&ioctl_wrapped_fds, fd);
-    fd_maps_unlock_restore_signals(&sig_restore);
+    fd_maps_unlock_restore_signals();
 
     if (last_ref) {
         DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
@@ -823,16 +835,19 @@ remote_emulate(int fd, int cmd, long arg1, long arg2)
     libc_func(write, ssize_t, int, void *, size_t);
     struct ioctl_fd_info *fdinfo;
     struct ioctl_request req;
-    sigset_t sig_restore;
+    sigset_t sig_set, sig_restore;
     int res;
 
-    fd_maps_lock_block_signals(&sig_restore);
-    if (!fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo)) {
-        fd_maps_unlock_restore_signals(&sig_restore);
+    /* keep signals blocked while talking with the remote process */
+    sigfillset(&sig_set);
+    pthread_sigmask(SIG_SETMASK, &sig_set, &sig_restore);
+    fd_maps_lock_block_signals();
+    res = fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo);
+    fd_maps_unlock_restore_signals();
+    if (!res) {
+        pthread_sigmask(SIG_SETMASK, &sig_restore, NULL);
         return UNHANDLED;
     }
-    /* keep signals blocked while talking with the remote process */
-    pthread_mutex_unlock(&fd_maps_lock);
 
     /* Host devices keep their real behaviour, unless they have their own
      * handler, like the recorder of umockdev-record */
@@ -1306,7 +1321,6 @@ fd_track_open(int fd, const char *path, const char *p)
 static void
 fd_track_dup(int oldfd, int newfd)
 {
-    sigset_t sig_restore;
     int is_ioctl;
 
     if (newfd < 0)
@@ -1315,9 +1329,9 @@ fd_track_dup(int oldfd, int newfd)
     /* also drops newfd's state from before an implicit close by dup2() */
     fd_untrack(newfd);
 
-    fd_maps_lock_block_signals(&sig_restore);
+    fd_maps_lock_block_signals();
     is_ioctl = fd_map_dup(&ioctl_wrapped_fds, oldfd, newfd);
-    fd_maps_unlock_restore_signals(&sig_restore);
+    fd_maps_unlock_restore_signals();
     if (is_ioctl)
         DBG(DBG_IOCTL, "fd_track_dup: fd %i duplicated to %i, sharing ioctl socket\n", oldfd, newfd);
 

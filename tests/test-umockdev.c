@@ -1778,6 +1778,29 @@ t_testbed_emulated_dev_closed_unwrapped(UMockdevTestbedFixture * fixture, UNUSED
 }
 
 static void
+close_at_exit(void)
+{
+    close(STDIN_FILENO);
+}
+
+/* a fatal error in the preload must exit, even if atexit() handlers call wrapped functions */
+static void
+t_testbed_fd_map_overflow_exit(UNUSED UMockdevTestbedFixture * fixture, UNUSED_DATA)
+{
+    if (g_test_subprocess()) {
+        atexit(close_at_exit);
+        for (int i = 0; i <= FD_MAP_MAX; ++i)
+            g_assert_cmpint(g_open("/dev/null", O_RDONLY, 0), >=, 0);
+        g_assert_not_reached();
+    }
+
+    g_test_trap_subprocess(NULL, 10 * G_USEC_PER_SEC, 0);
+    g_assert(!g_test_trap_reached_timeout());
+    g_test_trap_assert_failed();
+    g_test_trap_assert_stderr("*fd_map_add(): overflow*");
+}
+
+static void
 t_testbed_openat_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     int fd, dirfd;
@@ -2896,6 +2919,8 @@ main(int argc, char **argv)
                t_testbed_dup_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/emulated_dev_closed_unwrapped", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_emulated_dev_closed_unwrapped, t_testbed_fixture_teardown);
+    g_test_add("/umockdev-testbed/fd_map_overflow_exit", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
+               t_testbed_fd_map_overflow_exit, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/openat_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_openat_emulated_dev, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/add_from_string_dev_char", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
