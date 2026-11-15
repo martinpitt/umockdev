@@ -193,7 +193,8 @@ path_exists(const char *path)
 static pthread_mutex_t trap_path_lock = PTHREAD_MUTEX_INITIALIZER;
 static __thread sigset_t trap_path_sig_restore;
 
-/* multi-thread locking for ioctls */
+/* multi-thread locking for the fd maps of netlink sockets, ioctl emulation,
+ * and script recording */
 static pthread_mutex_t fd_maps_lock = PTHREAD_MUTEX_INITIALIZER;
 static __thread sigset_t fd_maps_sig_restore;
 static __thread bool fd_maps_lock_held;
@@ -507,28 +508,33 @@ fd_map_add(fd_map * map, int fd, const void *data)
     errx(EXIT_FAILURE, "libumockdev-preload fd_map_add(): overflow");
 }
 
-/* Several fds can share the same data, e.g. after dup(). Return true if fd was
- * the last one referring to its data, so that the caller can free it. */
+/* Remove fd from map, and return whether it was in it. Several fds can share
+ * the same data, e.g. after dup(). If fd was the last one referring to its
+ * data, return that in data_out (if given), so that the caller can free it;
+ * otherwise NULL. */
 static bool
-fd_map_remove(fd_map * map, int fd)
+fd_map_take(fd_map * map, int fd, const void **data_out)
 {
-    const void *data = NULL;
+    const void *data;
     size_t i;
-    for (i = 0; i < FD_MAP_MAX; ++i) {
-        if (map->set[i] && map->fd[i] == fd) {
-            map->set[i] = 0;
-            data = map->data[i];
-            break;
-        }
-    }
 
+    if (data_out != NULL)
+        *data_out = NULL;
+    for (i = 0; i < FD_MAP_MAX; ++i) {
+        if (map->set[i] && map->fd[i] == fd)
+            break;
+    }
     if (i == FD_MAP_MAX)
-        errx(EXIT_FAILURE, "libumockdev-preload fd_map_remove(): did not find fd %i", fd);
+        return false;
+    map->set[i] = 0;
+    data = map->data[i];
 
     for (i = 0; i < FD_MAP_MAX; ++i) {
         if (map->set[i] && map->data[i] == data)
-            return false;
+            return true;
     }
+    if (data_out != NULL)
+        *data_out = data;
     return true;
 }
 
@@ -573,15 +579,6 @@ static fd_map wrapped_netlink_sockets;
 
 static void fd_untrack(int fd);
 
-static void
-netlink_close(int fd)
-{
-    if (fd_map_get(&wrapped_netlink_sockets, fd, NULL)) {
-        DBG(DBG_NETLINK, "netlink_close(): closing netlink socket fd %i\n", fd);
-        fd_map_remove(&wrapped_netlink_sockets, fd);
-    }
-}
-
 static int
 netlink_socket(int domain, int type, int protocol)
 {
@@ -592,7 +589,9 @@ netlink_socket(int domain, int type, int protocol)
     if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT && path != NULL) {
         fd = _socket(AF_UNIX, type, 0);
         fd_untrack(fd);
+        fd_maps_lock_block_signals();
         fd_map_add(&wrapped_netlink_sockets, fd, NULL);
+        fd_maps_unlock_restore_signals();
         DBG(DBG_NETLINK, "testbed wrapped socket: intercepting netlink, fd %i\n", fd);
         return fd;
     }
@@ -757,26 +756,18 @@ ioctl_emulate_open(int fd, const char *dev_path, bool is_emulated)
     errno = orig_errno;
 }
 
+/* the last fd referring to fdinfo got removed from ioctl_wrapped_fds */
 static void
-ioctl_emulate_close(int fd)
+ioctl_emulate_close(struct ioctl_fd_info *fdinfo)
 {
     libc_func(close, int, int);
-    struct ioctl_fd_info *fdinfo;
-    bool last_ref = false;
 
-    fd_maps_lock_block_signals();
-    if (fd_map_get(&ioctl_wrapped_fds, fd, (const void **)&fdinfo))
-        last_ref = fd_map_remove(&ioctl_wrapped_fds, fd);
-    fd_maps_unlock_restore_signals();
-
-    if (last_ref) {
-        DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket fd %i\n", fd);
-        if (fdinfo->ioctl_sock >= 0)
-            _close(fdinfo->ioctl_sock);
-        free(fdinfo->dev_path);
-        pthread_mutex_destroy(&fdinfo->sock_lock);
-        free(fdinfo);
-    }
+    DBG(DBG_IOCTL, "ioctl_emulate_close: closing ioctl socket of %s\n", fdinfo->dev_path);
+    if (fdinfo->ioctl_sock >= 0)
+        _close(fdinfo->ioctl_sock);
+    free(fdinfo->dev_path);
+    pthread_mutex_destroy(&fdinfo->sock_lock);
+    free(fdinfo);
 }
 
 /* Other threads of the parent may have held the locks while forking; only the
@@ -787,6 +778,7 @@ after_fork_in_child(void)
     size_t i;
 
     fd_maps_lock = trap_path_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    fd_maps_lock_held = false;
     for (i = 0; i < FD_MAP_MAX; ++i) {
         if (ioctl_wrapped_fds.set[i]) {
             struct ioctl_fd_info *fdinfo = (struct ioctl_fd_info *) ioctl_wrapped_fds.data[i];
@@ -1055,9 +1047,6 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
     struct script_record_info *srinfo;
     int log_fd;
 
-    if (fd_map_get(&script_recorded_fds, fd, NULL))
-        errx(EXIT_FAILURE, "script_start_record: internal error: fd %i is already being recorded", fd);
-
     log_fd = _open(logname, O_RDWR | O_CREAT | O_APPEND | O_CLOEXEC, 0666);
     if (log_fd >= 0)
         log = fdopen(private_fd(log_fd), "a+");
@@ -1141,7 +1130,14 @@ script_start_record(int fd, const char *logname, const char *recording_path, enu
         err(EXIT_FAILURE, "libumockdev-preload: failed to clock_gettime");
     srinfo->op = 0;
     srinfo->fmt = fmt;
+
+    fd_maps_lock_block_signals();
+    if (fd_map_get(&script_recorded_fds, fd, NULL)) {
+        fd_maps_unlock_for_exit();
+        errx(EXIT_FAILURE, "script_start_record: internal error: fd %i is already being recorded", fd);
+    }
     fd_map_add(&script_recorded_fds, fd, srinfo);
+    fd_maps_unlock_restore_signals();
 }
 
 static void
@@ -1194,16 +1190,12 @@ script_record_connect(int sockfd, const struct sockaddr *addr, int res)
 }
 
 
+/* fd was the last one referring to srinfo, and got removed from script_recorded_fds */
 static void
-script_record_close(int fd)
+script_record_close(int fd, struct script_record_info *srinfo)
 {
     libc_func(fclose, int, FILE *);
-    struct script_record_info *srinfo;
 
-    if (!fd_map_get(&script_recorded_fds, fd, (const void **)&srinfo))
-        return;
-    if (!fd_map_remove(&script_recorded_fds, fd))
-        return;
     DBG(DBG_SCRIPT, "script_record_close: stop recording fd %i\n", fd);
     _fclose(srinfo->log);
     free(srinfo);
@@ -1301,9 +1293,23 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 static void
 fd_untrack(int fd)
 {
-    netlink_close(fd);
-    ioctl_emulate_close(fd);
-    script_record_close(fd);
+    struct ioctl_fd_info *fdinfo;
+    struct script_record_info *srinfo;
+    bool is_netlink;
+
+    /* all maps in one go: only one thread may see the last reference to some data */
+    fd_maps_lock_block_signals();
+    is_netlink = fd_map_take(&wrapped_netlink_sockets, fd, NULL);
+    fd_map_take(&ioctl_wrapped_fds, fd, (const void **)&fdinfo);
+    fd_map_take(&script_recorded_fds, fd, (const void **)&srinfo);
+    fd_maps_unlock_restore_signals();
+
+    if (is_netlink)
+        DBG(DBG_NETLINK, "fd_untrack: closing netlink socket fd %i\n", fd);
+    if (fdinfo != NULL)
+        ioctl_emulate_close(fdinfo);
+    if (srinfo != NULL)
+        script_record_close(fd, srinfo);
 }
 
 /* fd was just opened for path, which trap_path() redirected to p */
@@ -1321,7 +1327,7 @@ fd_track_open(int fd, const char *path, const char *p)
 static void
 fd_track_dup(int oldfd, int newfd)
 {
-    int is_ioctl;
+    int is_ioctl, is_recorded, is_netlink;
 
     if (newfd < 0)
         return;
@@ -1329,16 +1335,18 @@ fd_track_dup(int oldfd, int newfd)
     /* also drops newfd's state from before an implicit close by dup2() */
     fd_untrack(newfd);
 
+    /* a concurrent close of oldfd must not free its data in between */
     fd_maps_lock_block_signals();
     is_ioctl = fd_map_dup(&ioctl_wrapped_fds, oldfd, newfd);
+    is_recorded = fd_map_dup(&script_recorded_fds, oldfd, newfd);
+    is_netlink = fd_map_dup(&wrapped_netlink_sockets, oldfd, newfd);
     fd_maps_unlock_restore_signals();
+
     if (is_ioctl)
         DBG(DBG_IOCTL, "fd_track_dup: fd %i duplicated to %i, sharing ioctl socket\n", oldfd, newfd);
-
-    if (fd_map_dup(&script_recorded_fds, oldfd, newfd))
+    if (is_recorded)
         DBG(DBG_SCRIPT, "fd_track_dup: recorded fd %i duplicated to %i\n", oldfd, newfd);
-
-    if (fd_map_dup(&wrapped_netlink_sockets, oldfd, newfd))
+    if (is_netlink)
         DBG(DBG_NETLINK, "fd_track_dup: netlink socket fd %i duplicated to %i\n", oldfd, newfd);
 }
 
