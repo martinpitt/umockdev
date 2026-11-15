@@ -574,6 +574,8 @@ fd_map_dup(fd_map * map, int oldfd, int newfd)
  * identify them in the other functions */
 static fd_map wrapped_netlink_sockets;
 
+static void fd_untrack(int fd);
+
 static void
 netlink_close(int fd)
 {
@@ -592,6 +594,7 @@ netlink_socket(int domain, int type, int protocol)
 
     if (domain == AF_NETLINK && protocol == NETLINK_KOBJECT_UEVENT && path != NULL) {
         fd = _socket(AF_UNIX, type, 0);
+        fd_untrack(fd);
         fd_map_add(&wrapped_netlink_sockets, fd, NULL);
         DBG(DBG_NETLINK, "testbed wrapped socket: intercepting netlink, fd %i\n", fd);
         return fd;
@@ -1264,7 +1267,10 @@ script_record_op(char op, int fd, const void *buf, ssize_t size)
 }
 
 
-/* Forget everything we track about fd, as it is being closed. */
+/* Forget everything we track about fd, as it is being closed, or as a wrapper
+ * just created it: then anything still tracked for its number belongs to an
+ * earlier fd that got closed behind the wrappers' back, e.g. with
+ * close_range() or by libc internally. */
 static void
 fd_untrack(int fd)
 {
@@ -1277,6 +1283,7 @@ fd_untrack(int fd)
 static void
 fd_track_open(int fd, const char *path, const char *p)
 {
+    fd_untrack(fd);
     ioctl_emulate_open(fd, path, path != p);
     if (path == p)
         script_record_open(fd);
@@ -1293,6 +1300,8 @@ fd_track_dup(int oldfd, int newfd)
     if (newfd < 0)
         return;
     assert(newfd != oldfd);
+    /* also drops newfd's state from before an implicit close by dup2() */
+    fd_untrack(newfd);
 
     ioctl_lock_block_signals(&sig_restore);
     is_ioctl = fd_map_dup(&ioctl_wrapped_fds, oldfd, newfd);
@@ -1780,6 +1789,8 @@ int prefix ## openat ## suffix (int dirfd, const char *pathname, int flags, ...)
     /* like open(); a relative pathname does not tell the device path */                        \
     if (ret >= 0 && pathname[0] == '/')                                                         \
         fd_track_open(ret, pathname, p);                                                        \
+    else if (ret >= 0)                                                                          \
+        fd_untrack(ret);                                                                        \
     return ret;                                                                                 \
 }
 
@@ -1808,6 +1819,8 @@ open_tree(int dfd, const char *filename, unsigned int flags)
     DBG(DBG_PATH, "testbed wrapped open_tree(%i, %s) -> %s\n", dfd, filename, p);
     ret = _open_tree(dfd, p, flags);
     TRAP_PATH_UNLOCK;
+    if (ret >= 0)
+        fd_untrack(ret);
     return ret;
 }
 #endif
@@ -2021,7 +2034,10 @@ socket(int domain, int type, int protocol)
     if (fd != UNHANDLED)
         return fd;
 
-    return _socket(domain, type, protocol);
+    fd = _socket(domain, type, protocol);
+    if (fd >= 0)
+        fd_untrack(fd);
+    return fd;
 }
 
 int
@@ -2109,11 +2125,9 @@ dup2(int oldfd, int newfd)
     libc_func(dup2, int, int, int);
     int ret = _dup2(oldfd, newfd);
 
-    /* newfd got closed implicitly, unless it is the same as oldfd */
-    if (ret >= 0 && oldfd != newfd) {
-        fd_untrack(newfd);
+    /* dup2() onto itself does nothing */
+    if (oldfd != newfd)
         fd_track_dup(oldfd, ret);
-    }
     return ret;
 }
 
@@ -2123,11 +2137,8 @@ dup3(int oldfd, int newfd, int flags)
     libc_func(dup3, int, int, int, int);
     int ret = _dup3(oldfd, newfd, flags);
 
-    /* like dup2(); dup3() already fails with EINVAL if newfd is oldfd */
-    if (ret >= 0 && oldfd != newfd) {
-        fd_untrack(newfd);
-        fd_track_dup(oldfd, ret);
-    }
+    /* dup3() fails with EINVAL if newfd is oldfd */
+    fd_track_dup(oldfd, ret);
     return ret;
 }
 
