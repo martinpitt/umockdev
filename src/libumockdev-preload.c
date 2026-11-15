@@ -198,6 +198,7 @@ static __thread sigset_t trap_path_sig_restore;
  * emulation state */
 static pthread_mutex_t fd_maps_lock = PTHREAD_MUTEX_INITIALIZER;
 static __thread sigset_t fd_maps_sig_restore;
+static __thread int fd_maps_cancel_restore;
 static __thread bool fd_maps_lock_held;
 
 #define TRAP_PATH_LOCK \
@@ -214,12 +215,14 @@ static __thread bool fd_maps_lock_held;
     } while (0)
 
 /* The only way to take fd_maps_lock: block signals first, so that a signal
- * handler doing I/O on the same thread cannot deadlock on it */
+ * handler doing I/O on the same thread cannot deadlock on it; and disable
+ * cancellation, as a cancelled thread would never release the lock */
 static void
 fd_maps_lock_block_signals(void)
 {
     sigset_t sig_set;
 
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &fd_maps_cancel_restore);
     sigfillset(&sig_set);
     pthread_sigmask(SIG_SETMASK, &sig_set, &fd_maps_sig_restore);
     pthread_mutex_lock(&fd_maps_lock);
@@ -232,6 +235,7 @@ fd_maps_unlock_restore_signals(void)
     fd_maps_lock_held = false;
     pthread_mutex_unlock(&fd_maps_lock);
     pthread_sigmask(SIG_SETMASK, &fd_maps_sig_restore, NULL);
+    pthread_setcancelstate(fd_maps_cancel_restore, NULL);
 }
 
 /* Call before a fatal error in code which may hold fd_maps_lock: exit() runs
