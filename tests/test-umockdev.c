@@ -1650,10 +1650,22 @@ assert_emulated_evdev(int fd)
     g_assert_cmpuint(minor(st.st_rdev), ==, 64);
 }
 
+/* open fds in the range which the preload uses for its own ones */
+static unsigned
+count_private_fds(void)
+{
+    unsigned count = 0;
+
+    for (int fd = PRIVATE_FD_MIN; fd < PRIVATE_FD_MIN + FD_MAP_MAX; fd++)
+        count += fcntl(fd, F_GETFD) >= 0;
+    return count;
+}
+
 static void
 t_testbed_dup_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
 {
     int fd, copy, copy2, target;
+    unsigned private_fds;
     int pipefds[2];
     int grab = 1;
     struct stat st;
@@ -1663,8 +1675,11 @@ t_testbed_dup_emulated_dev(UMockdevTestbedFixture * fixture, UNUSED_DATA)
                                               "E: SUBSYSTEM=input\nE: DEVNAME=/dev/input/event0\n"
                                               "A: dev=13:64\n", NULL));
 
+    private_fds = count_private_fds();
     fd = g_open("/dev/input/event0", O_RDWR | O_NONBLOCK, 0);
     assert_emulated_evdev(fd);
+    /* the preload's ioctl socket */
+    g_assert_cmpuint(count_private_fds(), ==, private_fds + 1);
 
     copy = dup(fd);
     g_assert_cmpint(copy, !=, fd);
