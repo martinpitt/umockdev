@@ -112,34 +112,64 @@ extern int clock_gettime(clockid_t clockid, struct timespec *tp);
 
 #define UNHANDLED -100
 
-static void *
-get_libc_func(const char *f)
-{
-    void *fp;
-    static void *nextlib;
+/* Each libc_func() call site puts one of these into the umockdev_libc_funcs
+ * section, so that resolve_libc_funcs() can find all of them. */
+struct libc_func {
+    const char *name;
+    void **ptr;
+};
 
-    if (nextlib == NULL) {
-#ifdef __alpha
-        nextlib = dlopen("libc.so.6.1", RTLD_LAZY);
+/* Defined by the linker; hidden so that other objects cannot bind to them */
+extern const struct libc_func __start_umockdev_libc_funcs[] __attribute__((visibility("hidden")));
+extern const struct libc_func __stop_umockdev_libc_funcs[] __attribute__((visibility("hidden")));
+
+/* "used" keeps the compiler from dropping the unreferenced entries; "retain"
+ * does the same for the linker with -z start-stop-gc */
+#if defined(__has_attribute) && __has_attribute(retain)
+#define LIBC_FUNC_SECTION __attribute__((section("umockdev_libc_funcs"), used, retain))
 #else
-        nextlib = dlopen("libc.so.6", RTLD_LAZY);
+#define LIBC_FUNC_SECTION __attribute__((section("umockdev_libc_funcs"), used))
 #endif
-        if (nextlib == NULL)
-            errx(EXIT_FAILURE, "umockdev: %s", dlerror());
-    }
 
-    fp = dlsym(nextlib, f);
+static pthread_once_t libc_funcs_once = PTHREAD_ONCE_INIT;
 
-    return fp;
+/* Resolve the real libc functions of all libc_func() call sites at once.
+ *
+ * dlsym() takes glibc's dynamic loader lock, which dlopen() holds while it
+ * runs the new library's constructors. Resolving on a wrapper's first call
+ * can thus deadlock against another thread's dlopen(), when a constructor
+ * waits for the wrapper's thread (see t_dlopen_ctor_race() in
+ * tests/test-umockdev.c). So this runs from the preload's constructor at
+ * program start, or from a wrapper which another library's constructor calls
+ * even before that.
+ *
+ * This must not call any wrapped function, as the wrappers wait for it. */
+static void
+resolve_libc_funcs(void)
+{
+#ifdef __alpha
+    void *libc = dlopen("libc.so.6.1", RTLD_LAZY);
+#else
+    void *libc = dlopen("libc.so.6", RTLD_LAZY);
+#endif
+
+    if (libc == NULL)
+        errx(EXIT_FAILURE, "umockdev: %s", dlerror());
+
+    /* Functions which do not exist on this platform stay NULL, and only fail
+     * when actually being called */
+    for (const struct libc_func *f = __start_umockdev_libc_funcs; f < __stop_umockdev_libc_funcs; ++f)
+        *f->ptr = dlsym(libc, f->name);
 }
 
-#define libc_func(name, rettype, ...)                        \
-    static rettype (*_ ## name) (__VA_ARGS__) = NULL;        \
-    if (_ ## name == NULL) {                                \
-        _ ## name = get_libc_func(#name);                \
-        if (_ ## name == NULL)                                \
-            errx(EXIT_FAILURE, "umockdev: could not get libc function "#name); \
-    }
+#define libc_func(name, rettype, ...)                                   \
+    static void *_ ## name ## _ptr;                                     \
+    static const struct libc_func _ ## name ## _entry LIBC_FUNC_SECTION = { #name, &_ ## name ## _ptr }; \
+    rettype (*_ ## name) (__VA_ARGS__);                                 \
+    pthread_once(&libc_funcs_once, resolve_libc_funcs);                 \
+    _ ## name = (rettype (*) (__VA_ARGS__)) _ ## name ## _ptr;          \
+    if (_ ## name == NULL)                                              \
+        errx(EXIT_FAILURE, "umockdev: could not get libc function "#name);
 
 /* return rdev of a file descriptor */
 static dev_t
@@ -809,6 +839,8 @@ static void
 on_load(void)
 {
     int ret;
+
+    pthread_once(&libc_funcs_once, resolve_libc_funcs);
 
     ret = pthread_atfork(NULL, NULL, after_fork_in_child);
     if (ret != 0) {
