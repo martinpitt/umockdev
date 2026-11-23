@@ -231,7 +231,7 @@ A: size=1048576\n
 #if HAVE_SELINUX
     // we may run on a system without SELinux
     try {
-        Process.spawn_command_line_sync ("command -v selinuxenabled", null, null, out exit);
+        Process.spawn_command_line_sync ("selinuxenabled", null, null, out exit);
     } catch (SpawnError e) {
         exit = 1;
     }
@@ -374,7 +374,7 @@ t_run_record_null ()
 #if HAVE_SELINUX
     // we may run on a system without SELinux
     try {
-        Process.spawn_command_line_sync ("command -v selinuxenabled", null, null, out exit);
+        Process.spawn_command_line_sync ("selinuxenabled", null, null, out exit);
     } catch (SpawnError e) {
         exit = 1;
     }

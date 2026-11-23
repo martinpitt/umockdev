@@ -205,7 +205,7 @@ t_testbed_selinux ()
 {
   int exit;
   try {
-      Process.spawn_command_line_sync ("command -v selinuxenabled", null, null, out exit);
+      Process.spawn_command_line_sync ("selinuxenabled", null, null, out exit);
   } catch (SpawnError e) {
       exit = 1;
   }
