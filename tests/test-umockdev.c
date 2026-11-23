@@ -22,6 +22,7 @@
 /* for O_TMPFILE */
 #define _GNU_SOURCE
 
+#include <dlfcn.h>
 #include <err.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -29,8 +30,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/mount.h>
@@ -1610,6 +1613,83 @@ t_testbed_lock_signal_mask_threads(UMockdevTestbedFixture * fixture, UNUSED_DATA
     g_assert(g_thread_join(t2));
 }
 
+static sem_t dlopen_ctor_entered;
+static sem_t dlopen_ctor_racer_done;
+
+/* Called from the constructor of tests/dlopen-ctor.c, see t_dlopen_ctor_race() */
+void dlopen_ctor_hook(void);
+void
+dlopen_ctor_hook(void)
+{
+    g_assert_cmpint(sem_post(&dlopen_ctor_entered), ==, 0);
+    g_assert_cmpint(sem_wait(&dlopen_ctor_racer_done), ==, 0);
+}
+
+static gpointer
+dlopen_ctor_racer(UNUSED gpointer data)
+{
+    int fd;
+
+    g_assert_cmpint(sem_wait(&dlopen_ctor_entered), ==, 0);
+    fd = inotify_init1(IN_CLOEXEC);
+    g_assert_cmpint(fd, >=, 0);
+    g_assert_cmpint(inotify_add_watch(fd, "/", IN_CREATE), >=, 0);
+    close(fd);
+    g_assert_cmpint(sem_post(&dlopen_ctor_racer_done), ==, 0);
+    return NULL;
+}
+
+/* A wrapped function call must not deadlock against a dlopen() in a different
+ * thread whose library constructor waits for the calling thread (issue #269).
+ *
+ * This models ROS 2 with LTTng-UST tracing: The main thread dlopen()s a
+ * tracepoint provider library, whose constructor registers its probes and for
+ * that waits for an LTTng-UST mutex. An LTTng-UST listener thread holds that
+ * mutex and calls socket().
+ *
+ * glibc holds its dynamic loader lock while dlopen() runs the constructors of
+ * the new library. That happens once per library, in the thread which calls
+ * dlopen(); thread creation does not run constructors. On the first call of a
+ * wrapper, the preload resolves the real libc function with dlsym(), which
+ * also takes the loader lock. This applies to every wrapper; the test uses
+ * inotify_add_watch() as nothing else in this process calls it before.
+ *
+ *   main thread                        racer thread
+ *   -----------                        ------------
+ *   dlopen()                           sem_wait(entered)
+ *     takes loader lock                  :
+ *     constructor: dlopen_ctor_hook()    :
+ *       sem_post(entered)  ----------> inotify_add_watch() wrapper
+ *       sem_wait(racer_done)               dlsym()
+ *         waits for racer  <-deadlock->      waits for loader lock
+ *                                      sem_post(racer_done)  (never reached)
+ *
+ * dlopen_ctor_racer_done models the LTTng-UST mutex. dlopen_ctor_entered
+ * makes the test deterministic: The racer only calls the wrapper while the
+ * main thread holds the loader lock.
+ */
+static void
+t_dlopen_ctor_race(void)
+{
+    if (g_test_subprocess()) {
+        GThread *racer;
+        void *handle;
+
+        g_assert_cmpint(sem_init(&dlopen_ctor_entered, 0, 0), ==, 0);
+        g_assert_cmpint(sem_init(&dlopen_ctor_racer_done, 0, 0), ==, 0);
+        racer = g_thread_new("racer", dlopen_ctor_racer, NULL);
+        handle = dlopen("libdlopen-ctor.so", RTLD_NOW);
+        g_assert(handle != NULL);
+        g_thread_join(racer);
+        g_assert_cmpint(dlclose(handle), ==, 0);
+        return;
+    }
+
+    g_test_trap_subprocess(NULL, 10 * G_USEC_PER_SEC, 0);
+    g_assert(!g_test_trap_reached_timeout());
+    g_test_trap_assert_passed();
+}
+
 /* fcntl() on fds which are not emulated keeps its native behaviour */
 static void
 t_testbed_fcntl_passthrough(UMockdevTestbedFixture * fixture, UNUSED_DATA)
@@ -2997,6 +3077,7 @@ main(int argc, char **argv)
                t_testbed_lock_signal_safety, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/lock_signal_mask_threads", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_lock_signal_mask_threads, t_testbed_fixture_teardown);
+    g_test_add_func("/umockdev/dlopen_ctor_race", t_dlopen_ctor_race);
     g_test_add("/umockdev-testbed/fcntl_passthrough", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,
                t_testbed_fcntl_passthrough, t_testbed_fixture_teardown);
     g_test_add("/umockdev-testbed/dup_emulated_dev", UMockdevTestbedFixture, NULL, t_testbed_fixture_setup,

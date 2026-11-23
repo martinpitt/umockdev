@@ -287,13 +287,17 @@ test_chatter_exe = executable('chatter', 'tests/chatter.c')
 test_chatter_stream_exe = executable('chatter-socket-stream', 'tests/chatter-socket-stream.c')
 test_readbyte_exe = executable('readbyte', 'tests/readbyte.c')
 
+test_dlopen_ctor_lib = shared_module('dlopen-ctor', 'tests/dlopen-ctor.c')
+
 if gudev.found()
   test('umockdev', executable('test-umockdev',
     'tests/test-umockdev.c',
     include_directories: include_directories('src'),
-    dependencies: [glib, libudev, gudev],
-    link_with: [umockdev_lib]),
-  depends: [preload_lib])
+    dependencies: [glib, libudev, gudev, dl],
+    link_with: [umockdev_lib],
+    # for tests/dlopen-ctor.c's constructor calling back into the test
+    export_dynamic: true),
+  depends: [preload_lib, test_dlopen_ctor_lib])
 
   test('umockdev-vala', executable('test-umockdev-vala',
       ['tests/test-umockdev-vala.vala',
